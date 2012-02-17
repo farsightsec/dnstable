@@ -1,0 +1,10 @@
+#!/bin/sh
+export MTBL_MERGE_DSO="libdnstable.so.0"
+export MTBL_MERGE_FUNC_PREFIX="dnstable_merge"
+
+if [ -z "$1" -o -z "$2" ]; then
+    echo "Usage: $0 <INPUT MTBL FILE> [<INPUT MTBL FILE>...] <OUTPUT MTBL FILE>"
+    exit 1
+fi
+
+exec mtbl_merge $@
