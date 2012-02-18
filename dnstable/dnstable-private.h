@@ -42,6 +42,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <mtbl.h>
+
 #include "dnstable.h"
 
 #define ENTRY_TYPE_RRSET			'\x00'
@@ -53,6 +55,14 @@
 
 #define DNS_MTBL_BLOCK_SIZE			8192
 #define DNSSEC_MTBL_BLOCK_SIZE			65536
+
+/* triplet */
+
+size_t
+triplet_pack(uint8_t *, uint64_t, uint64_t, uint64_t);
+
+void
+triplet_unpack(const uint8_t *, size_t, uint64_t *, uint64_t *, uint64_t *);
 
 /* misc */
 
