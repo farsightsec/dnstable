@@ -30,9 +30,12 @@ dnstable_merge_func(void *clos,
 			key[0] == ENTRY_TYPE_RDATA))
 	{
 		assert(len_val0 && len_val1);
+		dnstable_res res;
 
-		triplet_unpack(val0, len_val0, &time_first0, &time_last0, &count0);
-		triplet_unpack(val1, len_val1, &time_first1, &time_last1, &count1);
+		res = triplet_unpack(val0, len_val0, &time_first0, &time_last0, &count0);
+		assert(res == dnstable_res_success);
+		res = triplet_unpack(val1, len_val1, &time_first1, &time_last1, &count1);
+		assert(res == dnstable_res_success);
 
 		time_first0 = (time_first0 < time_first1) ? time_first0 : time_first1;
 		time_last0 = (time_last0 < time_last1) ? time_last0 : time_last1;

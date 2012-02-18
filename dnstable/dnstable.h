@@ -25,6 +25,11 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
+typedef enum {
+	dnstable_res_failure = 0,
+	dnstable_res_success = 1
+} dnstable_res;
+
 void
 dnstable_merge_func(void *clos,
 		    const uint8_t *key, size_t len_key,

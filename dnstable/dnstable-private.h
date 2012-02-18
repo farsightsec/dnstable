@@ -62,7 +62,7 @@
 size_t
 triplet_pack(uint8_t *, uint64_t, uint64_t, uint64_t);
 
-void
+dnstable_res
 triplet_unpack(const uint8_t *, size_t, uint64_t *, uint64_t *, uint64_t *);
 
 /* misc */

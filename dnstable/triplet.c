@@ -26,12 +26,14 @@ triplet_pack(uint8_t *orig_buf, uint64_t val1, uint64_t val2, uint64_t val3)
 	return (buf - orig_buf);
 }
 
-void
+dnstable_res
 triplet_unpack(const uint8_t *buf, size_t len_buf, uint64_t *val1, uint64_t *val2, uint64_t *val3)
 {
 	size_t bytes_read = 0;
 	bytes_read += mtbl_varint_decode64(buf + bytes_read, val1);
 	bytes_read += mtbl_varint_decode64(buf + bytes_read, val2);
 	bytes_read += mtbl_varint_decode64(buf + bytes_read, val3);
-	assert(bytes_read == len_buf);
+	if (bytes_read == len_buf)
+		return (dnstable_res_success);
+	return (dnstable_res_failure);
 }
