@@ -51,6 +51,9 @@
 
 #define STATS_INTERVAL				1000000
 
+#define DNS_MTBL_BLOCK_SIZE			8192
+#define DNSSEC_MTBL_BLOCK_SIZE			65536
+
 /* misc */
 
 static inline int

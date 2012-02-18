@@ -466,8 +466,12 @@ init_mtbl(void)
 	wopt = mtbl_writer_options_init();
 	mtbl_writer_options_set_compression(wopt, MTBL_COMPRESSION_ZLIB);
 
+	mtbl_writer_options_set_block_size(wopt, DNS_MTBL_BLOCK_SIZE);
 	writer = mtbl_writer_init(db_fname, wopt);
+
+	mtbl_writer_options_set_block_size(wopt, DNSSEC_MTBL_BLOCK_SIZE);
 	writer_dnssec = mtbl_writer_init(db_dnssec_fname, wopt);
+
 	assert(writer != NULL);
 	assert(writer_dnssec != NULL);
 
