@@ -26,6 +26,9 @@ AC_CONFIG_FILES([
 AC_CHECK_LIB([mtbl], [mtbl_iter_init], [], [AC_MSG_ERROR([required library not found])])
 AC_CHECK_HEADER([mtbl.h], [], [AC_MSG_ERROR([required header file not found])])
 
+AC_CHECK_LIB([wdns], [wdns_reverse_name], [], [AC_MSG_ERROR([required library not found])])
+AC_CHECK_HEADER([wdns.h], [], [AC_MSG_ERROR([required header file not found])])
+
 AC_OUTPUT
 AC_MSG_RESULT([
     $PACKAGE $VERSION

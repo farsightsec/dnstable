@@ -43,6 +43,7 @@
 #include <unistd.h>
 
 #include <mtbl.h>
+#include <wdns.h>
 
 #include "dnstable.h"
 
