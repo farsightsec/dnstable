@@ -229,7 +229,7 @@ process_rdata(Nmsg__Sie__DnsDedupe *dns, size_t i, ubuf *key, ubuf *val)
 
 	/* key: rdlen */
 	assert(dns->rdata[i].len <= 65535);
-	rdlen = (uint16_t) dns->rrname.len;
+	rdlen = (uint16_t) dns->rdata[i].len;
 	ubuf_reserve(key, ubuf_size(key) + sizeof(uint16_t));
 	ubuf_append(key, (uint8_t *) &rdlen, sizeof(uint16_t));
 
