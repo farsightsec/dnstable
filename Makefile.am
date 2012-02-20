@@ -33,6 +33,7 @@ dnstable_libdnstable_la_SOURCES = \
 	dnstable/dnstable.h \
 	dnstable/dnstable-private.h \
 	dnstable/merge.c \
+	dnstable/print_string.h \
 	dnstable/triplet.c \
 	dnstable/vector.h \
 	dnstable/vector_types.h
