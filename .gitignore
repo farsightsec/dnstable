@@ -18,3 +18,4 @@ Makefile.in
 TAGS
 dnstable/libdnstable.pc
 src/dnstable_convert
+src/dnstable_dump

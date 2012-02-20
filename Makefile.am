@@ -59,6 +59,10 @@ bin_PROGRAMS = src/dnstable_convert
 src_dnstable_convert_SOURCES = src/dnstable_convert.c
 src_dnstable_convert_LDADD = -lmtbl -lnmsg -lwdns dnstable/libdnstable.la
 
+bin_PROGRAMS += src/dnstable_dump
+src_dnstable_dump_SOURCES = src/dnstable_dump.c
+src_dnstable_dump_LDADD = -lmtbl dnstable/libdnstable.la
+
 TESTS =
 
 check_PROGRAMS =
