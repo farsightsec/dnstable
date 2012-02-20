@@ -18,6 +18,7 @@
 #include <errno.h>
 #include <inttypes.h>
 #include <locale.h>
+#include <pthread.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -332,7 +333,8 @@ process_rdata_name_rev(Nmsg__Sie__DnsDedupe *dns, size_t i, ubuf *key, ubuf *val
 }
 
 static void
-do_loop(void) {
+do_read(void)
+{
 	Nmsg__Sie__DnsDedupe *dns;
 	nmsg_message_t msg;
 	nmsg_res res;
@@ -340,6 +342,8 @@ do_loop(void) {
 
 	key = ubuf_init(256);
 	val = ubuf_init(256);
+
+	fprintf(stderr, "dnstable_convert: reading input data\n");
 
 	for (;;) {
 		res = nmsg_input_read(input, &msg);
@@ -373,56 +377,86 @@ do_loop(void) {
 
 	ubuf_destroy(&key);
 	ubuf_destroy(&val);
+	do_stats();
 }
 
-static void
-write_table(const char *t, struct mtbl_iter *it, struct mtbl_writer *w)
+struct write_thread_ctx
 {
-	struct timespec start, dur;
+	const char		*n;
+	struct mtbl_sorter	*s;
+	struct mtbl_writer	*w;
+	uint64_t		count;
+	struct timespec		start;
+};
+
+static void
+thread_stat(struct write_thread_ctx *ctx)
+{
+	struct timespec dur;
 	double t_dur;
-	uint64_t count = 0;
+	nmsg_timespec_get(&dur);
+	nmsg_timespec_sub(&ctx->start, &dur);
+	t_dur = nmsg_timespec_to_double(&dur);
+	fprintf(stderr,
+		"wrote %'" PRIu64 " entries in %'.2f sec, %'d ent/sec [%s]\n",
+		ctx->count, t_dur, (int) (ctx->count / t_dur), ctx->n);
+}
+
+static void *
+write_thread(void *clos)
+{
+	struct write_thread_ctx *ctx = (struct write_thread_ctx *) clos;
+	struct mtbl_iter *it = mtbl_sorter_iter(ctx->s);
+	assert(it != NULL);
 
 	const uint8_t *key, *val;
 	size_t len_key, len_val;
 
-	nmsg_timespec_get(&start);
+	ctx->count = 0;
+	nmsg_timespec_get(&ctx->start);
+
 	while (mtbl_iter_next(it, &key, &len_key, &val, &len_val) == mtbl_res_success) {
-		mtbl_res res = mtbl_writer_add(w, key, len_key, val, len_val);
+		mtbl_res res = mtbl_writer_add(ctx->w, key, len_key, val, len_val);
 		assert(res == mtbl_res_success);
-		if ((++count % STATS_INTERVAL) == 0) {
-			nmsg_timespec_get(&dur);
-			nmsg_timespec_sub(&start, &dur);
-			t_dur = nmsg_timespec_to_double(&dur);
-			fprintf(stderr,
-				"%s: wrote %'" PRIu64 " entries in %'.2f sec, %'d ent/sec\n",
-				t, count, t_dur, (int) (count / t_dur));
-		}
+		if ((++(ctx->count) % STATS_INTERVAL) == 0)
+			thread_stat(ctx);
 	}
 	mtbl_iter_destroy(&it);
+	mtbl_sorter_destroy(&ctx->s);
+	mtbl_writer_destroy(&ctx->w);
+	thread_stat(ctx);
+	fprintf(stderr, "dnstable_convert: finished writing table [%s]\n", ctx->n);
+	return (NULL);
 }
 
 static void
 do_write(void)
 {
-	struct mtbl_iter *it_dns, *it_dnssec;
+	struct write_thread_ctx ctx_dns, ctx_dnssec;
+	pthread_t thr_dns, thr_dnssec;
+	int ret;
 
-	it_dns = mtbl_sorter_iter(sorter);
-	assert(it_dns != NULL);
+	ctx_dns.n = "dns";
+	ctx_dns.s = sorter;
+	ctx_dns.w = writer;
 
-	it_dnssec = mtbl_sorter_iter(sorter_dnssec);
-	assert(it_dnssec != NULL);
+	ctx_dnssec.n = "dnssec";
+	ctx_dnssec.s = sorter_dnssec;
+	ctx_dnssec.w = writer_dnssec;
 
-	do_stats();
+	fprintf(stderr, "dnstable_convert: writing tables\n");
 
-	fprintf(stderr, "dnstable_convert: writing DNS table\n");
-	write_table("dns", it_dns, writer);
-	mtbl_sorter_destroy(&sorter);
-	mtbl_writer_destroy(&writer);
+	ret = pthread_create(&thr_dns, NULL, write_thread, (void *) &ctx_dns);
+	assert(ret == 0);
 
-	fprintf(stderr, "dnstable_convert: writing DNSSEC table\n");
-	write_table("dnssec", it_dnssec, writer_dnssec);
-	mtbl_sorter_destroy(&sorter_dnssec);
-	mtbl_writer_destroy(&writer_dnssec);
+	ret = pthread_create(&thr_dnssec, NULL, write_thread, (void *) &ctx_dnssec);
+	assert(ret == 0);
+
+	ret = pthread_join(thr_dns, NULL);
+	assert(ret == 0);
+
+	ret = pthread_join(thr_dnssec, NULL);
+	assert(ret == 0);
 }
 
 static void
@@ -499,7 +533,7 @@ main(int argc, char **argv)
 	init_nmsg();
 	init_mtbl();
 	nmsg_timespec_get(&start_time);
-	do_loop();
+	do_read();
 	nmsg_input_close(&input);
 	do_write();
 	do_stats();
