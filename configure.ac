@@ -29,6 +29,13 @@ AC_CHECK_HEADER([mtbl.h], [], [AC_MSG_ERROR([required header file not found])])
 AC_CHECK_LIB([wdns], [wdns_reverse_name], [], [AC_MSG_ERROR([required library not found])])
 AC_CHECK_HEADER([wdns.h], [], [AC_MSG_ERROR([required header file not found])])
 
+m4_sinclude(acx_pthread.m4)
+ACX_PTHREAD([
+    LIBS="$LIBS $PTHREAD_LIBS"
+    CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
+    CC="$PTHREAD_CC"
+])
+
 AC_OUTPUT
 AC_MSG_RESULT([
     $PACKAGE $VERSION
