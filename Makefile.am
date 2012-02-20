@@ -32,6 +32,7 @@ lib_LTLIBRARIES = dnstable/libdnstable.la
 dnstable_libdnstable_la_SOURCES = \
 	dnstable/dnstable.h \
 	dnstable/dnstable-private.h \
+	dnstable/entry.c \
 	dnstable/merge.c \
 	dnstable/print_string.h \
 	dnstable/triplet.c \

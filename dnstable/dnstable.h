@@ -25,10 +25,19 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
+struct dnstable_entry;
+
 typedef enum {
 	dnstable_res_failure = 0,
 	dnstable_res_success = 1
 } dnstable_res;
+
+typedef enum {
+	DNSTABLE_ENTRY_TYPE_RRSET = 0,
+	DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD = 1,
+	DNSTABLE_ENTRY_TYPE_RDATA = 2,
+	DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV = 3,
+} dnstable_entry_type;
 
 void
 dnstable_merge_func(void *clos,
@@ -36,6 +45,111 @@ dnstable_merge_func(void *clos,
 		    const uint8_t *val0, size_t len_val0,
 		    const uint8_t *val1, size_t len_val1,
 		    uint8_t **merged_val, size_t *len_merged_val);
+
+/* entry */
+
+struct dnstable_entry *
+dnstable_entry_decode(
+	const uint8_t *key, size_t len_key,
+	const uint8_t *val, size_t len_val);
+
+void
+dnstable_entry_destroy(struct dnstable_entry **);
+
+char *
+dnstable_entry_to_text(struct dnstable_entry *);
+
+dnstable_entry_type
+dnstable_entry_get_type(struct dnstable_entry *);
+
+/*
+ * valid for:
+ *	entry_type_rrset
+ *	entry_type_rrset_name_fwd
+ *	entry_type_rdata
+ */
+dnstable_res
+dnstable_entry_get_rrname(
+	struct dnstable_entry *,
+	const uint8_t **owner, size_t *len_owner);
+
+/*
+ * valid for:
+ *	entry_type_rrset
+ *	entry_type_rdata
+ */
+dnstable_res
+dnstable_entry_get_rrtype(
+	struct dnstable_entry *,
+	uint16_t *rrtype);
+
+/*
+ * valid for:
+ *	entry_type_rrset
+ */
+dnstable_res
+dnstable_entry_get_bailiwick(
+	struct dnstable_entry *,
+	const uint8_t **bailiwick, size_t *len_bailiwick);
+
+/**
+ * valid for:
+ *	entry_type_rrset
+ *	entry_type_rdata
+ */
+dnstable_res
+dnstable_entry_get_num_rdata(
+	struct dnstable_entry *,
+	size_t *num_rdata);
+
+/**
+ * valid for:
+ *	entry_type_rrset
+ *	entry_type_rdata
+ */
+dnstable_res
+dnstable_entry_get_rdata(
+	struct dnstable_entry *, size_t,
+	const uint8_t **rdata, size_t *len_rdata);
+
+/**
+ * valid for
+ *	entry_type_rdata_name_rev
+ */
+dnstable_res
+dnstable_entry_get_rdata_name(
+	struct dnstable_entry *,
+	const uint8_t **rdata_name, size_t *len_rdata_name);
+
+/**
+ * valid for:
+ *	entry_type_rrset
+ *	entry_type_rdata
+ */
+dnstable_res
+dnstable_entry_get_time_first(
+	struct dnstable_entry *,
+	uint64_t *time_first);
+
+/**
+ * valid for:
+ *	entry_type_rrset
+ *	entry_type_rdata
+ */
+dnstable_res
+dnstable_entry_get_time_last(
+	struct dnstable_entry *,
+	uint64_t *time_last);
+
+/**
+ * valid for:
+ *	entry_type_rrset
+ *	entry_type_rdata
+ */
+dnstable_res
+dnstable_entry_get_count(
+	struct dnstable_entry *,
+	uint64_t *count);
 
 #ifdef __cplusplus
 }
