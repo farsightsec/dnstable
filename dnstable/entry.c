@@ -55,6 +55,19 @@ fmt_time(ubuf *u, uint64_t v)
 	ubuf_append_str(u, s);
 }
 
+static void
+fmt_rrtype(ubuf *u, uint16_t rrtype)
+{
+	char s[sizeof("TYPE65535")];
+	const char *s_rrtype = wdns_rrtype_to_str(rrtype);
+	if (s_rrtype) {
+		ubuf_append_str(u, s_rrtype);
+	} else {
+		snprintf(s, sizeof(s), "TYPE%hu", rrtype);
+		ubuf_append_str(u, s);
+	}
+}
+
 char *
 dnstable_entry_to_text(struct dnstable_entry *e)
 {
@@ -90,7 +103,7 @@ dnstable_entry_to_text(struct dnstable_entry *e)
 						       e->rrtype, WDNS_CLASS_IN);
 			ubuf_append_str(u, name);
 			ubuf_append_str(u, " IN ");
-			ubuf_append_str(u, wdns_rrtype_to_str(e->rrtype));
+			fmt_rrtype(u, e->rrtype);
 			ubuf_add(u, ' ');
 			ubuf_append_str(u, data);
 			ubuf_add(u, '\n');
@@ -106,7 +119,7 @@ dnstable_entry_to_text(struct dnstable_entry *e)
 					       e->rrtype, WDNS_CLASS_IN);
 		ubuf_append_str(u, name);
 		ubuf_append_str(u, " IN ");
-		ubuf_append_str(u, wdns_rrtype_to_str(e->rrtype));
+		fmt_rrtype(u, e->rrtype);
 		ubuf_add(u, ' ');
 		ubuf_append_str(u, data);
 		ubuf_add(u, '\n');
