@@ -15,8 +15,6 @@
  */
 
 #include "dnstable-private.h"
-#include "vector.h"
-#include "vector_types.h"
 
 VECTOR_GENERATE(rdata_vec, wdns_rdata_t *);
 
@@ -33,7 +31,7 @@ fmt_uint64(ubuf *u, uint64_t v)
 {
 	char s[sizeof("18,446,744,073,709,551,615")];
 	snprintf(s, sizeof(s), "%'" PRIu64, v);
-	ubuf_append_str(u, s);
+	ubuf_add_cstr(u, s);
 }
 
 static void
@@ -52,7 +50,7 @@ fmt_time(ubuf *u, uint64_t v)
 			gm.tm_sec
 	       );
 	}
-	ubuf_append_str(u, s);
+	ubuf_add_cstr(u, s);
 }
 
 static void
@@ -61,10 +59,10 @@ fmt_rrtype(ubuf *u, uint16_t rrtype)
 	char s[sizeof("TYPE65535")];
 	const char *s_rrtype = wdns_rrtype_to_str(rrtype);
 	if (s_rrtype) {
-		ubuf_append_str(u, s_rrtype);
+		ubuf_add_cstr(u, s_rrtype);
 	} else {
 		snprintf(s, sizeof(s), "TYPE%hu", rrtype);
-		ubuf_append_str(u, s);
+		ubuf_add_cstr(u, s);
 	}
 }
 
@@ -79,19 +77,19 @@ dnstable_entry_to_text(struct dnstable_entry *e)
 	if (e->e_type == DNSTABLE_ENTRY_TYPE_RRSET) {
 		/* bailiwick */
 		wdns_domain_to_str(e->bailiwick.data, e->bailiwick.len, name);
-		ubuf_append_str(u, ";;  bailiwick: ");
-		ubuf_append_str(u, name);
+		ubuf_add_cstr(u, ";;  bailiwick: ");
+		ubuf_add_cstr(u, name);
 
 		/* count */
-		ubuf_append_str(u, "\n;;      count: ");
+		ubuf_add_cstr(u, "\n;;      count: ");
 		fmt_uint64(u, e->count);
 
 		/* first seen */
-		ubuf_append_str(u, "\n;; first seen: ");
+		ubuf_add_cstr(u, "\n;; first seen: ");
 		fmt_time(u, e->time_first);
 
 		/* last seen */
-		ubuf_append_str(u, "\n;;  last seen: ");
+		ubuf_add_cstr(u, "\n;;  last seen: ");
 		fmt_time(u, e->time_last);
 		ubuf_add(u, '\n');
 
@@ -101,11 +99,11 @@ dnstable_entry_to_text(struct dnstable_entry *e)
 			wdns_rdata_t *rdata = rdata_vec_value(e->rdatas, i);
 			char *data = wdns_rdata_to_str(rdata->data, rdata->len,
 						       e->rrtype, WDNS_CLASS_IN);
-			ubuf_append_str(u, name);
-			ubuf_append_str(u, " IN ");
+			ubuf_add_cstr(u, name);
+			ubuf_add_cstr(u, " IN ");
 			fmt_rrtype(u, e->rrtype);
 			ubuf_add(u, ' ');
-			ubuf_append_str(u, data);
+			ubuf_add_cstr(u, data);
 			ubuf_add(u, '\n');
 			free(data);
 		}
@@ -117,21 +115,21 @@ dnstable_entry_to_text(struct dnstable_entry *e)
 		wdns_rdata_t *rdata = rdata_vec_value(e->rdatas, 0);
 		char *data = wdns_rdata_to_str(rdata->data, rdata->len,
 					       e->rrtype, WDNS_CLASS_IN);
-		ubuf_append_str(u, name);
-		ubuf_append_str(u, " IN ");
+		ubuf_add_cstr(u, name);
+		ubuf_add_cstr(u, " IN ");
 		fmt_rrtype(u, e->rrtype);
 		ubuf_add(u, ' ');
-		ubuf_append_str(u, data);
+		ubuf_add_cstr(u, data);
 		ubuf_add(u, '\n');
 		free(data);
 	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD) {
 		wdns_domain_to_str(e->name.data, e->name.len, name);
-		ubuf_append_str(u, name);
-		ubuf_append_str(u, " ;; rrset name fwd\n");
+		ubuf_add_cstr(u, name);
+		ubuf_add_cstr(u, " ;; rrset name fwd\n");
 	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV) {
 		wdns_domain_to_str(e->name.data, e->name.len, name);
-		ubuf_append_str(u, name);
-		ubuf_append_str(u, " ;; rdata name rev\n");
+		ubuf_add_cstr(u, name);
+		ubuf_add_cstr(u, " ;; rdata name rev\n");
 	}
 
 	ubuf_add(u, '\x00');

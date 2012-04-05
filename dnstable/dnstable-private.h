@@ -48,6 +48,10 @@
 
 #include "dnstable.h"
 
+#include "librsf/my_alloc.h"
+#include "librsf/vector.h"
+#include "librsf/ubuf.h"
+
 #define ENTRY_TYPE_RRSET			'\x00'
 #define ENTRY_TYPE_RRSET_NAME_FWD		'\x01'
 #define ENTRY_TYPE_RDATA			'\x02'
@@ -84,30 +88,6 @@ bytes_compare(const uint8_t *a, size_t len_a,
 		}
 	}
 	return (ret);
-}
-
-static inline void *
-my_calloc(size_t nmemb, size_t size)
-{
-	void *ptr = calloc(nmemb, size);
-	assert(ptr != NULL);
-	return (ptr);
-}
-
-static inline void *
-my_malloc(size_t size)
-{
-	void *ptr = malloc(size);
-	assert(ptr != NULL);
-	return (ptr);
-}
-
-static inline void *
-my_realloc(void *ptr, size_t size)
-{
-	ptr = realloc(ptr, size);
-	assert(ptr != NULL);
-	return (ptr);
 }
 
 #endif /* DNSTABLE_PRIVATE_H */

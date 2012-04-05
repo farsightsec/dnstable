@@ -33,7 +33,8 @@
 #include <wdns.h>
 
 #include "dnstable-private.h"
-#include "vector_types.h"
+
+#include "librsf/ubuf.h"
 
 static const char		*nmsg_fname;
 static const char		*db_fname;

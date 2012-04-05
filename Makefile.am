@@ -36,8 +36,9 @@ dnstable_libdnstable_la_SOURCES = \
 	dnstable/merge.c \
 	dnstable/print_string.h \
 	dnstable/triplet.c \
-	dnstable/vector.h \
-	dnstable/vector_types.h
+	librsf/my_alloc.h \
+	librsf/vector.h \
+	librsf/ubuf.h
 
 dnstable_libdnstable_la_LIBADD = -lmtbl
 dnstable_libdnstable_la_LDFLAGS = $(AM_LDFLAGS) \
