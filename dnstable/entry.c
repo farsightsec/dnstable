@@ -159,7 +159,7 @@ decode_rrset(struct dnstable_entry *e, const uint8_t *buf, size_t len_buf)
 	size_t len_name;
 
 	/* rrname */
-	if (wdns_len_uname(p, end, &len_name) != wdns_msg_success)
+	if (wdns_len_uname(p, end, &len_name) != wdns_res_success)
 		return (dnstable_res_failure);
 	wdns_reverse_name(p, len_name, name);
 	e->name.len = len_name;
@@ -175,7 +175,7 @@ decode_rrset(struct dnstable_entry *e, const uint8_t *buf, size_t len_buf)
 		return (dnstable_res_failure);
 	
 	/* bailiwick */
-	if (wdns_len_uname(p, end, &len_name) != wdns_msg_success)
+	if (wdns_len_uname(p, end, &len_name) != wdns_res_success)
 		return (dnstable_res_failure);
 	wdns_reverse_name(p, len_name, name);
 	e->bailiwick.len = len_name;
@@ -257,7 +257,7 @@ decode_rdata(struct dnstable_entry *e, const uint8_t *buf, size_t len_buf)
 		return (dnstable_res_failure);
 
 	/* rrname */
-	if (wdns_len_uname(p, end, &len_name) != wdns_msg_success)
+	if (wdns_len_uname(p, end, &len_name) != wdns_res_success)
 		return (dnstable_res_failure);
 	wdns_reverse_name(p, len_name, name);
 	e->name.len = len_name;
