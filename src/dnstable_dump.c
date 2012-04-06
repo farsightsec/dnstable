@@ -43,30 +43,19 @@ print_entry(struct dnstable_entry *ent)
 }
 
 static void
-do_dump(struct mtbl_iter *it)
+do_dump(struct dnstable_iter *it)
 {
-	const uint8_t *key;
-	const uint8_t *val;
-	size_t len_key;
-	size_t len_val;
 	struct dnstable_entry *ent;
 	uint64_t count = 0;
 
-	while (mtbl_iter_next(it, &key, &len_key, &val, &len_val) == mtbl_res_success) {
-		ent = dnstable_entry_decode(key, len_key, val, len_val);
-		if (ent == NULL) {
-			fprintf(stderr, "Error: unable to decode key= ");
-			print_string(key, len_key, stderr);
-			fprintf(stderr, " val= ");
-			print_string(val, len_val, stderr);
-			fputc('\n', stderr);
-			assert(ent != NULL);
-		}
+	while (dnstable_iter_next(it, &ent) == dnstable_res_success) {
+		assert(ent != NULL);
 		print_entry(ent);
 		dnstable_entry_destroy(&ent);
 		count++;
+		if (count == 1000)
+			break;
 	}
-
 	fprintf(stderr, "Dumped %'" PRIu64 " entries.\n", count);
 }
 
@@ -75,29 +64,31 @@ main(int argc, char **argv)
 {
 	setlocale(LC_ALL, "");
 
-	const char *mtbl_fname;
-	struct mtbl_reader *reader;
-	struct mtbl_iter *it;
+	const char *m_fname;
+	struct mtbl_reader *m_reader;
+	struct dnstable_reader *d_reader;
+	struct dnstable_iter *d_it;
 
 	if (argc != 2) {
 		fprintf(stderr, "Usage: %s <DB FILE>\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
-	mtbl_fname = argv[1];
+	m_fname = argv[1];
 
-	reader = mtbl_reader_init(mtbl_fname, NULL);
-	if (reader == NULL) {
+	m_reader = mtbl_reader_init(m_fname, NULL);
+	if (m_reader == NULL) {
+		perror("mtbl_reader_init");
 		fprintf(stderr, "dnstable_dump: unable to open database file %s\n",
-			mtbl_fname);
+			m_fname);
 		exit(EXIT_FAILURE);
 	}
 
-	it = mtbl_source_iter(mtbl_reader_source(reader));
-	if (it != NULL)
-		do_dump(it);
-
-	mtbl_iter_destroy(&it);
-	mtbl_reader_destroy(&reader);
+	d_reader = dnstable_reader_init_source(mtbl_reader_source(m_reader));
+	d_it = dnstable_reader_iter(d_reader);
+	do_dump(d_it);
+	dnstable_iter_destroy(&d_it);
+	dnstable_reader_destroy(&d_reader);
+	mtbl_reader_destroy(&m_reader);
 
 	return (EXIT_SUCCESS);
 }
