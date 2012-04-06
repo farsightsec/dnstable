@@ -27,7 +27,7 @@
 #include <dnstable.h>
 #include <mtbl.h>
 
-#include "print_string.h"
+#include "librsf/print_string.h"
 
 static void
 print_entry(struct dnstable_entry *ent)
