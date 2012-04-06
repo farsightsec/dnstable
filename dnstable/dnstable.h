@@ -26,6 +26,7 @@ extern "C" {
 #include <stdint.h>
 
 struct dnstable_entry;
+struct dnstable_iter;
 
 typedef enum {
 	dnstable_res_failure = 0,
@@ -45,6 +46,29 @@ dnstable_merge_func(void *clos,
 		    const uint8_t *val0, size_t len_val0,
 		    const uint8_t *val1, size_t len_val1,
 		    uint8_t **merged_val, size_t *len_merged_val);
+
+/* iter */
+
+typedef dnstable_res
+(*dnstable_iter_next_func)(void *, struct dnstable_entry **);
+
+typedef void
+(*dnstable_iter_free_func)(void *);
+
+struct dnstable_iter *
+dnstable_iter_init(
+	dnstable_iter_next_func,
+	dnstable_iter_free_func,
+	void *);
+
+dnstable_res
+dnstable_iter_next(
+	struct dnstable_iter *,
+	struct dnstable_entry **)
+__attribute__((warn_unused_result));
+
+void
+dnstable_iter_destroy(struct dnstable_iter **);
 
 /* entry */
 
