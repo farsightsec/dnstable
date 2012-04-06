@@ -35,9 +35,9 @@ dnstable_libdnstable_la_SOURCES = \
 	dnstable/entry.c \
 	dnstable/iter.c \
 	dnstable/merge.c \
-	dnstable/print_string.h \
 	dnstable/triplet.c \
 	librsf/my_alloc.h \
+	librsf/print_string.h \
 	librsf/vector.h \
 	librsf/ubuf.h
 
