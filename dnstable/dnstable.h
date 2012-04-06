@@ -25,9 +25,12 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
+#include <mtbl.h>
+
 struct dnstable_entry;
 struct dnstable_iter;
 struct dnstable_query;
+struct dnstable_reader;
 
 typedef enum {
 	dnstable_res_failure = 0,
@@ -109,6 +112,24 @@ dnstable_query_set_bailiwick(struct dnstable_query *,
 
 dnstable_res
 dnstable_query_filter(struct dnstable_query *, struct dnstable_entry *, bool *);
+
+/* reader */
+
+struct dnstable_reader *
+dnstable_reader_init_fname(const char *);
+
+struct dnstable_reader *
+
+dnstable_reader_init_source(const struct mtbl_source *);
+
+void
+dnstable_reader_destroy(struct dnstable_reader **);
+
+struct dnstable_iter *
+dnstable_reader_iter(struct dnstable_reader *);
+
+struct dnstable_iter *
+dnstable_reader_query(struct dnstable_reader *, struct dnstable_query *);
 
 /* entry */
 
