@@ -27,6 +27,7 @@ extern "C" {
 
 struct dnstable_entry;
 struct dnstable_iter;
+struct dnstable_query;
 
 typedef enum {
 	dnstable_res_failure = 0,
@@ -39,6 +40,15 @@ typedef enum {
 	DNSTABLE_ENTRY_TYPE_RDATA = 2,
 	DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV = 3,
 } dnstable_entry_type;
+
+typedef enum {
+	DNSTABLE_QUERY_TYPE_RRSET = 0,
+	DNSTABLE_QUERY_TYPE_RDATA_NAME = 1,
+	DNSTABLE_QUERY_TYPE_RDATA_IP = 2,
+	DNSTABLE_QUERY_TYPE_RDATA_RAW = 3,
+} dnstable_query_type;
+
+/* merge func */
 
 void
 dnstable_merge_func(void *clos,
@@ -69,6 +79,36 @@ __attribute__((warn_unused_result));
 
 void
 dnstable_iter_destroy(struct dnstable_iter **);
+
+/* query */
+
+struct dnstable_query *
+dnstable_query_init(void);
+
+void
+dnstable_query_destroy(struct dnstable_query **);
+
+const char *
+dnstable_query_get_error(struct dnstable_query *);
+
+void
+dnstable_query_set_type(struct dnstable_query *,
+			dnstable_query_type);
+
+dnstable_res
+dnstable_query_set_data(struct dnstable_query *,
+			const char *);
+
+dnstable_res
+dnstable_query_set_rrtype(struct dnstable_query *,
+			  const char *);
+
+dnstable_res
+dnstable_query_set_bailiwick(struct dnstable_query *,
+			     const char *);
+
+dnstable_res
+dnstable_query_filter(struct dnstable_query *, struct dnstable_entry *, bool *);
 
 /* entry */
 

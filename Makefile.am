@@ -35,7 +35,10 @@ dnstable_libdnstable_la_SOURCES = \
 	dnstable/entry.c \
 	dnstable/iter.c \
 	dnstable/merge.c \
+	dnstable/query.c \
 	dnstable/triplet.c \
+	librsf/iparith.h \
+	librsf/hex_decode.h \
 	librsf/my_alloc.h \
 	librsf/print_string.h \
 	librsf/vector.h \

@@ -62,6 +62,8 @@
 #define DNS_MTBL_BLOCK_SIZE			8192
 #define DNSSEC_MTBL_BLOCK_SIZE			65536
 
+#define DNSTABLE_TYPE_ANY_DNSSEC		0x00ff0000
+
 /* triplet */
 
 size_t
