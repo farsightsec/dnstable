@@ -58,12 +58,12 @@ query_load_address(struct dnstable_query *q, const char *data, uint8_t **addr, s
 {
 	uint8_t buf[16];
 	free(*addr);
-	if (inet_pton(AF_INET, data, buf) == 0) {
+	if (inet_pton(AF_INET, data, buf)) {
 		*len_addr = 4;
 		*addr = my_malloc(4);
 		memcpy(*addr, buf, 4);
 		return (dnstable_res_success);
-	} else if (inet_pton(AF_INET6, data, buf) == 0) {
+	} else if (inet_pton(AF_INET6, data, buf)) {
 		*len_addr = 16;
 		*addr = my_malloc(16);
 		memcpy(*addr, buf, 16);
