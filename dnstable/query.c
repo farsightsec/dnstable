@@ -175,13 +175,15 @@ static dnstable_res
 query_set_data_rdata_ip_prefix(struct dnstable_query *q, const char *data)
 {
 	dnstable_res res = dnstable_res_failure;
-	char *s = strdup(data);
+	char *s = NULL;
 	uint8_t *ip = NULL;
 	size_t len_ip;
 	char *address, *prefix_length;
 	char *saveptr, *endptr;
 	long plen;
 
+	s = strdup(data);
+	assert(s != NULL);
 	if ((address = strtok_r(s, "/", &saveptr)) == NULL) goto out;
 	if ((prefix_length = strtok_r(NULL, "/", &saveptr)) == NULL) goto out;
 	if (strtok_r(NULL, "/", &saveptr) != NULL) goto out;
@@ -225,6 +227,7 @@ query_set_data_rdata_ip_prefix(struct dnstable_query *q, const char *data)
 out:
 	if (res != dnstable_res_success)
 		query_set_err(q, "unable to parse IP prefix");
+	free(ip);
 	free(s);
 	return (res);
 }
