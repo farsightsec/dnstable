@@ -31,6 +31,13 @@ struct dnstable_query {
 	uint8_t			*rdata, *rdata2;
 };
 
+struct query_iter {
+	struct dnstable_query	*query;
+	const struct mtbl_source *source;
+	struct mtbl_iter	*m_iter, *m_iter2;
+	ubuf			*key, *key2;
+};
+
 static void
 query_set_err(struct dnstable_query *q, const char *err)
 {
@@ -362,4 +369,331 @@ dnstable_query_filter(struct dnstable_query *q, struct dnstable_entry *e, bool *
 fail:
 	*pass = false;
 	return (dnstable_res_success);
+}
+
+static void
+query_iter_free(void *clos)
+{
+	struct query_iter *it = (struct query_iter *) clos;
+	mtbl_iter_destroy(&it->m_iter);
+	mtbl_iter_destroy(&it->m_iter2);
+	ubuf_destroy(&it->key);
+	ubuf_destroy(&it->key2);
+	free(it);
+}
+
+static void
+add_rrtype_to_key(ubuf *key, uint32_t rrtype)
+{
+	ubuf_reserve(key, ubuf_size(key) + mtbl_varint_length(rrtype));
+	ubuf_advance(key, mtbl_varint_encode32(ubuf_ptr(key), rrtype));
+}
+
+static dnstable_res
+query_iter_next(void *clos, struct dnstable_entry **ent)
+{
+	struct query_iter *it = (struct query_iter *) clos;
+
+	for (;;) {
+		bool pass = false;
+		dnstable_res res;
+		const uint8_t *key, *val;
+		size_t len_key, len_val;
+
+		if (mtbl_iter_next(it->m_iter, &key, &len_key, &val, &len_val) != mtbl_res_success)
+			return (dnstable_res_failure);
+		*ent = dnstable_entry_decode(key, len_key, val, len_val);
+		assert(*ent != NULL);
+		res = dnstable_query_filter(it->query, *ent, &pass);
+		assert(res == dnstable_res_success);
+		if (pass) {
+			return (dnstable_res_success);
+		} else {
+			dnstable_entry_destroy(ent);
+			continue;
+		}
+	}
+}
+
+static dnstable_res
+query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t type_byte)
+{
+	struct query_iter *it = (struct query_iter *) clos;
+	const uint8_t *key, *val;
+	size_t len_key, len_val;
+	bool pass = false;
+	dnstable_res res;
+
+	for (;;) {
+		if (it->m_iter == NULL) {
+			if (mtbl_iter_next(it->m_iter2,
+					   &key, &len_key,
+					   &val, &len_val) != mtbl_res_success)
+			{
+				return (dnstable_res_failure);
+			}
+			ubuf_clip(it->key, 0);
+			ubuf_reserve(it->key, len_key + mtbl_varint_length(it->query->rrtype));
+			ubuf_add(it->key, type_byte);
+			wdns_reverse_name(key + 1, len_key - 1, ubuf_ptr(it->key));
+			ubuf_advance(it->key, len_key - 1);
+			if (it->query->do_rrtype)
+				add_rrtype_to_key(it->key, it->query->rrtype);
+			it->m_iter = mtbl_source_get_prefix(it->source,
+							    ubuf_data(it->key),
+							    ubuf_size(it->key));
+		}
+		assert(it->m_iter != NULL);
+		if (mtbl_iter_next(it->m_iter,
+				   &key, &len_key,
+				   &val, &len_val) != mtbl_res_success)
+		{
+			mtbl_iter_destroy(&it->m_iter);
+			continue;
+		}
+		*ent = dnstable_entry_decode(key, len_key, val, len_val);
+		assert(*ent != NULL);
+		res = dnstable_query_filter(it->query, *ent, &pass);
+		assert(res == dnstable_res_success);
+		if (pass) {
+			return (dnstable_res_success);
+		} else {
+			dnstable_entry_destroy(ent);
+			continue;
+		}
+	}
+}
+
+static dnstable_res
+query_iter_next_rrset_name_fwd(void *clos, struct dnstable_entry **ent)
+{
+	return query_iter_next_name_indirect(clos, ent, ENTRY_TYPE_RRSET);
+}
+
+static dnstable_res
+query_iter_next_rdata_name_rev(void *clos, struct dnstable_entry **ent)
+{
+	return query_iter_next_name_indirect(clos, ent, ENTRY_TYPE_RDATA);
+}
+
+static struct dnstable_iter *
+query_init_rrset_right_wildcard(struct query_iter *it)
+{
+	/* key: type byte */
+	ubuf_add(it->key, ENTRY_TYPE_RRSET_NAME_FWD);
+
+	/* key: rrset owner name, less trailing "\x01\x2a\x00" */
+	ubuf_append(it->key, it->query->name.data, it->query->name.len - 3);
+
+	it->m_iter2 = mtbl_source_get_prefix(it->source,
+					     ubuf_data(it->key),
+					     ubuf_size(it->key));
+
+	return dnstable_iter_init(query_iter_next_rrset_name_fwd, query_iter_free, it);
+}
+
+static struct dnstable_iter *
+query_init_rrset_left_wildcard(struct query_iter *it)
+{
+	uint8_t name[WDNS_MAXLEN_NAME];
+
+	/* key: type byte */
+	ubuf_add(it->key, ENTRY_TYPE_RRSET);
+
+	/* key: rrset owner name (label-reversed),
+	 * less leading "\x01\x2a" and trailing "\x00" */
+	size_t len = it->query->name.len - 2;
+	wdns_reverse_name(it->query->name.data + 2, len, name);
+	ubuf_append(it->key, name, len - 1);
+
+	it->m_iter = mtbl_source_get_prefix(it->source, ubuf_data(it->key), ubuf_size(it->key));
+	return dnstable_iter_init(query_iter_next, query_iter_free, it);
+}
+
+static inline bool
+is_right_wildcard(wdns_name_t *name)
+{
+	if (name->len >= 3 &&
+	    name->data[name->len - 3] == '\x01' &&
+	    name->data[name->len - 2] == '*')
+	{
+		return (true);
+	}
+	return (false);
+}
+
+static inline bool
+is_left_wildcard(wdns_name_t *name)
+{
+	if (name->len >= 3 &&
+	    name->data[0] == '\x01' &&
+	    name->data[1] == '*')
+	{
+		return (true);
+	}
+	return (false);
+}
+
+static struct dnstable_iter *
+query_init_rrset(struct query_iter *it)
+{
+	uint8_t name[WDNS_MAXLEN_NAME];
+	it->key = ubuf_init(64);
+
+	if (is_right_wildcard(&it->query->name))
+		return query_init_rrset_right_wildcard(it);
+	if (is_left_wildcard(&it->query->name))
+		return query_init_rrset_left_wildcard(it);
+
+	/* key: type byte */
+	ubuf_add(it->key, ENTRY_TYPE_RRSET);
+
+	/* key: rrset owner name (label-reversed) */
+	wdns_reverse_name(it->query->name.data, it->query->name.len, name);
+	ubuf_append(it->key, name, it->query->name.len);
+
+	if (it->query->do_rrtype) {
+		/* key: rrtype */
+		add_rrtype_to_key(it->key, it->query->rrtype);
+
+		if (it->query->bailiwick.data != NULL) {
+			/* key: bailiwick name (label-reversed) */
+			wdns_reverse_name(it->query->bailiwick.data,
+					  it->query->bailiwick.len,
+					  name);
+			ubuf_append(it->key, name, it->query->bailiwick.len);
+		}
+	}
+
+	it->m_iter = mtbl_source_get_prefix(it->source, ubuf_data(it->key), ubuf_size(it->key));
+	return dnstable_iter_init(query_iter_next, query_iter_free, it);
+}
+
+static struct dnstable_iter *
+query_init_rdata_right_wildcard(struct query_iter *it)
+{
+	/* key: type byte */
+	ubuf_add(it->key, ENTRY_TYPE_RDATA);
+
+	/* key: rdata name, less trailing "\x01\x2a\x00" */
+	ubuf_append(it->key, it->query->name.data, it->query->name.len - 3);
+
+	return dnstable_iter_init(query_iter_next, query_iter_free, it);
+}
+
+static struct dnstable_iter *
+query_init_rdata_left_wildcard(struct query_iter *it)
+{
+	uint8_t name[WDNS_MAXLEN_NAME];
+
+	/* key: type byte */
+	ubuf_add(it->key, ENTRY_TYPE_RDATA_NAME_REV);
+
+	/* key: rdata name (label-reversed), less leading "\x01\x2a" */
+	size_t len = it->query->name.len - 2;
+	wdns_reverse_name(it->query->name.data + 2, len, name);
+	ubuf_append(it->key, name, len);
+
+	it->m_iter2 = mtbl_source_get_prefix(it->source,
+					     ubuf_data(it->key),
+					     ubuf_size(it->key));
+
+	return dnstable_iter_init(query_iter_next_rdata_name_rev, query_iter_free, it);
+}
+
+static struct dnstable_iter *
+query_init_rdata_name(struct query_iter *it)
+{
+	it->key = ubuf_init(64);
+
+	if (is_right_wildcard(&it->query->name))
+		return query_init_rdata_right_wildcard(it);
+	if (is_left_wildcard(&it->query->name))
+		return query_init_rdata_left_wildcard(it);
+
+	/* key: type byte */
+	ubuf_add(it->key, ENTRY_TYPE_RDATA);
+
+	/* key: rdata name */
+	ubuf_append(it->key, it->query->name.data, it->query->name.len);
+
+	/* key: rrtype */
+	if (it->query->do_rrtype)
+		add_rrtype_to_key(it->key, it->query->rrtype);
+
+	it->m_iter = mtbl_source_get_prefix(it->source, ubuf_data(it->key), ubuf_size(it->key));
+	return dnstable_iter_init(query_iter_next, query_iter_free, it);
+}
+
+static struct dnstable_iter *
+query_init_rdata_ip(struct query_iter *it)
+{
+	assert(it->query->do_rrtype);
+	assert(it->query->rdata != NULL);
+
+	it->key = ubuf_init(64);
+
+	/* key: type byte, rdata, rrtype */
+	ubuf_add(it->key, ENTRY_TYPE_RDATA);
+	ubuf_append(it->key, it->query->rdata, it->query->len_rdata);
+	add_rrtype_to_key(it->key, it->query->rrtype);
+
+	if (it->query->rdata2 != NULL) {
+		it->key2 = ubuf_init(64);
+
+		/* key: type byte, rdata */
+		ubuf_add(it->key2, ENTRY_TYPE_RDATA);
+		ubuf_append(it->key2, it->query->rdata2, it->query->len_rdata2);
+	}
+
+	if (it->key2 == NULL) {
+		it->m_iter = mtbl_source_get_prefix(it->source,
+						    ubuf_data(it->key), ubuf_size(it->key));
+	} else {
+		it->m_iter = mtbl_source_get_range(it->source,
+						    ubuf_data(it->key), ubuf_size(it->key),
+						    ubuf_data(it->key2), ubuf_size(it->key2));
+	}
+	return dnstable_iter_init(query_iter_next, query_iter_free, it);
+}
+
+static struct dnstable_iter *
+query_init_rdata_raw(struct query_iter *it)
+{
+	it->key = ubuf_init(64);
+
+	/* key: type byte */
+	ubuf_add(it->key, ENTRY_TYPE_RDATA);
+
+	/* key: rdata */
+	ubuf_append(it->key, it->query->rdata, it->query->len_rdata);
+
+	/* key: rrtype */
+	if (it->query->do_rrtype)
+		add_rrtype_to_key(it->key, it->query->rrtype);
+
+	it->m_iter = mtbl_source_get_prefix(it->source, ubuf_data(it->key), ubuf_size(it->key));
+	return dnstable_iter_init(query_iter_next, query_iter_free, it);
+}
+
+struct dnstable_iter *
+dnstable_query_iter(struct dnstable_query *q, const struct mtbl_source *source)
+{
+	struct dnstable_iter *d_it;
+	struct query_iter *it = my_calloc(1, sizeof(*it));
+	it->query = q;
+	it->source = source;
+	if (q->q_type == DNSTABLE_QUERY_TYPE_RRSET) {
+		d_it = query_init_rrset(it);
+	} else if (q->q_type == DNSTABLE_QUERY_TYPE_RDATA_NAME) {
+		d_it = query_init_rdata_name(it);
+	} else if (q->q_type == DNSTABLE_QUERY_TYPE_RDATA_IP) {
+		d_it = query_init_rdata_ip(it);
+	} else if (q->q_type == DNSTABLE_QUERY_TYPE_RDATA_RAW) {
+		d_it = query_init_rdata_raw(it);
+	} else {
+		assert(0);
+	}
+	assert(it->m_iter != NULL || it->m_iter2 != NULL);
+	return (d_it);
 }

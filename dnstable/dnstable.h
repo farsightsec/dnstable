@@ -109,13 +109,15 @@ dnstable_query_set_bailiwick(struct dnstable_query *,
 dnstable_res
 dnstable_query_filter(struct dnstable_query *, struct dnstable_entry *, bool *);
 
+struct dnstable_iter *
+dnstable_query_iter(struct dnstable_query *, const struct mtbl_source *);
+
 /* reader */
 
 struct dnstable_reader *
 dnstable_reader_init_fname(const char *);
 
 struct dnstable_reader *
-
 dnstable_reader_init_source(const struct mtbl_source *);
 
 void
