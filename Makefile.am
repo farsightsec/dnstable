@@ -69,6 +69,10 @@ bin_PROGRAMS += src/dnstable_dump
 src_dnstable_dump_SOURCES = src/dnstable_dump.c
 src_dnstable_dump_LDADD = -lmtbl dnstable/libdnstable.la
 
+bin_PROGRAMS += src/dnstable_lookup
+src_dnstable_lookup_SOURCES = src/dnstable_lookup.c
+src_dnstable_lookup_LDADD = -lmtbl dnstable/libdnstable.la
+
 TESTS =
 
 check_PROGRAMS =
