@@ -114,7 +114,7 @@ dnstable_query_set_bailiwick(struct dnstable_query *q, const char *s_name)
 		query_set_err(q, "bailiwick filtering not supported");
 		return (dnstable_res_failure);
 	}
-	return query_load_name(q, &q->name, s_name);
+	return query_load_name(q, &q->bailiwick, s_name);
 }
 
 static dnstable_res
