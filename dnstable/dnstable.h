@@ -86,17 +86,13 @@ dnstable_iter_destroy(struct dnstable_iter **);
 /* query */
 
 struct dnstable_query *
-dnstable_query_init(void);
+dnstable_query_init(dnstable_query_type);
 
 void
 dnstable_query_destroy(struct dnstable_query **);
 
 const char *
 dnstable_query_get_error(struct dnstable_query *);
-
-void
-dnstable_query_set_type(struct dnstable_query *,
-			dnstable_query_type);
 
 dnstable_res
 dnstable_query_set_data(struct dnstable_query *,

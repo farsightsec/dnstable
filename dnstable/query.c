@@ -73,11 +73,14 @@ query_load_address(struct dnstable_query *q, const char *data, uint8_t **addr, s
 }
 
 struct dnstable_query *
-dnstable_query_init(void)
+dnstable_query_init(dnstable_query_type q_type)
 {
+	assert(q_type == DNSTABLE_QUERY_TYPE_RRSET ||
+	       q_type == DNSTABLE_QUERY_TYPE_RDATA_NAME ||
+	       q_type == DNSTABLE_QUERY_TYPE_RDATA_IP ||
+	       q_type == DNSTABLE_QUERY_TYPE_RDATA_RAW);
 	struct dnstable_query *q = my_calloc(1, sizeof(*q));
-	q->q_type = -1;
-	query_set_err(q, "unknown error");
+	q->q_type = q_type;
 	return (q);
 }
 
@@ -95,14 +98,12 @@ dnstable_query_destroy(struct dnstable_query **q)
 	}
 }
 
-void
-dnstable_query_set_type(struct dnstable_query *q, dnstable_query_type q_type)
-{
-	assert(q_type == DNSTABLE_QUERY_TYPE_RRSET ||
-	       q_type == DNSTABLE_QUERY_TYPE_RDATA_NAME ||
-	       q_type == DNSTABLE_QUERY_TYPE_RDATA_IP ||
-	       q_type == DNSTABLE_QUERY_TYPE_RDATA_RAW);
-	q->q_type = q_type;
+const char *
+dnstable_query_get_error(struct dnstable_query *q) {
+	if (q->err == NULL)
+		q->err = strdup("unknown error");
+	assert(q->err != NULL);
+	return (q->err);
 }
 
 dnstable_res
