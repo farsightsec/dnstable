@@ -67,10 +67,7 @@ dnstable_reader_iter(struct dnstable_reader *r)
 struct dnstable_iter *
 dnstable_reader_query(struct dnstable_reader *r, struct dnstable_query *q)
 {
-	struct reader_iter *it = my_malloc(sizeof(*it));
-	it->q = q;
-	it->m_it = NULL; /* XXX do mtbl_source_getXXX() */
-	return (dnstable_iter_init(reader_iter_next, reader_iter_free, it));
+	return (dnstable_query_iter(q, r->source));
 }
 
 static void
