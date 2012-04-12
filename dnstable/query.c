@@ -42,6 +42,7 @@ static dnstable_res
 query_load_name(struct dnstable_query *q, wdns_name_t *name, const char *s_name)
 {
 	free(name->data);
+	name->len = 0;
 	name->data = NULL;
 	if (s_name == NULL)
 		return (dnstable_res_success);
