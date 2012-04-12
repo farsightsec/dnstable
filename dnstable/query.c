@@ -158,10 +158,13 @@ query_set_data_rdata_ip_range(struct dnstable_query *q, const char *data)
 		goto out;
 	}
 	q->do_rrtype = true;
-	if (q->len_rdata == 4)
+	if (q->len_rdata == 4) {
 		q->rrtype = WDNS_TYPE_A;
-	else if (q->len_rdata == 16)
+		ip4_incr(q->rdata2);
+	} else if (q->len_rdata == 16) {
 		q->rrtype = WDNS_TYPE_AAAA;
+		ip6_incr(q->rdata2);
+	}
 	res = dnstable_res_success;
 out:
 	free(s);
@@ -201,6 +204,8 @@ query_set_data_rdata_ip_prefix(struct dnstable_query *q, const char *data)
 		q->rdata2 = my_malloc(len_ip);
 		ip4_lower(ip, plen, q->rdata);
 		ip4_upper(ip, plen, q->rdata2);
+		ip4_incr(q->rdata2);
+		res = dnstable_res_success;
 	} else if (len_ip == 16) {
 		q->do_rrtype = true;
 		q->rrtype = WDNS_TYPE_AAAA;
@@ -213,6 +218,8 @@ query_set_data_rdata_ip_prefix(struct dnstable_query *q, const char *data)
 		q->rdata2 = my_malloc(len_ip);
 		ip6_lower(ip, plen, q->rdata);
 		ip6_upper(ip, plen, q->rdata2);
+		ip6_incr(q->rdata2);
+		res = dnstable_res_success;
 	}
 
 out:
