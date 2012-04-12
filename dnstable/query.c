@@ -18,7 +18,7 @@
 
 #include "dnstable-private.h"
 
-#include "librsf/iparith.h"
+#include "librsf/ip_arith.h"
 #include "librsf/hex_decode.h"
 
 struct dnstable_query {
