@@ -385,8 +385,10 @@ query_iter_free(void *clos)
 static void
 add_rrtype_to_key(ubuf *key, uint32_t rrtype)
 {
-	ubuf_reserve(key, ubuf_size(key) + mtbl_varint_length(rrtype));
-	ubuf_advance(key, mtbl_varint_encode32(ubuf_ptr(key), rrtype));
+	if (rrtype != WDNS_TYPE_ANY && rrtype != DNSTABLE_TYPE_ANY_DNSSEC) {
+		ubuf_reserve(key, ubuf_size(key) + mtbl_varint_length(rrtype));
+		ubuf_advance(key, mtbl_varint_encode32(ubuf_ptr(key), rrtype));
+	}
 }
 
 static dnstable_res
