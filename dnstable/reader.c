@@ -32,14 +32,7 @@ static dnstable_res
 reader_iter_next(void *, struct dnstable_entry **);
 
 struct dnstable_reader *
-dnstable_reader_init_fname(const char *fname)
-{
-	assert(0);
-	return (NULL);
-}
-
-struct dnstable_reader *
-dnstable_reader_init_source(const struct mtbl_source *source)
+dnstable_reader_init(const struct mtbl_source *source)
 {
 	assert(source != NULL);
 	struct dnstable_reader *r = my_malloc(sizeof(*r));
