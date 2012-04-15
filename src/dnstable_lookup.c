@@ -75,7 +75,7 @@ main(int argc, char **argv)
 	const char *arg_rrtype = NULL;
 	const char *arg_bailiwick = NULL;
 	const char *arg_rdata = NULL;
-	struct mtbl_reader *m_reader;
+	struct mtbl_fileset *m_fileset;
 	struct dnstable_iter *d_iter;
 	struct dnstable_reader *d_reader;
 	struct dnstable_query *d_query;
@@ -120,14 +120,13 @@ main(int argc, char **argv)
 		usage();
 	}
 
-	m_reader = mtbl_reader_init(m_fname, NULL);
-	if (m_reader == NULL) {
-		perror("mtbl_reader_init");
-		fprintf(stderr, "dnstable_lookup: unable to open database file %s\n", m_fname);
-		exit(EXIT_FAILURE);
-	}
+	struct mtbl_fileset_options *fopt = mtbl_fileset_options_init();
+	mtbl_fileset_options_set_merge_func(fopt, dnstable_merge_func, NULL);
+	m_fileset = mtbl_fileset_init(m_fname, fopt);
+	assert(m_fileset != NULL);
+	mtbl_fileset_options_destroy(&fopt);
 
-	d_reader = dnstable_reader_init_source(mtbl_reader_source(m_reader));
+	d_reader = dnstable_reader_init(mtbl_fileset_source(m_fileset));
 	d_query = dnstable_query_init(d_qtype);
 
 	if (d_qtype == DNSTABLE_QUERY_TYPE_RRSET) {
@@ -171,7 +170,7 @@ main(int argc, char **argv)
 	dnstable_iter_destroy(&d_iter);
 	dnstable_query_destroy(&d_query);
 	dnstable_reader_destroy(&d_reader);
-	mtbl_reader_destroy(&m_reader);
+	mtbl_fileset_destroy(&m_fileset);
 
 	return (EXIT_SUCCESS);
 }
