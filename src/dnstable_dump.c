@@ -83,7 +83,7 @@ main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	d_reader = dnstable_reader_init_source(mtbl_reader_source(m_reader));
+	d_reader = dnstable_reader_init(mtbl_reader_source(m_reader));
 	d_it = dnstable_reader_iter(d_reader);
 	do_dump(d_it);
 	dnstable_iter_destroy(&d_it);
