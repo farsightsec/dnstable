@@ -696,6 +696,5 @@ dnstable_query_iter(struct dnstable_query *q, const struct mtbl_source *source)
 	} else {
 		assert(0);
 	}
-	assert(it->m_iter != NULL || it->m_iter2 != NULL);
 	return (d_it);
 }
