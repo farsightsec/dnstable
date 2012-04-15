@@ -38,7 +38,7 @@ dnstable_merge_func(void *clos,
 		assert(res == dnstable_res_success);
 
 		time_first0 = (time_first0 < time_first1) ? time_first0 : time_first1;
-		time_last0 = (time_last0 < time_last1) ? time_last0 : time_last1;
+		time_last0 = (time_last0 > time_last1) ? time_last0 : time_last1;
 		count0 += count1;
 
 		*merged_val = my_malloc(32);
