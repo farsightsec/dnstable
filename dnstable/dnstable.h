@@ -117,6 +117,9 @@ dnstable_query_iter(struct dnstable_query *, const struct mtbl_source *);
 struct dnstable_reader *
 dnstable_reader_init(const struct mtbl_source *);
 
+struct dnstable_reader *
+dnstable_reader_init_fname(const char *);
+
 void
 dnstable_reader_destroy(struct dnstable_reader **);
 

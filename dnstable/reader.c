@@ -23,6 +23,7 @@ struct reader_iter {
 
 struct dnstable_reader {
 	const struct mtbl_source	*source;
+	struct mtbl_fileset		*fs;
 };
 
 static void
@@ -35,8 +36,21 @@ struct dnstable_reader *
 dnstable_reader_init(const struct mtbl_source *source)
 {
 	assert(source != NULL);
-	struct dnstable_reader *r = my_malloc(sizeof(*r));
+	struct dnstable_reader *r = my_calloc(1, sizeof(*r));
 	r->source = source;
+	return (r);
+}
+
+struct dnstable_reader *
+dnstable_reader_init_fname(const char *setfile)
+{
+	assert(setfile != NULL);
+	struct dnstable_reader *r = my_calloc(1, sizeof(*r));
+	struct mtbl_fileset_options *fopt = mtbl_fileset_options_init();
+	mtbl_fileset_options_set_merge_func(fopt, dnstable_merge_func, NULL);
+	r->fs = mtbl_fileset_init(setfile, fopt);
+	mtbl_fileset_options_destroy(&fopt);
+	r->source = mtbl_fileset_source(r->fs);
 	return (r);
 }
 
@@ -44,6 +58,7 @@ void
 dnstable_reader_destroy(struct dnstable_reader **r)
 {
 	if (*r) {
+		mtbl_fileset_destroy(&(*r)->fs);
 		free(*r);
 		*r = NULL;
 	}
