@@ -57,6 +57,7 @@ query_load_name(struct dnstable_query *q, wdns_name_t *name, const char *s_name)
 		query_set_err(q, "wdns_str_to_name() failed");
 		return (dnstable_res_failure);
 	}
+	wdns_downcase_name(name);
 	return (dnstable_res_success);
 }
 
