@@ -201,6 +201,13 @@ query_set_data_rdata_ip_prefix(struct dnstable_query *q, const char *data)
 	plen = strtol(prefix_length, &endptr, 10);
 	if (errno != 0 || *endptr != '\0') goto out;
 
+	if ((len_ip == 4 && plen > 32) ||
+	    (len_ip == 16 && plen > 128))
+	{
+		res = dnstable_res_failure;
+		goto out;
+	}
+
 	if (len_ip == 4) {
 		q->do_rrtype = true;
 		q->rrtype = WDNS_TYPE_A;
