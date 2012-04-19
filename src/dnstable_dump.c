@@ -53,8 +53,6 @@ do_dump(struct dnstable_iter *it)
 		print_entry(ent);
 		dnstable_entry_destroy(&ent);
 		count++;
-		if (count == 1000)
-			break;
 	}
 	fprintf(stderr, "Dumped %'" PRIu64 " entries.\n", count);
 }
