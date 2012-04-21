@@ -308,9 +308,10 @@ dnstable_query_set_rrtype(struct dnstable_query *q, const char *s_rrtype)
 		return (dnstable_res_success);
 	}
 
-	if (strcasecmp(s_rrtype, "ANY-DNSSEC") == 0) {
-		q->rrtype = DNSTABLE_TYPE_ANY_DNSSEC;
-		q->do_rrtype = true;
+	if (strcasecmp(s_rrtype, "ANY") == 0 ||
+	    strcasecmp(s_rrtype, "ANY-DNSSEC") == 0)
+	{
+		q->do_rrtype = false;
 		return (dnstable_res_success);
 	}
 
@@ -349,9 +350,7 @@ dnstable_query_filter(struct dnstable_query *q, struct dnstable_entry *e, bool *
 {
 	dnstable_res res;
 
-	if (q->do_rrtype &&
-	    (q->rrtype != WDNS_TYPE_ANY && q->rrtype != DNSTABLE_TYPE_ANY_DNSSEC))
-	{
+	if (q->do_rrtype) {
 		uint16_t rrtype;
 		res = dnstable_entry_get_rrtype(e, &rrtype);
 		if (res != dnstable_res_success)
@@ -393,10 +392,9 @@ query_iter_free(void *clos)
 static void
 add_rrtype_to_key(ubuf *key, uint32_t rrtype)
 {
-	if (rrtype != WDNS_TYPE_ANY && rrtype != DNSTABLE_TYPE_ANY_DNSSEC) {
-		ubuf_reserve(key, ubuf_size(key) + mtbl_varint_length(rrtype));
-		ubuf_advance(key, mtbl_varint_encode32(ubuf_ptr(key), rrtype));
-	}
+	assert(rrtype != WDNS_TYPE_ANY);
+	ubuf_reserve(key, ubuf_size(key) + mtbl_varint_length(rrtype));
+	ubuf_advance(key, mtbl_varint_encode32(ubuf_ptr(key), rrtype));
 }
 
 static dnstable_res
