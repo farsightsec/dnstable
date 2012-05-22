@@ -43,6 +43,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <jansson.h>
 #include <mtbl.h>
 #include <wdns.h>
 

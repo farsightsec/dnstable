@@ -142,6 +142,9 @@ dnstable_entry_destroy(struct dnstable_entry **);
 char *
 dnstable_entry_to_text(struct dnstable_entry *);
 
+char *
+dnstable_entry_to_json(struct dnstable_entry *);
+
 dnstable_entry_type
 dnstable_entry_get_type(struct dnstable_entry *);
 
