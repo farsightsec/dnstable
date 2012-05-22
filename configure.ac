@@ -10,6 +10,8 @@ AC_CONFIG_MACRO_DIR([m4])
 AM_SILENT_RULES([yes])
 LT_INIT([disable-static pic-only])
 
+PKG_PROG_PKG_CONFIG
+
 my_CFLAGS="-Wall \
 -Wmissing-declarations -Wmissing-prototypes \
 -Wnested-externs -Wpointer-arith \
@@ -23,11 +25,9 @@ AC_CONFIG_FILES([
         Makefile
 ])
 
-AC_CHECK_LIB([mtbl], [mtbl_iter_init], [], [AC_MSG_ERROR([required library not found])])
-AC_CHECK_HEADER([mtbl.h], [], [AC_MSG_ERROR([required header file not found])])
-
-AC_CHECK_LIB([wdns], [wdns_reverse_name], [], [AC_MSG_ERROR([required library not found])])
-AC_CHECK_HEADER([wdns.h], [], [AC_MSG_ERROR([required header file not found])])
+PKG_CHECK_MODULES([libmtbl], [libmtbl])
+PKG_CHECK_MODULES([libnmsg], [libnmsg])
+PKG_CHECK_MODULES([libwdns], [libwdns])
 
 m4_sinclude(acx_pthread.m4)
 ACX_PTHREAD([

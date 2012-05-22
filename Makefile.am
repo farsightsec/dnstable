@@ -6,7 +6,11 @@ AM_CPPFLAGS = \
 	-include $(top_builddir)/config.h \
 	-I${top_srcdir}/dnstable
 
-AM_CFLAGS = ${my_CFLAGS}
+AM_CFLAGS = \
+	${my_CFLAGS} \
+	$(libmtbl_CFLAGS) \
+	$(libnmsg_CFLAGS) \
+	$(libwdns_CFLAGS)
 
 AM_LDFLAGS = -Wl,--as-needed
 
@@ -45,7 +49,9 @@ dnstable_libdnstable_la_SOURCES = \
 	librsf/vector.h \
 	librsf/ubuf.h
 
-dnstable_libdnstable_la_LIBADD = -lmtbl
+dnstable_libdnstable_la_LIBADD = \
+	$(libmtbl_LIBS) \
+	$(libwdns_LIBS)
 dnstable_libdnstable_la_LDFLAGS = $(AM_LDFLAGS) \
 	-version-info $(LIBDNSTABLE_CURRENT):$(LIBDNSTABLE_REVISION):$(LIBDNSTABLE_AGE) \
 	-export-symbols-regex "^(dnstable_[a-z].*)"
@@ -63,15 +69,23 @@ EXTRA_DIST += src/dnstable_merge
 
 bin_PROGRAMS = src/dnstable_convert
 src_dnstable_convert_SOURCES = src/dnstable_convert.c
-src_dnstable_convert_LDADD = -lmtbl -lnmsg -lwdns dnstable/libdnstable.la
+src_dnstable_convert_LDADD = \
+	dnstable/libdnstable.la \
+	$(libmtbl_LIBS) \
+	$(libnmsg_LIBS) \
+	$(libwdns_LIBS)
 
 bin_PROGRAMS += src/dnstable_dump
 src_dnstable_dump_SOURCES = src/dnstable_dump.c
-src_dnstable_dump_LDADD = -lmtbl dnstable/libdnstable.la
+src_dnstable_dump_LDADD = \
+	dnstable/libdnstable.la \
+	$(libwdns_LIBS)
 
 bin_PROGRAMS += src/dnstable_lookup
 src_dnstable_lookup_SOURCES = src/dnstable_lookup.c
-src_dnstable_lookup_LDADD = -lmtbl dnstable/libdnstable.la
+src_dnstable_lookup_LDADD = \
+	dnstable/libdnstable.la \
+	$(libwdns_LIBS)
 
 TESTS =
 
