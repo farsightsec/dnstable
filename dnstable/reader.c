@@ -73,6 +73,24 @@ dnstable_reader_iter(struct dnstable_reader *r)
 }
 
 struct dnstable_iter *
+dnstable_reader_iter_rrset(struct dnstable_reader *r)
+{
+	uint8_t prefix[] = { ENTRY_TYPE_RRSET };
+	struct reader_iter *it = my_calloc(1, sizeof(*it));
+	it->m_it = mtbl_source_get_prefix(r->source, prefix, 1);
+	return (dnstable_iter_init(reader_iter_next, reader_iter_free, it));
+}
+
+struct dnstable_iter *
+dnstable_reader_iter_rdata(struct dnstable_reader *r)
+{
+	uint8_t prefix[] = { ENTRY_TYPE_RDATA };
+	struct reader_iter *it = my_calloc(1, sizeof(*it));
+	it->m_it = mtbl_source_get_prefix(r->source, prefix, 1);
+	return (dnstable_iter_init(reader_iter_next, reader_iter_free, it));
+}
+
+struct dnstable_iter *
 dnstable_reader_query(struct dnstable_reader *r, struct dnstable_query *q)
 {
 	return (dnstable_query_iter(q, r->source));
