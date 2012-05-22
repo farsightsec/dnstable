@@ -8,6 +8,7 @@ AM_CPPFLAGS = \
 
 AM_CFLAGS = \
 	${my_CFLAGS} \
+	$(libjansson_CFLAGS) \
 	$(libmtbl_CFLAGS) \
 	$(libnmsg_CFLAGS) \
 	$(libwdns_CFLAGS)
@@ -50,6 +51,7 @@ dnstable_libdnstable_la_SOURCES = \
 	librsf/ubuf.h
 
 dnstable_libdnstable_la_LIBADD = \
+	$(libjansson_LIBS) \
 	$(libmtbl_LIBS) \
 	$(libwdns_LIBS)
 dnstable_libdnstable_la_LDFLAGS = $(AM_LDFLAGS) \
