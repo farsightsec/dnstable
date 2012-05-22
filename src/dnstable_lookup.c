@@ -119,7 +119,7 @@ main(int argc, char **argv)
 		usage();
 	}
 
-	d_reader = dnstable_reader_init_fname(m_fname);
+	d_reader = dnstable_reader_init_setfile(m_fname);
 	d_query = dnstable_query_init(d_qtype);
 
 	if (d_qtype == DNSTABLE_QUERY_TYPE_RRSET) {

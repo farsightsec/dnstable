@@ -42,7 +42,7 @@ dnstable_reader_init(const struct mtbl_source *source)
 }
 
 struct dnstable_reader *
-dnstable_reader_init_fname(const char *setfile)
+dnstable_reader_init_setfile(const char *setfile)
 {
 	assert(setfile != NULL);
 	struct dnstable_reader *r = my_calloc(1, sizeof(*r));
