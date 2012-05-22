@@ -78,7 +78,11 @@ src_dnstable_convert_LDADD = \
 	$(libwdns_LIBS)
 
 bin_PROGRAMS += src/dnstable_dump
-src_dnstable_dump_SOURCES = src/dnstable_dump.c
+src_dnstable_dump_SOURCES = \
+	librsf/argv.c \
+	librsf/argv.h \
+	librsf/argv_loc.h \
+	src/dnstable_dump.c
 src_dnstable_dump_LDADD = \
 	dnstable/libdnstable.la \
 	$(libwdns_LIBS)
