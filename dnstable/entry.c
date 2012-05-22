@@ -132,7 +132,7 @@ dnstable_entry_to_text(struct dnstable_entry *e)
 		ubuf_add_cstr(u, " ;; rdata name rev\n");
 	}
 
-	ubuf_add(u, '\x00');
+	ubuf_cterm(u);
 	ubuf_detach(u, &s, &len_s);
 out:
 	ubuf_destroy(&u);
