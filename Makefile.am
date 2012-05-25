@@ -112,3 +112,9 @@ ASCIIDOC_PROCESS = a2x -f manpage --asciidoc-opt="-f man/asciidoc.conf" $<
 
 .7.txt.7:
 	$(ASCIIDOC_PROCESS)
+
+dist_man_MANS = \
+	man/dnstable-encoding.5
+
+EXTRA_DIST += \
+	man/dnstable-encoding.5.txt
