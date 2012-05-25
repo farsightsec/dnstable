@@ -96,3 +96,19 @@ src_dnstable_lookup_LDADD = \
 TESTS =
 
 check_PROGRAMS =
+
+SUFFIXES = .1.txt .3.txt .5.txt .7.txt .1 .3 .5 .7
+
+ASCIIDOC_PROCESS = a2x -f manpage --asciidoc-opt="-f man/asciidoc.conf" $<
+
+.1.txt.1:
+	$(ASCIIDOC_PROCESS)
+
+.3.txt.3:
+	$(ASCIIDOC_PROCESS)
+
+.5.txt.5:
+	$(ASCIIDOC_PROCESS)
+
+.7.txt.7:
+	$(ASCIIDOC_PROCESS)
