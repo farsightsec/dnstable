@@ -1,5 +1,5 @@
-dnstable: encoding format for passive DNS data
-==============================================
+dnstable: encoding format, library, and utilities for passive DNS data
+======================================================================
 
 Introduction
 ------------
