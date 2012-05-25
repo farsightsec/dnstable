@@ -1,0 +1,49 @@
+= dnstable_merge_func(3) =
+
+== NAME ==
+
+dnstable_merge_func - libmtbl merge function for dnstable key-value entries
+
+== SYNOPSIS ==
+
+^#include <dnstable.h>^
+
+[verse]
+^void
+dnstable_merge_func(void *'clos',
+                    const uint8_t *'key', size_t 'len_key',
+                    const uint8_t *'val0', size_t 'len_val0',
+                    const uint8_t *'val1', size_t 'len_val1',
+                    uint8_t **'merged_val', size_t *'len_merged_val');^
+
+== DESCRIPTION ==
+
+This is the libmtbl merging function for dnstable key-value entries. dnstable is
+built on libmtbl, and libmtbl requires a ``merge function'' to resolve
+conflicting values between identical keys. The symbol ^dnstable_merge_func^ can
+be provided to libmtbl functions requiring a merge function when dealing with
+dnstable key-value data.
+
+There are four dnstable ^MTBL^ key-value entry types. ^dnstable_merge_func^
+handles them in the following manner:
+
+^ENTRY_TYPE_RRSET_NAME_FWD^ and ^ENTRY_TYPE_RDATA_NAME_REV^ entries have no
+associated value (that is, the values for these types is zero length). A
+zero-length byte array is provided as the merged value.
+
+^ENTRY_TYPE_RRSET^ and ^ENTRY_TYPE_RDATA^ entries have an identical encoding
+format. These types encode a triplet of varint-encoded integers representing the
+^time_first^, ^time_last^, and ^count^ value fields. A new triplet of
+varint-encoded integers is generated as the merged value as follows:
+
+- The earliest (that is, smallest) of the two ^time_first^ values is taken as
+  the merged ^time_first^ value.
+
+- The latest (that is, largest) of the two ^time_last^ values is taken as the
+  merged ^time_last^ value.
+
+- The two ^count^ values are added together.
+
+== SEE ALSO ==
+
+^dnstable-encoding^(5), ^mtbl_merger^(3)
