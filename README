@@ -16,15 +16,15 @@ searches.
 
 dnstable has the following dependencies:
 
-    * **libjansson**, for dumping data files in JSON format.
+* **libjansson**, for dumping data files in JSON format.
 
-    * **libmtbl**, for encoding the underlying SSTable files in the MTBL format.
+* **libmtbl**, for encoding the underlying SSTable files in the MTBL format.
 
-    * **libnmsg**, for importing passive DNS data in NMSG format. Additionally,
-      the sie-nmsg message module (containing the SIE/dnsdedupe message
-      type) is required.
+* **libnmsg**, for importing passive DNS data in NMSG format. Additionally,
+  the sie-nmsg message module (containing the SIE/dnsdedupe message type) is
+  required.
 
-    * **libwdns**, for low-level DNS utility functions.
+* **libwdns**, for low-level DNS utility functions.
 
 dnstable relies on libmtbl for the actual storage of passive DNS records.
 libmtbl provides fast lookups of partial keys, so the precise encoding of
