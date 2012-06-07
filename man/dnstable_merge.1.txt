@@ -1,0 +1,18 @@
+= dnstable_merge(1) =
+
+== NAME ==
+
+dnstable_merge - merge multiple dnstable data files together
+
+== SYNOPSIS ==
+
+^dnstable_merge^ 'INPUT' ['INPUT']... 'OUTPUT'
+
+== DESCRIPTION ==
+
+^dnstable_merge^ merges multiple dnstable data files into a single output using
+the libmtbl merge function ^dnstable_merge_func^(3).
+
+== SEE ALSO ==
+
+^dnstable_merge_func^(3), ^mtbl_merge^(1), ^mtbl_merger^(3)
