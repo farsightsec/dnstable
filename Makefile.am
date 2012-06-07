@@ -85,6 +85,7 @@ src_dnstable_dump_SOURCES = \
 	src/dnstable_dump.c
 src_dnstable_dump_LDADD = \
 	dnstable/libdnstable.la \
+	$(libmtbl_LIBS) \
 	$(libwdns_LIBS)
 
 bin_PROGRAMS += src/dnstable_lookup
