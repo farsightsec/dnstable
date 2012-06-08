@@ -1,0 +1,29 @@
+= dnstable_dump(1) =
+
+== NAME ==
+
+dnstable_dump - dump dnstable data file to text or JSON
+
+== SYNOPSIS ==
+
+^dnstable_dump^ [^--json^] ^--rrset^ 'filename'
+
+^dnstable_dump^ [^--json^] ^--rdata^ 'filename'
+
+== DESCRIPTION ==
+
+Dumps a dnstable data file to stdout, either in an ad-hoc text format (the
+default), or in JSON format. Specifying one of ^--rrset^ or ^--rdata^ is
+required in order to select which section of the data file to dump.
+
+== OPTIONS ==
+
+^-j^, ^--json^::
+    Use JSON format for output. One JSON-formatted entry per line will be
+    printed.
+
+^-r^, ^--rrset^::
+    Dump the ^RRset^ section of the data file.
+
+^-d^, ^--rdata^::
+    Dump the ^Rdata^ section of the data file.
