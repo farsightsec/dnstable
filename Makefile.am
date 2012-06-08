@@ -116,10 +116,12 @@ ASCIIDOC_PROCESS = a2x -f manpage --asciidoc-opt="-f man/asciidoc.conf" $<
 
 dist_man_MANS = \
 	man/dnstable-encoding.5 \
+	man/dnstable_convert.1 \
 	man/dnstable_merge.1 \
 	man/dnstable_merge_func.3
 
 EXTRA_DIST += \
 	man/dnstable-encoding.5.txt \
+	man/dnstable_convert.1.txt \
 	man/dnstable_merge.1.txt \
 	man/dnstable_merge_func.3.txt
