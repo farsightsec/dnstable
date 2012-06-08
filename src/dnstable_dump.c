@@ -78,7 +78,8 @@ print_entry(struct dnstable_entry *ent)
 			s = dnstable_entry_to_text(ent);
 		if (s != NULL) {
 			fputs(s, stdout);
-			putchar('\n');
+			if (dnstable_entry_get_type(ent) == DNSTABLE_ENTRY_TYPE_RRSET)
+				putchar('\n');
 			free(s);
 		}
 	}
