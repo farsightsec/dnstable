@@ -10,14 +10,13 @@ dnstable_convert - convert passive DNS NMSG data to dnstable MTBL format
 
 == DESCRIPTION ==
 
-^dnstable_convert^ converts passive DNS data from NMSG format to MTBL format.
-The input NMSG data in 'NMSG-FILE' must be encoded using the SIE/dnsdedupe
-message schema, and the output data will be written to two separate MTBL files:
-the 'DB-FILE' containing "plain" DNS records, and the 'DB-DNSSEC-FILE',
-containing DNSSEC-related records. (Specifically, all resource records of type
-DS, RRSIG, NSEC, DNSKEY, NSEC3, NSEC3PARAM, and DLV are stored in the
-'DB-DNSSEC-FILE', and resource records of all other types are stored in the
-'DB-FILE'.)
+Converts passive DNS data from NMSG format to MTBL format.  The input NMSG data
+in 'NMSG-FILE' must be encoded using the SIE/dnsdedupe message schema, and the
+output data will be written to two separate MTBL files: the 'DB-FILE' containing
+"plain" DNS records, and the 'DB-DNSSEC-FILE', containing DNSSEC-related
+records. (Specifically, all resource records of type DS, RRSIG, NSEC, DNSKEY,
+NSEC3, NSEC3PARAM, and DLV are stored in the 'DB-DNSSEC-FILE', and resource
+records of all other types are stored in the 'DB-FILE'.)
 
 The output files produced by ^dnstable_convert^ are suitable for use with other
 dnstable tools like ^dnstable_dump^(1) and ^dnstable_merge^(1), or with the

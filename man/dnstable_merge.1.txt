@@ -10,8 +10,8 @@ dnstable_merge - merge multiple dnstable data files together
 
 == DESCRIPTION ==
 
-^dnstable_merge^ merges multiple dnstable data files into a single output using
-the libmtbl merge function ^dnstable_merge_func^(3).
+Merges multiple dnstable data files into a single output using the libmtbl merge
+function ^dnstable_merge_func^(3).
 
 == SEE ALSO ==
 
