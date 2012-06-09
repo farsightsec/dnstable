@@ -1,0 +1,35 @@
+= dnstable_iter(3) =
+
+== NAME ==
+
+dnstable_iter - iterate over a sequence of dnstable entries
+
+== SYNOPSIS ==
+
+^#include <dnstable.h>^
+
+[verse]
+^dnstable_res
+dnstable_iter_next(struct dnstable_iter *'it', struct dnstable_entry **'ent');^
+
+[verse]
+^dnstable_iter_destroy(struct dnstable_iter **'it');^
+
+== DESCRIPTION ==
+
+The ^dnstable_iter^ interface is used to return a sequence of one or more
+dnstable entries. Once the caller obtains a ^dnstable_iter^ object,
+^dnstable_iter_next^() should be repeatedly called on it until there are no more
+entries to retrieve, at which point the iterator object must be freed by calling
+^dnstable_iter_destroy^().
+
+== RETURN VALUE ==
+
+^dnstable_iter_next^() returns ^dnstable_res_success^ if an entry was
+successfully retrieved, in which case _ent_ will point to a ^dnstable_entry^
+object which must be freed by the caller using ^dnstable_entry_destroy^().
+^dnstable_res_failure^ is returned if there are no more entries in the sequence.
+
+== SEE ALSO ==
+
+^dnstable_entry^(3)
