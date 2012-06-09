@@ -70,24 +70,18 @@ main(int argc, char **argv)
 {
 	setlocale(LC_ALL, "");
 
-	const char *m_fname;
+	const char *env_fname = NULL;
+	const char *env_setfile = NULL;
 	const char *arg_owner_name = NULL;
 	const char *arg_rrtype = NULL;
 	const char *arg_bailiwick = NULL;
 	const char *arg_rdata = NULL;
+	struct mtbl_reader *m_reader = NULL;
 	struct dnstable_iter *d_iter;
 	struct dnstable_reader *d_reader;
 	struct dnstable_query *d_query;
 	dnstable_query_type d_qtype;
 	dnstable_res res;
-
-	if (getenv("DNSTABLE_FNAME")) {
-		m_fname = getenv("DNSTABLE_FNAME");
-	} else {
-		fprintf(stderr, "dnstable_lookup: error: environment variable "
-			"DNSTABLE_FNAME not set\n");
-		exit(EXIT_FAILURE);
-	}
 
 	if (argc < 3)
 		usage();
@@ -119,7 +113,25 @@ main(int argc, char **argv)
 		usage();
 	}
 
-	d_reader = dnstable_reader_init_setfile(m_fname);
+	env_fname = getenv("DNSTABLE_FNAME");
+	env_setfile = getenv("DNSTABLE_SETFILE");
+	if ((!env_fname && !env_setfile) || (env_fname && env_setfile)) {
+		fprintf(stderr, "dnstable_lookup: error: exactly one of "
+			"DNSTABLE_FNAME, DNSTABLE_SETFILE must be set\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if (env_setfile) {
+		d_reader = dnstable_reader_init_setfile(env_setfile);
+	} else {
+		m_reader = mtbl_reader_init(env_fname, NULL);
+		if (m_reader == NULL) {
+			fprintf(stderr, "dnstable_lookup: unable to open file %s\n", env_fname);
+			exit(EXIT_FAILURE);
+		}
+		d_reader = dnstable_reader_init(mtbl_reader_source(m_reader));
+	}
+	assert(d_reader != NULL);
 	d_query = dnstable_query_init(d_qtype);
 
 	if (d_qtype == DNSTABLE_QUERY_TYPE_RRSET) {
@@ -163,6 +175,8 @@ main(int argc, char **argv)
 	dnstable_iter_destroy(&d_iter);
 	dnstable_query_destroy(&d_query);
 	dnstable_reader_destroy(&d_reader);
+	if (m_reader != NULL)
+		mtbl_reader_destroy(&m_reader);
 
 	return (EXIT_SUCCESS);
 }

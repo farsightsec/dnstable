@@ -92,6 +92,7 @@ bin_PROGRAMS += src/dnstable_lookup
 src_dnstable_lookup_SOURCES = src/dnstable_lookup.c
 src_dnstable_lookup_LDADD = \
 	dnstable/libdnstable.la \
+	$(libmtbl_LIBS) \
 	$(libwdns_LIBS)
 
 TESTS =
