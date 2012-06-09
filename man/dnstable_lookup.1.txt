@@ -1,0 +1,66 @@
+= dnstable_lookup(1) =
+
+== NAME ==
+
+dnstable_lookup - lookup individual records in a dnstable data file or set of data files
+
+== SYNOPSIS ==
+
+^dnstable_lookup rrset^ <OWNER> [<RRTYPE> [<BAILIWICK>]]
+
+^dnstable_lookup rdata ip^ <ADDRESS | RANGE | PREFIX>
+
+^dnstable_lookup rdata raw^ <HEX STRING> [<RRTYPE>]
+
+^dnstable_lookup rdata name^ <RDATA NAME> [<RRTYPE>]
+
+== DESCRIPTION ==
+
+Looks up records in a dnstable data file. Results are printed to stdout in an
+ad-hoc text format.
+
+^dnstable_lookup rrset^ returns RRsets matching the specified owner name
+(wildcards permitted). A resource record type and bailiwick domain name can
+optionally be specified.
+
+^dnstable_lookup rdata ip^ returns A or AAAA type Resource Records matching the
+specified IP address, IP prefix, or IP range.
+
+^dnstable_lookup rdata raw^ returns Resource Records whose record data matches
+the specified data value, expressed as a hexademical string.
+
+^dnstable_lookup rdata name^ returns Resource Records whose record data matches
+the specified domain name.
+
+== ENVIRONMENT VARIABLES ==
+
+Exactly one of the following environment variables must be set in order to
+specify the dnstable data file(s) to query.
+
+^DNSTABLE_FNAME^::
+    Path to a single dnstable data file.
+
+^DNSTABLE_SETFILE^::
+    Path to a "set file", a text file containing a newline separated list of
+    dnstable data files on the filesystem. Results from all of the data files
+    will be merged.
+
+== EXAMPLES ==
+
+$ export DNSTABLE_FNAME=/path/to/dns.mtbl
+
+$ dnstable_lookup rrset www.example.com
+
+$ dnstable_lookup rrset example.com ns com
+
+$ dnstable_lookup rdata ip 192.0.2.1
+
+$ dnstable_lookup rdata ip 198.51.100.0/24
+
+$ dnstable_lookup rdata ip 203.0.113.1-203.0.113.100
+
+$ dnstable_lookup rdata ip 2001:db8::/32
+
+$ dnstable_lookup rdata raw c00505f1
+
+$ dnstable_lookup rdata name BLACKHOLE-1.IANA.ORG
