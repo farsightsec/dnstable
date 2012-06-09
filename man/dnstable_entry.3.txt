@@ -1,0 +1,157 @@
+= dnstable_entry(3) =
+
+== NAME ==
+
+dnstable_entry - dnstable entry objects
+
+== SYNOPSIS ==
+
+^#include <dnstable.h>^
+
+[verse]
+^typedef enum {
+    DNSTABLE_ENTRY_TYPE_RRSET,
+    DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD,
+    DNSTABLE_ENTRY_TYPE_RDATA,
+    DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV,
+} dnstable_entry_type;^
+
+[verse]
+^struct dnstable_entry *
+dnstable_entry_decode(
+    const uint8_t *'key', size_t 'len_key',
+    const uint8_t *'val', size_t 'len_val');^
+
+[verse]
+^void
+dnstable_entry_destroy(struct dnstable_entry **'ent');^
+
+[verse]
+^char *
+dnstable_entry_to_text(struct dnstable_entry *'ent');^
+
+[verse]
+^char *
+dnstable_entry_to_json(struct dnstable_entry *'ent');^
+
+[verse]
+^dnstable_entry_type
+dnstable_entry_get_type(struct dnstable_entry *'ent');^
+
+[verse]
+/* valid for entry types:
+ *      DNSTABLE_ENTRY_TYPE_RRSET
+ *      DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD
+ *      DNSTABLE_ENTRY_TYPE_RDATA
+ */
+^dnstable_res
+dnstable_entry_get_rrname(
+    struct dnstable_entry *'ent',
+    const uint8_t **'owner', size_t *'len_owner');^
+
+[verse]
+/* valid for entry types:
+ *      DNSTABLE_ENTRY_TYPE_RRSET
+ *      DNSTABLE_ENTRY_TYPE_RDATA
+ */
+^dnstable_res
+dnstable_entry_get_rrtype(
+    struct dnstable_entry *'ent',
+    uint16_t *'rrtype');^
+
+[verse]
+/* valid for entry types:
+ *      DNSTABLE_ENTRY_TYPE_RRSET
+ */
+^dnstable_res
+dnstable_entry_get_bailiwick(
+    struct dnstable_entry *'ent',
+    const uint8_t **'bailiwick', size_t *'len_bailiwick');^
+
+[verse]
+/* valid for entry types:
+ *      DNSTABLE_ENTRY_TYPE_RRSET
+ *      DNSTABLE_ENTRY_TYPE_RDATA
+ */
+^dnstable_res
+dnstable_entry_get_num_rdata(
+    struct dnstable_entry *'ent',
+    size_t *'num_rdata');^
+
+[verse]
+/* valid for entry types:
+ *      DNSTABLE_ENTRY_TYPE_RRSET
+ *      DNSTABLE_ENTRY_TYPE_RDATA
+ */
+^dnstable_res
+dnstable_entry_get_rdata(
+    struct dnstable_entry *'ent',
+    const uint8_t **'rdata', size_t *'len_rdata');^
+
+[verse]
+/* valid for entry types:
+ *      DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV
+ */
+^dnstable_res
+dnstable_entry_get_rdata_name(
+    struct dnstable_entry *'ent',
+    const uint8_t **'rdata_name', size_t *'len_rdata_name');^
+
+[verse]
+/* valid for entry types:
+ *      DNSTABLE_ENTRY_TYPE_RRSET
+ *      DNSTABLE_ENTRY_TYPE_RDATA
+ */
+^dnstable_res
+dnstable_entry_get_time_first(
+    struct dnstable_entry *'ent',
+    uint64_t *'time_first');^
+
+[verse]
+/* valid for entry types:
+ *      DNSTABLE_ENTRY_TYPE_RRSET
+ *      DNSTABLE_ENTRY_TYPE_RDATA
+ */
+^dnstable_res
+dnstable_entry_get_time_last(
+    struct dnstable_entry *'ent',
+    uint64_t *'time_last');^
+
+[verse]
+/* valid for entry types:
+ *      DNSTABLE_ENTRY_TYPE_RRSET
+ *      DNSTABLE_ENTRY_TYPE_RDATA
+ */
+^dnstable_res
+dnstable_entry_get_count(
+    struct dnstable_entry *'ent',
+    uint64_t *'count');^
+
+== DESCRIPTION ==
+
+^dnstable_entry^ objects represent the data entries stored in dnstable data
+files. Various dnstable library functions return ^dnstable_entry^ objects
+through the ^dnstable_iter^(3) interface, or they can be created directly by the
+^dnstable_entry_decode^() function, which parses raw dnstable-encoded key/value
+pairs.
+
+A ^dnstable_entry^ object has a particular type which can be retrieved with the
+^dnstable_entry_get_type^() function. Possible values are enumerated in
+^dnstable_entry_type^. For details about how each type is encoded, see
+^dnstable-encoding^(5).
+
+For presentation or interchange purposes, the ^dnstable_entry_to_text^() and
+^dnstable_entry_to_json^() functions can be used to generate the text or
+JSON-encoded form of a ^dnstable_entry^ object. These functions return a
+dynamically allocated string which must be ^free^()'d by the caller.
+
+The remaining ^dnstable_entry_get_*^() accessor functions return particular
+fields of the ^dnstable_entry^ object, if present. ^dnstable_res_success^ will
+be returned if the entry has the requested field, and ^dnstable_res_failure^ if
+not. None of the accessor functions allocate memory. For the accessors which
+return pointers, these pointers are valid as long as the ^dnstable_entry^ object
+is valid. For field descriptions, see ^dnstable-encoding^(5).
+
+== SEE ALSO ==
+
+^dnstable-encoding^(5)
