@@ -1,0 +1,50 @@
+= dnstable(7) =
+
+== NAME ==
+
+dnstable - encoding format, library, and utilities for passive DNS data
+
+== DESCRIPTION ==
+
+dnstable implements an encoding format for passive DNS data. It consists of a C
+library, libdnstable, and several command line utilities for creating, querying,
+and merging dnstable data files.
+
+For details about how dnstable entries are encoded in data files, see
+^dnstable-encoding^(5).
+
+The command line dnstable utilities are:
+
+^dnstable_convert^(1)::
+Converts passive DNS data to dnstable format.
+
+^dnstable_dump^(1)::
+Prints dnstable format files in text or JSON.
+
+^dnstable_lookup^(1)::
+Searches dnstable data files.
+
+^dnstable_merge^(1)::
+Merges multiple dnstable data files together.
+
+The main interfaces provided by the dnstable library are:
+
+^dnstable_iter^(3)::
+Provides a consistent interface for iterating over the data entries returned by
+other interfaces.
+
+^dnstable_entry^(3)::
+Encapsulates the fields contained in individual data entries.
+
+^dnstable_query^(3)::
+Encapsulates query parameters for searching a data source.
+
+^dnstable_reader^(3)::
+Reads dnstable data from an mtbl source.
+
+Also provided is the low-level ^dnstable_merge_func^(3), a libmtbl-compatible
+merge function.
+
+== SEE ALSO ==
+
+^mtbl^(7)
