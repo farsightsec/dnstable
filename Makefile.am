@@ -123,6 +123,7 @@ dist_man_MANS = \
 	man/dnstable_merge.1 \
 	man/dnstable_entry.3 \
 	man/dnstable_iter.3 \
+	man/dnstable_query.3 \
 	man/dnstable_reader.3 \
 	man/dnstable_merge_func.3
 
@@ -134,5 +135,6 @@ EXTRA_DIST += \
 	man/dnstable_merge.1.txt \
 	man/dnstable_entry.3.txt \
 	man/dnstable_iter.3.txt \
+	man/dnstable_query.3.txt \
 	man/dnstable_reader.3.txt \
 	man/dnstable_merge_func.3.txt

@@ -1,0 +1,115 @@
+= dnstable_query(3) =
+
+== NAME ==
+
+dnstable_query - dnstable query objects
+
+== SYNOPSIS ==
+
+^#include <dnstable.h>^
+
+[verse]
+^typedef enum {
+    _DNSTABLE_QUERY_TYPE_RRSET_,
+    _DNSTABLE_QUERY_TYPE_RDATA_NAME_,
+    _DNSTABLE_QUERY_TYPE_RDATA_IP_,
+    _DNSTABLE_QUERY_TYPE_RDATA_RAW_,
+} dnstable_query_type;^
+
+[verse]
+^struct dnstable_query *
+dnstable_query_init(dnstable_query_type);^
+
+[verse]
+^void
+dnstable_query_destroy(struct dnstable_query **'q');^
+
+[verse]
+^const char *
+dnstable_query_get_error(struct dnstable_query *'q');^
+
+[verse]
+^dnstable_res
+dnstable_query_set_data(struct dnstable_query *'q',
+    const char *'data');^
+
+[verse]
+^dnstable_res
+dnstable_query_set_rrtype(struct dnstable_query *'q',
+    const char *'rrtype');^
+
+[verse]
+^dnstable_res
+dnstable_query_set_bailiwick(struct dnstable_query *'q',
+    const char *'bailiwick');^
+
+[verse]
+^dnstable_res
+dnstable_query_filter(struct dnstable_query *'q',
+    struct dnstable_entry *'ent',
+    bool *'filter_res');^
+
+[verse]
+^dnstable_res
+dnstable_query_iter(struct dnstable_query *'q',
+    const struct mtbl_source *'source');^
+
+== DESCRIPTION ==
+
+^dnstable_query^ objects encapsulate the search parameters used when querying a
+dnstable data source. They can be used to retrieve specific entries from a data
+source, or to test whether an already retrieved entry object matches the query.
+
+A ^dnstable_query^ object is initialized by calling ^dnstable_query_init^(),
+which takes the desired query type as a parameter. The
+^dnstable_query_set_...^() functions are then called to set the query
+parameters, as described below.
+
+The functions with return type ^dnstable_res^ either return
+^dnstable_res_success^ if the function completely successfully, or
+^dnstable_res_failure^ otherwise. If ^dnstable_res_failure^ is returned, the
+^dnstable_query_get_error^() function can be called to obtain the error message
+text. (The string returned is valid for the ^dnstable_query^ object in question
+until the next error occurs or the query object is destroyed.)
+
+^dnstable_query_filter^() tests whether the given ^dnstable_entry^ object would
+match the given ^dnstable_query^ object. The result is returned in the
+_filter_res_ parameter.
+
+Once the query object has been constructed, ^dnstable_query_iter^() iterates
+over all the matching entries in the specified mtbl source.
+
+=== dnstable_query_set_...() functions ===
+
+^dnstable_query_set_rrtype^() sets the Resource Record type, which is specified
+as a string. The string parameter can be an RRtype mnemonic like _"A"_ or _"NS"_
+or it can be the string "TYPE" followed by the decimal RRtype value.
+
+^dnstable_query_set_bailiwick^() is only valid for _DNSTABLE_QUERY_TYPE_RRSET_
+type queries. If set, it causes the bailiwick field of RRset entries to be
+filtered against the value provided.
+
+^dnstable_query_set_rrtype^() and ^dnstable_query_set_bailiwick^() are optional.
+If not called, no RRtype or bailiwick filtering will be performed.
+
+^dnstable_query_set_data^() specifies the main search parameter and is required.
+Its meaning depends on the query type.
+
+For _DNSTABLE_QUERY_TYPE_RRSET_ queries, the search parameter is the RRset owner
+name. Left- and right- hand wildcards are permitted.
+
+For _DNSTABLE_QUERY_TYPE_RDATA_NAME_ queries, the search parameter is the domain
+name in the record data. Left- and right- hand wildcards are permitted.
+
+For _DNSTABLE_QUERY_TYPE_RDATA_IP_ queries, the search parameter is an IP
+address, IP prefix, or IP range. Both IPv4 and IPv6 are supported. If the search
+parameter contains a "/" character it will be treated as an IP prefix. If it
+contains a "-" character it will be treated as an IP range. Otherwise, it will
+be treated as an address.
+
+For _DNSTABLE_QUERY_TYPE_RDATA_RAW_ queries, the search parameter is a
+hexadecimal string which will be directly compared against record data values.
+
+== SEE ALSO ==
+
+^dnstable-encoding^(5), ^dnstable_entry^(3), ^dnstable_reader^(3), ^mtbl_source^(3)
