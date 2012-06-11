@@ -231,7 +231,7 @@ process_rdata(Nmsg__Sie__DnsDedupe *dns, size_t i, ubuf *key, ubuf *val)
 
 	/* key: rdlen */
 	assert(dns->rdata[i].len <= 65535);
-	rdlen = (uint16_t) dns->rdata[i].len;
+	rdlen = htole16((uint16_t) dns->rdata[i].len);
 	ubuf_reserve(key, ubuf_size(key) + sizeof(uint16_t));
 	ubuf_append(key, (uint8_t *) &rdlen, sizeof(uint16_t));
 
@@ -283,7 +283,7 @@ process_rdata_slice(Nmsg__Sie__DnsDedupe *dns, size_t i, ubuf *key, ubuf *val)
 	ubuf_append(key, dns->rdata[i].data, offset);
 
 	/* key: data length */
-	uint16_t dlen = (uint16_t) dns->rdata[i].len - offset;
+	uint16_t dlen = htole16((uint16_t) dns->rdata[i].len - offset);
 	ubuf_reserve(key, ubuf_size(key) + sizeof(uint16_t));
 	ubuf_append(key, (uint8_t *) &dlen, sizeof(uint16_t));
 
