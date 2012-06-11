@@ -10,10 +10,10 @@ dnstable_entry - dnstable entry objects
 
 [verse]
 ^typedef enum {
-    DNSTABLE_ENTRY_TYPE_RRSET,
-    DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD,
-    DNSTABLE_ENTRY_TYPE_RDATA,
-    DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV,
+    _DNSTABLE_ENTRY_TYPE_RRSET_,
+    _DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD_,
+    _DNSTABLE_ENTRY_TYPE_RDATA_,
+    _DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV_,
 } dnstable_entry_type;^
 
 [verse]
