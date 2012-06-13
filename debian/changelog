@@ -1,0 +1,5 @@
+dnstable (0.1-1) debian-rsf; urgency=low
+
+  * Initial release.
+
+ -- Robert S. Edmonds <edmonds@debian.org>  Wed, 13 Jun 2012 19:15:57 -0400
