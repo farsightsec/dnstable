@@ -24,7 +24,7 @@ libdnstable.so.0 libdnstable0 #MINVER#
  dnstable_query_iter@Base 0.1
  dnstable_query_set_bailiwick@Base 0.1
  dnstable_query_set_data@Base 0.1
- dnstable_query_set_rrtype@Base 0.1
+ dnstable_query_set_rrtype@Base 0.2
  dnstable_reader_destroy@Base 0.1
  dnstable_reader_init@Base 0.1
  dnstable_reader_init_setfile@Base 0.1
