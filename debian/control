@@ -11,7 +11,7 @@ Build-Depends:
  libmtbl-dev,
  libnmsg-dev,
  nmsg-msg-module-sie-dev,
- libwdns-dev
+ libwdns-dev (>= 0.4)
 Standards-Version: 3.9.3
 
 Package: libdnstable0
