@@ -28,7 +28,7 @@ AC_CONFIG_FILES([
 PKG_CHECK_MODULES([libjansson], [jansson])
 PKG_CHECK_MODULES([libmtbl], [libmtbl])
 PKG_CHECK_MODULES([libnmsg], [libnmsg])
-PKG_CHECK_MODULES([libwdns], [libwdns])
+PKG_CHECK_MODULES([libwdns], [libwdns >= 0.4])
 
 m4_sinclude(acx_pthread.m4)
 ACX_PTHREAD([
