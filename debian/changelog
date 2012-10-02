@@ -1,3 +1,9 @@
+dnstable (0.2-2) debian-rsf; urgency=low
+
+  * dnstable-bin package: add dependency on mtbl-bin, nmsg-msg8-module-sie.
+
+ -- Robert S. Edmonds <edmonds@debian.org>  Mon, 01 Oct 2012 21:28:15 -0400
+
 dnstable (0.2-1) debian-rsf; urgency=low
 
   * New upstream release.
