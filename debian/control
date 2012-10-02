@@ -81,7 +81,9 @@ Description: passive DNS encoding format library (development files)
 Package: dnstable-bin
 Section: utils
 Architecture: any
-Depends: ${misc:Depends}, ${shlibs:Depends}
+Depends: ${misc:Depends}, ${shlibs:Depends},
+ mtbl-bin,
+ nmsg-msg8-module-sie
 Description: passive DNS encoding format library (utilities)
  dnstable implements an encoding format for passive DNS data. It consists of a
  C library, libdnstable, and several command line utilities for creating,
