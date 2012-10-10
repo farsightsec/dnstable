@@ -566,6 +566,7 @@ query_init_rdata_right_wildcard(struct query_iter *it)
 	/* key: rdata name, less trailing "\x01\x2a\x00" */
 	ubuf_append(it->key, it->query->name.data, it->query->name.len - 3);
 
+	it->m_iter = mtbl_source_get_prefix(it->source, ubuf_data(it->key), ubuf_size(it->key));
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
 
