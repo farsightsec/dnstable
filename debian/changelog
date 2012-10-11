@@ -1,3 +1,9 @@
+dnstable (0.4-1) debian-rsf; urgency=low
+
+  * New upstream release.
+
+ -- Robert S. Edmonds <edmonds@debian.org>  Thu, 11 Oct 2012 17:11:02 -0400
+
 dnstable (0.3-1) debian-rsf; urgency=low
 
   * New upstream release.
