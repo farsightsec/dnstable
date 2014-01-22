@@ -1,6 +1,7 @@
 usr/include/dnstable.h
-usr/lib/*.so
-usr/lib/pkgconfig/libdnstable.pc
+usr/lib/*/*.a
+usr/lib/*/*.so
+usr/lib/*/pkgconfig/libdnstable.pc
 usr/share/man/man3
 usr/share/man/man5
 usr/share/man/man7
