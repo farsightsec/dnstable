@@ -10,7 +10,7 @@ Build-Depends:
  libjansson-dev,
  libmtbl-dev,
  libnmsg-dev, libpcap0.8-dev,
- nmsg-msg-module-sie-dev,
+ nmsg-msg-module-sie-dev, libprotobuf-c0-dev,
  libwdns-dev (>= 0.4),
  asciidoc, xmlto
 Standards-Version: 3.9.5
