@@ -12,7 +12,7 @@ Build-Depends:
  libnmsg-dev,
  nmsg-msg-module-sie-dev,
  libwdns-dev (>= 0.4)
-Standards-Version: 3.9.3
+Standards-Version: 3.9.5
 
 Package: libdnstable0
 Architecture: any
