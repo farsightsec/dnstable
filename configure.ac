@@ -44,6 +44,14 @@ AX_PTHREAD([
     CC="$PTHREAD_CC"
 ])
 
+AC_PATH_PROG([ASCIIDOC], [a2x])
+AM_CONDITIONAL([BUILD_MAN], [test -n "$ASCIIDOC"])
+if test -n "$ASCIIDOC"; then
+    DOC_MAN_MSG="yes (asciidoc available)"
+else
+    DOC_MAN_MSG="no (asciidoc not available)"
+fi
+
 AC_OUTPUT
 AC_MSG_RESULT([
     $PACKAGE $VERSION
@@ -58,4 +66,6 @@ AC_MSG_RESULT([
         libdir:                 ${libdir}
         includedir:             ${includedir}
         pkgconfigdir:           ${pkgconfigdir}
+
+        building manpage docs:  ${DOC_MAN_MSG}
 ])
