@@ -9,7 +9,7 @@ Build-Depends:
  pkg-config,
  libjansson-dev,
  libmtbl-dev,
- libnmsg-dev,
+ libnmsg-dev, libpcap0.8-dev,
  nmsg-msg-module-sie-dev,
  libwdns-dev (>= 0.4),
  asciidoc, xmlto
