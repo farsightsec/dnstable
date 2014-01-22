@@ -315,26 +315,6 @@ dnstable_query_set_rrtype(struct dnstable_query *q, const char *s_rrtype)
 		return (dnstable_res_success);
 	}
 
-	if (strncasecmp(s_rrtype, "TYPE", 4) == 0) {
-		long val;
-		char *endptr;
-
-		errno = 0;
-		val = strtol(s_rrtype + 4, &endptr, 10);
-		if (errno != 0 || *endptr != '\0') {
-			query_set_err(q, "unable to parse rrtype");
-			return (dnstable_res_failure);
-		}
-
-		if (val < 0 || val > USHRT_MAX) {
-			query_set_err(q, "rrtype value out of range");
-			return (dnstable_res_failure);
-		}
-
-		q->do_rrtype = true;
-		return (dnstable_res_success);
-	}
-
 	rrtype = wdns_str_to_rrtype(s_rrtype);
 	if (rrtype == 0) {
 		query_set_err(q, "unknown rrtype mnemonic");

@@ -1,5 +1,5 @@
 AC_PREREQ(2.60)
-AC_INIT([dnstable], [0.1])
+AC_INIT([dnstable], [0.2])
 AC_CONFIG_SRCDIR([dnstable/dnstable.h])
 AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE([foreign 1.11 -Wall -Wno-portability silent-rules subdir-objects color-tests])
@@ -28,7 +28,7 @@ AC_CONFIG_FILES([
 PKG_CHECK_MODULES([libjansson], [jansson])
 PKG_CHECK_MODULES([libmtbl], [libmtbl])
 PKG_CHECK_MODULES([libnmsg], [libnmsg])
-PKG_CHECK_MODULES([libwdns], [libwdns])
+PKG_CHECK_MODULES([libwdns], [libwdns >= 0.4])
 
 m4_sinclude(acx_pthread.m4)
 ACX_PTHREAD([
