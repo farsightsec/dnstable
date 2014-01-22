@@ -10,8 +10,6 @@ AC_CONFIG_MACRO_DIR([m4])
 AM_SILENT_RULES([yes])
 LT_INIT([disable-static pic-only])
 
-PKG_PROG_PKG_CONFIG
-
 my_CFLAGS="-Wall \
 -Wmissing-declarations -Wmissing-prototypes \
 -Wnested-externs -Wpointer-arith \
@@ -21,9 +19,19 @@ my_CFLAGS="-Wall \
 AC_SUBST([my_CFLAGS])
 
 AC_CONFIG_HEADERS(config.h)
-AC_CONFIG_FILES([
-        Makefile
-])
+AC_CONFIG_FILES([Makefile dnstable/libdnstable.pc])
+
+PKG_PROG_PKG_CONFIG
+if test -n "$PKG_CONFIG"; then
+    # Horrible hack for systems where the pkg-config install directory is simply wrong!
+    if $PKG_CONFIG --variable=pc_path pkg-config 2>/dev/null | grep -q /libdata/; then
+        PKG_INSTALLDIR(['${prefix}/libdata/pkgconfig'])
+    else
+        PKG_INSTALLDIR
+    fi
+else
+    AC_MSG_ERROR([pkg-config is required!])
+fi
 
 PKG_CHECK_MODULES([libjansson], [jansson])
 PKG_CHECK_MODULES([libmtbl], [libmtbl])
@@ -50,4 +58,5 @@ AC_MSG_RESULT([
         sysconfdir:             ${sysconfdir}
         libdir:                 ${libdir}
         includedir:             ${includedir}
+        pkgconfigdir:           ${pkgconfigdir}
 ])

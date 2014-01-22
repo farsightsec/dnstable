@@ -15,18 +15,6 @@ AM_CFLAGS = \
 
 AM_LDFLAGS = -Wl,--as-needed
 
-SED_PROCESS = \
-	$(AM_V_GEN)$(MKDIR_P) $(dir $@) && $(SED) \
-	-e 's,@VERSION\@,$(VERSION),g' \
-	-e 's,@prefix\@,$(prefix),g' \
-	-e 's,@exec_prefix\@,$(exec_prefix),g' \
-	-e 's,@libdir\@,$(libdir),g' \
-	-e 's,@includedir\@,$(includedir),g' \
-	< $< > $@ || rm $@
-
-%.pc: %.pc.in Makefile
-	$(SED_PROCESS)
-
 LIBDNSTABLE_CURRENT=0
 LIBDNSTABLE_REVISION=0
 LIBDNSTABLE_AGE=0
@@ -62,7 +50,6 @@ install-exec-hook: src/dnstable_merge
 	rm -f $(DESTDIR)$(libdir)/libdnstable.la
 	install -m 0755 ${top_srcdir}/src/dnstable_merge $(DESTDIR)$(bindir)/dnstable_merge
 
-pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = dnstable/libdnstable.pc
 EXTRA_DIST += dnstable/libdnstable.pc.in
 CLEANFILES += dnstable/libdnstable.pc
