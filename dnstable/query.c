@@ -430,6 +430,8 @@ query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t t
 			it->m_iter = mtbl_source_get_prefix(it->source,
 							    ubuf_data(it->key),
 							    ubuf_size(it->key));
+			if (it->m_iter == NULL)
+				continue;
 		}
 		assert(it->m_iter != NULL);
 		if (mtbl_iter_next(it->m_iter,
