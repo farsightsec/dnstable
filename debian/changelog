@@ -1,3 +1,9 @@
+dnstable (0.5-1) debian-farsightsec; urgency=medium
+
+  * New upstream release.
+
+ -- Robert S. Edmonds <edmonds@debian.org>  Tue, 21 Jan 2014 21:29:37 -0500
+
 dnstable (0.4-1) debian-rsf; urgency=low
 
   * New upstream release.
