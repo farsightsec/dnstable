@@ -1,5 +1,5 @@
 AC_PREREQ(2.60)
-AC_INIT([dnstable], [0.4])
+AC_INIT([dnstable], [0.5])
 AC_CONFIG_SRCDIR([dnstable/dnstable.h])
 AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE([foreign 1.11 -Wall -Wno-portability silent-rules subdir-objects color-tests])
@@ -8,9 +8,7 @@ AC_USE_SYSTEM_EXTENSIONS
 AC_SYS_LARGEFILE
 AC_CONFIG_MACRO_DIR([m4])
 AM_SILENT_RULES([yes])
-LT_INIT([disable-static pic-only])
-
-PKG_PROG_PKG_CONFIG
+LT_INIT
 
 my_CFLAGS="-Wall \
 -Wmissing-declarations -Wmissing-prototypes \
@@ -21,21 +19,38 @@ my_CFLAGS="-Wall \
 AC_SUBST([my_CFLAGS])
 
 AC_CONFIG_HEADERS(config.h)
-AC_CONFIG_FILES([
-        Makefile
-])
+AC_CONFIG_FILES([Makefile dnstable/libdnstable.pc])
+
+PKG_PROG_PKG_CONFIG
+if test -n "$PKG_CONFIG"; then
+    # Horrible hack for systems where the pkg-config install directory is simply wrong!
+    if $PKG_CONFIG --variable=pc_path pkg-config 2>/dev/null | grep -q /libdata/; then
+        PKG_INSTALLDIR(['${prefix}/libdata/pkgconfig'])
+    else
+        PKG_INSTALLDIR
+    fi
+else
+    AC_MSG_ERROR([pkg-config is required!])
+fi
 
 PKG_CHECK_MODULES([libjansson], [jansson])
 PKG_CHECK_MODULES([libmtbl], [libmtbl])
 PKG_CHECK_MODULES([libnmsg], [libnmsg])
 PKG_CHECK_MODULES([libwdns], [libwdns >= 0.4])
 
-m4_sinclude(acx_pthread.m4)
-ACX_PTHREAD([
-    LIBS="$LIBS $PTHREAD_LIBS"
+AX_PTHREAD([
+    LIBS="$PTHREAD_LIBS $LIBS"
     CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
     CC="$PTHREAD_CC"
 ])
+
+AC_PATH_PROG([ASCIIDOC], [a2x])
+AM_CONDITIONAL([BUILD_MAN], [test -n "$ASCIIDOC"])
+if test -n "$ASCIIDOC"; then
+    DOC_MAN_MSG="yes (asciidoc available)"
+else
+    DOC_MAN_MSG="no (asciidoc not available)"
+fi
 
 AC_OUTPUT
 AC_MSG_RESULT([
@@ -50,4 +65,7 @@ AC_MSG_RESULT([
         sysconfdir:             ${sysconfdir}
         libdir:                 ${libdir}
         includedir:             ${includedir}
+        pkgconfigdir:           ${pkgconfigdir}
+
+        building manpage docs:  ${DOC_MAN_MSG}
 ])

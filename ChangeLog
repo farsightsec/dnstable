@@ -1,0 +1,11 @@
+dnstable (0.5)
+
+  * Update copyright and license statements as a result of the transition from
+    Internet Systems Consortium to Farsight Security.
+
+  * Replace the "librsf" submodule with the "libmy" subtree.
+
+  * Install the pkg-config .pc file into the correct location on certain
+    systems.
+
+ -- Robert Edmonds <edmonds@fsi.io>  Tue, 21 Jan 2014 20:58:33 -0500
