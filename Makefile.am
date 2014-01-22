@@ -49,6 +49,9 @@ dnstable_libdnstable_la_LDFLAGS = $(AM_LDFLAGS) \
 install-exec-hook: src/dnstable_merge
 	install -m 0755 ${top_srcdir}/src/dnstable_merge $(DESTDIR)$(bindir)/dnstable_merge
 
+uninstall-hook:
+	rm -f $(DESTDIR)$(bindir)/dnstable_merge
+
 pkgconfig_DATA = dnstable/libdnstable.pc
 EXTRA_DIST += dnstable/libdnstable.pc.in
 CLEANFILES += dnstable/libdnstable.pc
