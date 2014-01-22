@@ -43,12 +43,12 @@ dnstable_libdnstable_la_SOURCES = \
 	dnstable/query.c \
 	dnstable/reader.c \
 	dnstable/triplet.c \
-	librsf/ip_arith.h \
-	librsf/hex_decode.h \
-	librsf/my_alloc.h \
-	librsf/print_string.h \
-	librsf/vector.h \
-	librsf/ubuf.h
+	libmy/ip_arith.h \
+	libmy/hex_decode.h \
+	libmy/my_alloc.h \
+	libmy/print_string.h \
+	libmy/vector.h \
+	libmy/ubuf.h
 
 dnstable_libdnstable_la_LIBADD = \
 	$(libjansson_LIBS) \
@@ -79,9 +79,9 @@ src_dnstable_convert_LDADD = \
 
 bin_PROGRAMS += src/dnstable_dump
 src_dnstable_dump_SOURCES = \
-	librsf/argv.c \
-	librsf/argv.h \
-	librsf/argv_loc.h \
+	libmy/argv.c \
+	libmy/argv.h \
+	libmy/argv_loc.h \
 	src/dnstable_dump.c
 src_dnstable_dump_LDADD = \
 	dnstable/libdnstable.la \

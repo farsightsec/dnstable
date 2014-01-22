@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012 by Farsight Security, Inc.
+ * Copyright (c) 2012, 2014 by Farsight Security, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,8 +27,8 @@
 #include <dnstable.h>
 #include <mtbl.h>
 
-#include "librsf/argv.h"
-#include "librsf/print_string.h"
+#include "libmy/argv.h"
+#include "libmy/print_string.h"
 
 static bool g_json;
 static bool g_rrset;

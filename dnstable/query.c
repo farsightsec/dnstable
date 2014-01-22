@@ -18,8 +18,8 @@
 
 #include "dnstable-private.h"
 
-#include "librsf/ip_arith.h"
-#include "librsf/hex_decode.h"
+#include "libmy/ip_arith.h"
+#include "libmy/hex_decode.h"
 
 struct dnstable_query {
 	dnstable_query_type	q_type;
