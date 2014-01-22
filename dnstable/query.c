@@ -566,6 +566,7 @@ query_init_rdata_right_wildcard(struct query_iter *it)
 	/* key: rdata name, less trailing "\x01\x2a\x00" */
 	ubuf_append(it->key, it->query->name.data, it->query->name.len - 3);
 
+	it->m_iter = mtbl_source_get_prefix(it->source, ubuf_data(it->key), ubuf_size(it->key));
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
 
@@ -577,10 +578,10 @@ query_init_rdata_left_wildcard(struct query_iter *it)
 	/* key: type byte */
 	ubuf_add(it->key, ENTRY_TYPE_RDATA_NAME_REV);
 
-	/* key: rdata name (label-reversed), less leading "\x01\x2a" */
+	/* key: rdata name (label-reversed), less leading "\x01\x2a" and trailing "\x00" */
 	size_t len = it->query->name.len - 2;
 	wdns_reverse_name(it->query->name.data + 2, len, name);
-	ubuf_append(it->key, name, len);
+	ubuf_append(it->key, name, len - 1);
 
 	it->m_iter2 = mtbl_source_get_prefix(it->source,
 					     ubuf_data(it->key),
