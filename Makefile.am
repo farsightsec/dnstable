@@ -47,7 +47,6 @@ dnstable_libdnstable_la_LDFLAGS = $(AM_LDFLAGS) \
 	-export-symbols-regex "^(dnstable_[a-z].*)"
 
 install-exec-hook: src/dnstable_merge
-	rm -f $(DESTDIR)$(libdir)/libdnstable.la
 	install -m 0755 ${top_srcdir}/src/dnstable_merge $(DESTDIR)$(bindir)/dnstable_merge
 
 pkgconfig_DATA = dnstable/libdnstable.pc
