@@ -38,9 +38,8 @@ PKG_CHECK_MODULES([libmtbl], [libmtbl])
 PKG_CHECK_MODULES([libnmsg], [libnmsg])
 PKG_CHECK_MODULES([libwdns], [libwdns >= 0.4])
 
-m4_sinclude(acx_pthread.m4)
-ACX_PTHREAD([
-    LIBS="$LIBS $PTHREAD_LIBS"
+AX_PTHREAD([
+    LIBS="$PTHREAD_LIBS $LIBS"
     CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
     CC="$PTHREAD_CC"
 ])
