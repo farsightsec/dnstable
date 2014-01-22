@@ -11,7 +11,8 @@ Build-Depends:
  libmtbl-dev,
  libnmsg-dev,
  nmsg-msg-module-sie-dev,
- libwdns-dev (>= 0.4)
+ libwdns-dev (>= 0.4),
+ asciidoc, xmlto
 Standards-Version: 3.9.5
 
 Package: libdnstable0
