@@ -78,8 +78,11 @@ print_entry(struct dnstable_entry *ent)
 			s = dnstable_entry_to_text(ent);
 		if (s != NULL) {
 			fputs(s, stdout);
-			if (dnstable_entry_get_type(ent) == DNSTABLE_ENTRY_TYPE_RRSET)
+			if (!(!g_json &&
+			      dnstable_entry_get_type(ent) == DNSTABLE_ENTRY_TYPE_RDATA))
+			{
 				putchar('\n');
+			}
 			free(s);
 		}
 	}
