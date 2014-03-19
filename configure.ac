@@ -38,6 +38,10 @@ PKG_CHECK_MODULES([libmtbl], [libmtbl])
 PKG_CHECK_MODULES([libnmsg], [libnmsg])
 PKG_CHECK_MODULES([libwdns], [libwdns >= 0.4])
 
+AC_CHECK_HEADERS([nmsg/sie/dnsdedupe.pb-c.h],
+                 [],
+                 [AC_MSG_ERROR([required header file not found])])
+
 AX_PTHREAD([
     LIBS="$PTHREAD_LIBS $LIBS"
     CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
