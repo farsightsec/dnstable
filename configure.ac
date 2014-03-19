@@ -1,5 +1,5 @@
 AC_PREREQ(2.60)
-AC_INIT([dnstable], [0.5])
+AC_INIT([dnstable], [0.5.1])
 AC_CONFIG_SRCDIR([dnstable/dnstable.h])
 AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE([foreign 1.11 -Wall -Wno-portability silent-rules subdir-objects color-tests])
@@ -37,6 +37,14 @@ PKG_CHECK_MODULES([libjansson], [jansson])
 PKG_CHECK_MODULES([libmtbl], [libmtbl])
 PKG_CHECK_MODULES([libnmsg], [libnmsg])
 PKG_CHECK_MODULES([libwdns], [libwdns >= 0.4])
+
+AC_CHECK_HEADERS([google/protobuf-c/protobuf-c.h],
+                 [],
+                 [AC_MSG_ERROR([required header file not found])])
+
+AC_CHECK_HEADERS([nmsg/sie/dnsdedupe.pb-c.h],
+                 [],
+                 [AC_MSG_ERROR([required header file not found])])
 
 AX_PTHREAD([
     LIBS="$PTHREAD_LIBS $LIBS"
