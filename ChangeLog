@@ -1,3 +1,12 @@
+dnstable (0.5.1)
+
+  * dnstable_dump: delimit "-j -d" output entries with newlines (Issue #1).
+
+  * Add configure-time checks for required header files
+    <nmsg/sie/dnsdedupe.pb-c.h> and <google/protobuf-c/protobuf-c.h>.
+
+ -- Robert Edmonds <edmonds@fsi.io>  Wed, 19 Mar 2014 14:22:56 -0400
+
 dnstable (0.5)
 
   * Update copyright and license statements as a result of the transition from
