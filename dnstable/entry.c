@@ -105,7 +105,7 @@ dnstable_entry_to_text(struct dnstable_entry *e)
 			ubuf_add(u, ' ');
 			ubuf_add_cstr(u, data);
 			ubuf_add(u, '\n');
-			free(data);
+			my_free(data);
 		}
 	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_RDATA) {
 		if (rdata_vec_size(e->rdatas) != 1)
@@ -121,7 +121,7 @@ dnstable_entry_to_text(struct dnstable_entry *e)
 		ubuf_add(u, ' ');
 		ubuf_add_cstr(u, data);
 		ubuf_add(u, '\n');
-		free(data);
+		my_free(data);
 	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD) {
 		wdns_domain_to_str(e->name.data, e->name.len, name);
 		ubuf_add_cstr(u, name);
@@ -200,7 +200,7 @@ dnstable_entry_to_json(struct dnstable_entry *e)
 			assert(j_rdata != NULL);
 			rc = json_array_append_new(j_rdatas, j_rdata);
 			assert(rc == 0);
-			free(data);
+			my_free(data);
 		}
 		rc = json_object_set_new(j, "rdata", j_rdatas);
 		assert(rc == 0);
@@ -229,7 +229,7 @@ dnstable_entry_to_json(struct dnstable_entry *e)
 		assert(j_rdata != NULL);
 		rc = json_object_set_new(j, "rdata", j_rdata);
 		assert(rc == 0);
-		free(data);
+		my_free(data);
 	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD ||
 		   e->e_type == DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV)
 	{
@@ -429,13 +429,12 @@ dnstable_entry_destroy(struct dnstable_entry **e)
 	if (*e) {
 		for (size_t i = 0; i < rdata_vec_size((*e)->rdatas); i++) {
 			wdns_rdata_t *rdata = rdata_vec_value((*e)->rdatas, i);
-			free(rdata);
+			my_free(rdata);
 		}
 		rdata_vec_destroy(&(*e)->rdatas);
-		free((*e)->name.data);
-		free((*e)->bailiwick.data);
-		free(*e);
-		*e = NULL;
+		my_free((*e)->name.data);
+		my_free((*e)->bailiwick.data);
+		my_free(*e);
 	}
 }
 
