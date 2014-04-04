@@ -1,4 +1,4 @@
-LIBDNSTABLE_0.5.2 {
+LIBDNSTABLE_0.6.0 {
 global:
         dnstable_entry_decode;
         dnstable_entry_destroy;
