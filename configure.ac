@@ -36,7 +36,7 @@ fi
 PKG_CHECK_MODULES([libjansson], [jansson])
 PKG_CHECK_MODULES([libmtbl], [libmtbl])
 PKG_CHECK_MODULES([libnmsg], [libnmsg])
-PKG_CHECK_MODULES([libwdns], [libwdns >= 0.4])
+PKG_CHECK_MODULES([libwdns], [libwdns >= 0.6.0])
 
 AC_CHECK_HEADERS([google/protobuf-c/protobuf-c.h],
                  [],
