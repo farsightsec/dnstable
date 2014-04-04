@@ -50,7 +50,7 @@ dnstable_query_filter(struct dnstable_query *'q',
     bool *'filter_res');^
 
 [verse]
-^dnstable_res
+^struct dnstable_iter *
 dnstable_query_iter(struct dnstable_query *'q',
     const struct mtbl_source *'source');^
 
