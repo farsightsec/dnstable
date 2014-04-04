@@ -150,7 +150,7 @@ query_set_data_rdata_ip_range(struct dnstable_query *q, const char *data)
 	dnstable_res res = dnstable_res_failure;
 	char *s = my_strdup(data);
 	char *addr1, *addr2;
-	char *saveptr;
+	char *saveptr = NULL;
 
 	if ((addr1 = strtok_r(s, "-", &saveptr)) == NULL) goto out;
 	if ((addr2 = strtok_r(NULL, "-", &saveptr)) == NULL) goto out;
