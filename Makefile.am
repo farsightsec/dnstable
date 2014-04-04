@@ -13,7 +13,7 @@ AM_CFLAGS = \
 	$(libnmsg_CFLAGS) \
 	$(libwdns_CFLAGS)
 
-AM_LDFLAGS = -Wl,--as-needed
+AM_LDFLAGS =
 
 LIBDNSTABLE_CURRENT=0
 LIBDNSTABLE_REVISION=0
