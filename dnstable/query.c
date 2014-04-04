@@ -417,7 +417,9 @@ query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t t
 			ubuf_clip(it->key, 0);
 			ubuf_reserve(it->key, len_key + mtbl_varint_length(it->query->rrtype));
 			ubuf_add(it->key, type_byte);
-			wdns_reverse_name(key + 1, len_key - 1, ubuf_ptr(it->key));
+			if (wdns_reverse_name(key + 1, len_key - 1, ubuf_ptr(it->key))
+			    != wdns_res_success)
+				return (dnstable_res_failure);
 			ubuf_advance(it->key, len_key - 1);
 			if (it->query->do_rrtype)
 				add_rrtype_to_key(it->key, it->query->rrtype);
@@ -487,7 +489,8 @@ query_init_rrset_left_wildcard(struct query_iter *it)
 	/* key: rrset owner name (label-reversed),
 	 * less leading "\x01\x2a" and trailing "\x00" */
 	size_t len = it->query->name.len - 2;
-	wdns_reverse_name(it->query->name.data + 2, len, name);
+	if (wdns_reverse_name(it->query->name.data + 2, len, name) != wdns_res_success)
+		return (NULL);
 	ubuf_append(it->key, name, len - 1);
 
 	it->m_iter = mtbl_source_get_prefix(it->source, ubuf_data(it->key), ubuf_size(it->key));
@@ -533,7 +536,12 @@ query_init_rrset(struct query_iter *it)
 	ubuf_add(it->key, ENTRY_TYPE_RRSET);
 
 	/* key: rrset owner name (label-reversed) */
-	wdns_reverse_name(it->query->name.data, it->query->name.len, name);
+	if (wdns_reverse_name(it->query->name.data, it->query->name.len, name)
+	    != wdns_res_success)
+	{
+		ubuf_destroy(&it->key);
+		return (NULL);
+	}
 	ubuf_append(it->key, name, it->query->name.len);
 
 	if (it->query->do_rrtype) {
@@ -542,9 +550,14 @@ query_init_rrset(struct query_iter *it)
 
 		if (it->query->bailiwick.data != NULL) {
 			/* key: bailiwick name (label-reversed) */
-			wdns_reverse_name(it->query->bailiwick.data,
-					  it->query->bailiwick.len,
-					  name);
+			if (wdns_reverse_name(it->query->bailiwick.data,
+					      it->query->bailiwick.len,
+					      name)
+			    != wdns_res_success)
+			{
+				ubuf_destroy(&it->key);
+				return (NULL);
+			}
 			ubuf_append(it->key, name, it->query->bailiwick.len);
 		}
 	}
@@ -576,7 +589,8 @@ query_init_rdata_left_wildcard(struct query_iter *it)
 
 	/* key: rdata name (label-reversed), less leading "\x01\x2a" and trailing "\x00" */
 	size_t len = it->query->name.len - 2;
-	wdns_reverse_name(it->query->name.data + 2, len, name);
+	if (wdns_reverse_name(it->query->name.data + 2, len, name) != wdns_res_success)
+		return (NULL);
 	ubuf_append(it->key, name, len - 1);
 
 	it->m_iter2 = mtbl_source_get_prefix(it->source,
@@ -679,5 +693,7 @@ dnstable_query_iter(struct dnstable_query *q, const struct mtbl_source *source)
 	} else {
 		assert(0);
 	}
+	if (d_it == NULL)
+		query_iter_free(it);
 	return (d_it);
 }
