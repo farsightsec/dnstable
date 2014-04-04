@@ -1,0 +1,38 @@
+LIBDNSTABLE_0.5.2 {
+global:
+        dnstable_entry_decode;
+        dnstable_entry_destroy;
+        dnstable_entry_get_bailiwick;
+        dnstable_entry_get_count;
+        dnstable_entry_get_num_rdata;
+        dnstable_entry_get_rdata;
+        dnstable_entry_get_rdata_name;
+        dnstable_entry_get_rrname;
+        dnstable_entry_get_rrtype;
+        dnstable_entry_get_time_first;
+        dnstable_entry_get_time_last;
+        dnstable_entry_get_type;
+        dnstable_entry_to_json;
+        dnstable_entry_to_text;
+        dnstable_iter_destroy;
+        dnstable_iter_init;
+        dnstable_iter_next;
+        dnstable_merge_func;
+        dnstable_query_destroy;
+        dnstable_query_filter;
+        dnstable_query_get_error;
+        dnstable_query_init;
+        dnstable_query_iter;
+        dnstable_query_set_bailiwick;
+        dnstable_query_set_data;
+        dnstable_query_set_rrtype;
+        dnstable_reader_destroy;
+        dnstable_reader_init;
+        dnstable_reader_init_setfile;
+        dnstable_reader_iter;
+        dnstable_reader_iter_rdata;
+        dnstable_reader_iter_rrset;
+        dnstable_reader_query;
+local:
+        *;
+};

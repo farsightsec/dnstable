@@ -60,6 +60,8 @@ else
     DOC_MAN_MSG="no (asciidoc not available)"
 fi
 
+gl_LD_VERSION_SCRIPT
+
 AC_OUTPUT
 AC_MSG_RESULT([
     $PACKAGE $VERSION
