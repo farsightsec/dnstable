@@ -262,7 +262,8 @@ decode_rrset(struct dnstable_entry *e, const uint8_t *buf, size_t len_buf)
 	/* rrname */
 	if (wdns_len_uname(p, end, &len_name) != wdns_res_success)
 		return (dnstable_res_failure);
-	wdns_reverse_name(p, len_name, name);
+	if (wdns_reverse_name(p, len_name, name) != wdns_res_success)
+		return (dnstable_res_failure);
 	e->name.len = len_name;
 	e->name.data = my_malloc(e->name.len);
 	memcpy(e->name.data, name, len_name);
@@ -278,7 +279,8 @@ decode_rrset(struct dnstable_entry *e, const uint8_t *buf, size_t len_buf)
 	/* bailiwick */
 	if (wdns_len_uname(p, end, &len_name) != wdns_res_success)
 		return (dnstable_res_failure);
-	wdns_reverse_name(p, len_name, name);
+	if (wdns_reverse_name(p, len_name, name) != wdns_res_success)
+		return (dnstable_res_failure);
 	e->bailiwick.len = len_name;
 	e->bailiwick.data = my_malloc(e->bailiwick.len);
 	memcpy(e->bailiwick.data, name, len_name);
@@ -323,7 +325,8 @@ decode_rdata_name_rev(struct dnstable_entry *e, const uint8_t *buf, size_t len_b
 {
 	e->name.len = len_buf;
 	e->name.data = my_malloc(len_buf);
-	wdns_reverse_name(buf, len_buf, e->name.data);
+	if (wdns_reverse_name(buf, len_buf, e->name.data) != wdns_res_success)
+		return (dnstable_res_failure);
 	return (dnstable_res_success);
 }
 
@@ -360,7 +363,8 @@ decode_rdata(struct dnstable_entry *e, const uint8_t *buf, size_t len_buf)
 	/* rrname */
 	if (wdns_len_uname(p, end, &len_name) != wdns_res_success)
 		return (dnstable_res_failure);
-	wdns_reverse_name(p, len_name, name);
+	if (wdns_reverse_name(p, len_name, name) != wdns_res_success)
+		return (dnstable_res_failure);
 	e->name.len = len_name;
 	e->name.data = my_malloc(e->name.len);
 	memcpy(e->name.data, name, len_name);
