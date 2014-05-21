@@ -1,3 +1,17 @@
+dnstable (0.6.0)
+
+  * Check the return value of wdns_reverse_name(). This depends on wdns >=
+    0.6.0.
+
+  * Fix various bugs detected by static analysis.
+
+  * Drop "-Wl,--as-needed" from LDFLAGS.
+
+  * Begin versioning the library's symbols. (Based on ld-version-script.m4
+    from gnulib.)
+
+ -- Robert Edmonds <edmonds@fsi.io>  Wed, 21 May 2014 17:29:50 -0400
+
 dnstable (0.5.1)
 
   * dnstable_dump: delimit "-j -d" output entries with newlines (Issue #1).
