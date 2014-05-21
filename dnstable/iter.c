@@ -41,8 +41,7 @@ dnstable_iter_destroy(struct dnstable_iter **it)
 	if (*it) {
 		if ((*it)->iter_free != NULL)
 			(*it)->iter_free((*it)->clos);
-		free(*it);
-		*it = NULL;
+		my_free(*it);
 	}
 }
 

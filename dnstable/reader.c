@@ -59,8 +59,7 @@ dnstable_reader_destroy(struct dnstable_reader **r)
 {
 	if (*r) {
 		mtbl_fileset_destroy(&(*r)->fs);
-		free(*r);
-		*r = NULL;
+		my_free(*r);
 	}
 }
 
@@ -101,7 +100,7 @@ reader_iter_free(void *clos)
 {
 	struct reader_iter *it = (struct reader_iter *) clos;
 	mtbl_iter_destroy(&it->m_it);
-	free(it);
+	my_free(it);
 }
 
 static dnstable_res

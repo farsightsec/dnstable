@@ -107,7 +107,7 @@ main(int argc, char **argv)
 {
 	struct mtbl_reader *m_reader;
 	struct dnstable_reader *d_reader;
-	struct dnstable_iter *d_it;
+	struct dnstable_iter *d_it = NULL;
 
 	argv_process(args, argc, argv);
 
@@ -126,6 +126,7 @@ main(int argc, char **argv)
 	else if (g_rdata)
 		d_it = dnstable_reader_iter_rdata(d_reader);
 
+	assert(d_it != NULL);
 	do_dump(d_it);
 	dnstable_iter_destroy(&d_it);
 	dnstable_reader_destroy(&d_reader);

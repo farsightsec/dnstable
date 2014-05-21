@@ -13,7 +13,7 @@ AM_CFLAGS = \
 	$(libnmsg_CFLAGS) \
 	$(libwdns_CFLAGS)
 
-AM_LDFLAGS = -Wl,--as-needed
+AM_LDFLAGS =
 
 LIBDNSTABLE_CURRENT=0
 LIBDNSTABLE_REVISION=0
@@ -43,8 +43,15 @@ dnstable_libdnstable_la_LIBADD = \
 	$(libmtbl_LIBS) \
 	$(libwdns_LIBS)
 dnstable_libdnstable_la_LDFLAGS = $(AM_LDFLAGS) \
-	-version-info $(LIBDNSTABLE_CURRENT):$(LIBDNSTABLE_REVISION):$(LIBDNSTABLE_AGE) \
+	-version-info $(LIBDNSTABLE_CURRENT):$(LIBDNSTABLE_REVISION):$(LIBDNSTABLE_AGE)
+if HAVE_LD_VERSION_SCRIPT
+dnstable_libdnstable_la_LDFLAGS += \
+	-Wl,--version-script=$(top_srcdir)/dnstable/libdnstable.sym
+else
+dnstable_libdnstable_la_LDFLAGS += \
 	-export-symbols-regex "^(dnstable_[a-z].*)"
+endif
+EXTRA_DIST += dnstable/libdnstable.sym
 
 install-exec-hook: src/dnstable_merge
 	install -m 0755 ${top_srcdir}/src/dnstable_merge $(DESTDIR)$(bindir)/dnstable_merge

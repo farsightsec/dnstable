@@ -156,6 +156,7 @@ static void
 process_rrset(Nmsg__Sie__DnsDedupe *dns, ubuf *key, ubuf *val)
 {
 	uint8_t name[WDNS_MAXLEN_NAME];
+	wdns_res res;
 
 	/* clear key, val */
 	ubuf_clip(key, 0);
@@ -165,7 +166,8 @@ process_rrset(Nmsg__Sie__DnsDedupe *dns, ubuf *key, ubuf *val)
 	ubuf_add(key, ENTRY_TYPE_RRSET);
 
 	/* key: rrset owner name (label-reversed) */
-	wdns_reverse_name(dns->rrname.data, dns->rrname.len, name);
+	res = wdns_reverse_name(dns->rrname.data, dns->rrname.len, name);
+	assert(res == wdns_res_success);
 	ubuf_append(key, name, dns->rrname.len);
 
 	/* key: rrtype (varint encoded) */
@@ -173,7 +175,8 @@ process_rrset(Nmsg__Sie__DnsDedupe *dns, ubuf *key, ubuf *val)
 	ubuf_advance(key, mtbl_varint_encode32(ubuf_ptr(key), dns->rrtype));
 
 	/* key: bailiwick name (label-reversed) */
-	wdns_reverse_name(dns->bailiwick.data, dns->bailiwick.len, name);
+	res = wdns_reverse_name(dns->bailiwick.data, dns->bailiwick.len, name);
+	assert(res == wdns_res_success);
 	ubuf_append(key, name, dns->bailiwick.len);
 
 	/* key: rdata array (varint encoded rdata lengths) */
@@ -210,6 +213,7 @@ process_rdata(Nmsg__Sie__DnsDedupe *dns, size_t i, ubuf *key, ubuf *val)
 {
 	uint8_t name[WDNS_MAXLEN_NAME];
 	uint16_t rdlen;
+	wdns_res res;
 
 	/* clear key, val */
 	ubuf_clip(key, 0);
@@ -226,7 +230,8 @@ process_rdata(Nmsg__Sie__DnsDedupe *dns, size_t i, ubuf *key, ubuf *val)
 	ubuf_advance(key, mtbl_varint_encode32(ubuf_ptr(key), dns->rrtype));
 
 	/* key: rrname (label-reversed) */
-	wdns_reverse_name(dns->rrname.data, dns->rrname.len, name);
+	res = wdns_reverse_name(dns->rrname.data, dns->rrname.len, name);
+	assert(res == wdns_res_success);
 	ubuf_append(key, name, dns->rrname.len);
 
 	/* key: rdlen */
@@ -246,6 +251,7 @@ process_rdata_slice(Nmsg__Sie__DnsDedupe *dns, size_t i, ubuf *key, ubuf *val)
 {
 	uint8_t name[WDNS_MAXLEN_NAME];
 	size_t offset;
+	wdns_res res;
 
 	switch (dns->rrtype) {
 	case WDNS_TYPE_MX:
@@ -276,7 +282,8 @@ process_rdata_slice(Nmsg__Sie__DnsDedupe *dns, size_t i, ubuf *key, ubuf *val)
 	ubuf_advance(key, mtbl_varint_encode32(ubuf_ptr(key), dns->rrtype));
 
 	/* key: rrname (label-reversed) */
-	wdns_reverse_name(dns->rrname.data, dns->rrname.len, name);
+	res = wdns_reverse_name(dns->rrname.data, dns->rrname.len, name);
+	assert(res == wdns_res_success);
 	ubuf_append(key, name, dns->rrname.len);
 
 	/* key: rdata slice */
@@ -298,6 +305,7 @@ process_rdata_name_rev(Nmsg__Sie__DnsDedupe *dns, size_t i, ubuf *key, ubuf *val
 {
 	size_t offset;
 	uint8_t name[WDNS_MAXLEN_NAME];
+	wdns_res res;
 
 	switch (dns->rrtype) {
 	case WDNS_TYPE_NS:
@@ -327,7 +335,8 @@ process_rdata_name_rev(Nmsg__Sie__DnsDedupe *dns, size_t i, ubuf *key, ubuf *val
 	ubuf_add(key, ENTRY_TYPE_RDATA_NAME_REV);
 
 	/* key: rdata name (label-reversed) */
-	wdns_reverse_name(dns->rdata[i].data + offset, dns->rdata[i].len - offset, name);
+	res = wdns_reverse_name(dns->rdata[i].data + offset, dns->rdata[i].len - offset, name);
+	assert(res == wdns_res_success);
 	ubuf_append(key, name, dns->rdata[i].len - offset);
 
 	add_entry(dns, key, val);

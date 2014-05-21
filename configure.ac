@@ -1,5 +1,5 @@
 AC_PREREQ(2.60)
-AC_INIT([dnstable], [0.5.1])
+AC_INIT([dnstable], [0.6.0])
 AC_CONFIG_SRCDIR([dnstable/dnstable.h])
 AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE([foreign 1.11 -Wall -Wno-portability silent-rules subdir-objects color-tests])
@@ -36,7 +36,7 @@ fi
 PKG_CHECK_MODULES([libjansson], [jansson])
 PKG_CHECK_MODULES([libmtbl], [libmtbl])
 PKG_CHECK_MODULES([libnmsg], [libnmsg])
-PKG_CHECK_MODULES([libwdns], [libwdns >= 0.4])
+PKG_CHECK_MODULES([libwdns], [libwdns >= 0.6.0])
 
 AC_CHECK_HEADERS([google/protobuf-c/protobuf-c.h],
                  [],
@@ -59,6 +59,8 @@ if test -n "$ASCIIDOC"; then
 else
     DOC_MAN_MSG="no (asciidoc not available)"
 fi
+
+gl_LD_VERSION_SCRIPT
 
 AC_OUTPUT
 AC_MSG_RESULT([

@@ -41,16 +41,15 @@ struct query_iter {
 static void
 query_set_err(struct dnstable_query *q, const char *err)
 {
-	free(q->err);
-	q->err = strdup(err);
+	my_free(q->err);
+	q->err = my_strdup(err);
 }
 
 static dnstable_res
 query_load_name(struct dnstable_query *q, wdns_name_t *name, const char *s_name)
 {
-	free(name->data);
+	my_free(name->data);
 	name->len = 0;
-	name->data = NULL;
 	if (s_name == NULL)
 		return (dnstable_res_success);
 	if (wdns_str_to_name(s_name, name) != wdns_res_success) {
@@ -65,7 +64,7 @@ static dnstable_res
 query_load_address(struct dnstable_query *q, const char *data, uint8_t **addr, size_t *len_addr)
 {
 	uint8_t buf[16];
-	free(*addr);
+	my_free(*addr);
 	if (inet_pton(AF_INET, data, buf)) {
 		*len_addr = 4;
 		*addr = my_malloc(4);
@@ -97,20 +96,19 @@ void
 dnstable_query_destroy(struct dnstable_query **q)
 {
 	if (*q) {
-		free((*q)->rdata);
-		free((*q)->rdata2);
-		free((*q)->name.data);
-		free((*q)->bailiwick.data);
-		free((*q)->err);
-		free(*q);
-		*q = NULL;
+		my_free((*q)->rdata);
+		my_free((*q)->rdata2);
+		my_free((*q)->name.data);
+		my_free((*q)->bailiwick.data);
+		my_free((*q)->err);
+		my_free(*q);
 	}
 }
 
 const char *
 dnstable_query_get_error(struct dnstable_query *q) {
 	if (q->err == NULL)
-		q->err = strdup("unknown error");
+		q->err = my_strdup("unknown error");
 	assert(q->err != NULL);
 	return (q->err);
 }
@@ -140,8 +138,7 @@ query_set_data_rdata_name(struct dnstable_query *q, const char *s_name)
 static dnstable_res
 query_set_data_rdata_raw(struct dnstable_query *q, const char *data)
 {
-	free(q->rdata);
-	q->rdata = NULL;
+	my_free(q->rdata);
 	if (data == NULL)
 		return (dnstable_res_success);
 	return hex_decode(data, &q->rdata, &q->len_rdata);
@@ -151,9 +148,9 @@ static dnstable_res
 query_set_data_rdata_ip_range(struct dnstable_query *q, const char *data)
 {
 	dnstable_res res = dnstable_res_failure;
-	char *s = strdup(data);
+	char *s = my_strdup(data);
 	char *addr1, *addr2;
-	char *saveptr;
+	char *saveptr = NULL;
 
 	if ((addr1 = strtok_r(s, "-", &saveptr)) == NULL) goto out;
 	if ((addr2 = strtok_r(NULL, "-", &saveptr)) == NULL) goto out;
@@ -175,7 +172,7 @@ query_set_data_rdata_ip_range(struct dnstable_query *q, const char *data)
 	}
 	res = dnstable_res_success;
 out:
-	free(s);
+	my_free(s);
 	return (res);
 }
 
@@ -190,7 +187,7 @@ query_set_data_rdata_ip_prefix(struct dnstable_query *q, const char *data)
 	char *saveptr, *endptr;
 	long plen;
 
-	s = strdup(data);
+	s = my_strdup(data);
 	assert(s != NULL);
 	if ((address = strtok_r(s, "/", &saveptr)) == NULL) goto out;
 	if ((prefix_length = strtok_r(NULL, "/", &saveptr)) == NULL) goto out;
@@ -215,8 +212,8 @@ query_set_data_rdata_ip_prefix(struct dnstable_query *q, const char *data)
 
 		q->len_rdata = len_ip;
 		q->len_rdata2 = len_ip;
-		free(q->rdata);
-		free(q->rdata2);
+		my_free(q->rdata);
+		my_free(q->rdata2);
 		q->rdata = my_malloc(len_ip);
 		q->rdata2 = my_malloc(len_ip);
 		ip4_lower(ip, plen, q->rdata);
@@ -229,8 +226,8 @@ query_set_data_rdata_ip_prefix(struct dnstable_query *q, const char *data)
 
 		q->len_rdata = len_ip;
 		q->len_rdata2 = len_ip;
-		free(q->rdata);
-		free(q->rdata2);
+		my_free(q->rdata);
+		my_free(q->rdata2);
 		q->rdata = my_malloc(len_ip);
 		q->rdata2 = my_malloc(len_ip);
 		ip6_lower(ip, plen, q->rdata);
@@ -242,16 +239,15 @@ query_set_data_rdata_ip_prefix(struct dnstable_query *q, const char *data)
 out:
 	if (res != dnstable_res_success)
 		query_set_err(q, "unable to parse IP prefix");
-	free(ip);
-	free(s);
+	my_free(ip);
+	my_free(s);
 	return (res);
 }
 
 static dnstable_res
 query_set_data_rdata_ip_address(struct dnstable_query *q, const char *data)
 {
-	free(q->rdata2);
-	q->rdata2 = NULL;
+	my_free(q->rdata2);
 	if (!query_load_address(q, data, &q->rdata, &q->len_rdata))
 		return (dnstable_res_failure);
 	q->do_rrtype = true;
@@ -266,10 +262,8 @@ static dnstable_res
 query_set_data_rdata_ip(struct dnstable_query *q, const char *data)
 {
 	if (data == NULL) {
-		free(q->rdata);
-		free(q->rdata2);
-		q->rdata = NULL;
-		q->rdata2 = NULL;
+		my_free(q->rdata);
+		my_free(q->rdata2);
 		return (dnstable_res_success);
 	}
 
@@ -366,7 +360,7 @@ query_iter_free(void *clos)
 	mtbl_iter_destroy(&it->m_iter2);
 	ubuf_destroy(&it->key);
 	ubuf_destroy(&it->key2);
-	free(it);
+	my_free(it);
 }
 
 static void
@@ -423,7 +417,9 @@ query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t t
 			ubuf_clip(it->key, 0);
 			ubuf_reserve(it->key, len_key + mtbl_varint_length(it->query->rrtype));
 			ubuf_add(it->key, type_byte);
-			wdns_reverse_name(key + 1, len_key - 1, ubuf_ptr(it->key));
+			if (wdns_reverse_name(key + 1, len_key - 1, ubuf_ptr(it->key))
+			    != wdns_res_success)
+				return (dnstable_res_failure);
 			ubuf_advance(it->key, len_key - 1);
 			if (it->query->do_rrtype)
 				add_rrtype_to_key(it->key, it->query->rrtype);
@@ -493,7 +489,8 @@ query_init_rrset_left_wildcard(struct query_iter *it)
 	/* key: rrset owner name (label-reversed),
 	 * less leading "\x01\x2a" and trailing "\x00" */
 	size_t len = it->query->name.len - 2;
-	wdns_reverse_name(it->query->name.data + 2, len, name);
+	if (wdns_reverse_name(it->query->name.data + 2, len, name) != wdns_res_success)
+		return (NULL);
 	ubuf_append(it->key, name, len - 1);
 
 	it->m_iter = mtbl_source_get_prefix(it->source, ubuf_data(it->key), ubuf_size(it->key));
@@ -539,7 +536,12 @@ query_init_rrset(struct query_iter *it)
 	ubuf_add(it->key, ENTRY_TYPE_RRSET);
 
 	/* key: rrset owner name (label-reversed) */
-	wdns_reverse_name(it->query->name.data, it->query->name.len, name);
+	if (wdns_reverse_name(it->query->name.data, it->query->name.len, name)
+	    != wdns_res_success)
+	{
+		ubuf_destroy(&it->key);
+		return (NULL);
+	}
 	ubuf_append(it->key, name, it->query->name.len);
 
 	if (it->query->do_rrtype) {
@@ -548,9 +550,14 @@ query_init_rrset(struct query_iter *it)
 
 		if (it->query->bailiwick.data != NULL) {
 			/* key: bailiwick name (label-reversed) */
-			wdns_reverse_name(it->query->bailiwick.data,
-					  it->query->bailiwick.len,
-					  name);
+			if (wdns_reverse_name(it->query->bailiwick.data,
+					      it->query->bailiwick.len,
+					      name)
+			    != wdns_res_success)
+			{
+				ubuf_destroy(&it->key);
+				return (NULL);
+			}
 			ubuf_append(it->key, name, it->query->bailiwick.len);
 		}
 	}
@@ -582,7 +589,8 @@ query_init_rdata_left_wildcard(struct query_iter *it)
 
 	/* key: rdata name (label-reversed), less leading "\x01\x2a" and trailing "\x00" */
 	size_t len = it->query->name.len - 2;
-	wdns_reverse_name(it->query->name.data + 2, len, name);
+	if (wdns_reverse_name(it->query->name.data + 2, len, name) != wdns_res_success)
+		return (NULL);
 	ubuf_append(it->key, name, len - 1);
 
 	it->m_iter2 = mtbl_source_get_prefix(it->source,
@@ -685,5 +693,7 @@ dnstable_query_iter(struct dnstable_query *q, const struct mtbl_source *source)
 	} else {
 		assert(0);
 	}
+	if (d_it == NULL)
+		query_iter_free(it);
 	return (d_it);
 }
