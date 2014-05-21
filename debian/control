@@ -11,7 +11,7 @@ Build-Depends:
  libmtbl-dev,
  libnmsg-dev, libpcap0.8-dev,
  nmsg-msg-module-sie-dev, libprotobuf-c0-dev,
- libwdns-dev (>= 0.4),
+ libwdns-dev (>= 0.6.0),
  asciidoc, xmlto
 Standards-Version: 3.9.5
 
