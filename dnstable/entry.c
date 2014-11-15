@@ -86,11 +86,17 @@ dnstable_entry_to_text(struct dnstable_entry *e)
 		fmt_uint64(u, e->count);
 
 		/* first seen */
-		ubuf_add_cstr(u, "\n;; first seen: ");
+		if (e->iszone)
+			ubuf_add_cstr(u, "\n;; first seen in zone file: ");
+		else
+			ubuf_add_cstr(u, "\n;; first seen: ");
 		fmt_time(u, e->time_first);
 
 		/* last seen */
-		ubuf_add_cstr(u, "\n;;  last seen: ");
+		if (e->iszone)
+			ubuf_add_cstr(u, "\n;;  last seen in zone file: ");
+		else
+			ubuf_add_cstr(u, "\n;;  last seen: ");
 		fmt_time(u, e->time_last);
 		ubuf_add(u, '\n');
 
