@@ -174,13 +174,19 @@ dnstable_entry_to_json(struct dnstable_entry *e)
 		/* first seen */
 		json_t *j_time_first = json_integer((json_int_t) e->time_first);
 		assert(j_time_first != NULL);
-		rc = json_object_set_new(j, "time_first", j_time_first);
+		if (e->iszone)
+			rc = json_object_set_new(j, "zone_time_first", j_time_first);
+		else
+			rc = json_object_set_new(j, "time_first", j_time_first);
 		assert(rc == 0);
 
 		/* last seen */
 		json_t *j_time_last = json_integer((json_int_t) e->time_last);
 		assert(j_time_last != NULL);
-		rc = json_object_set_new(j, "time_last", j_time_last);
+		if (e->iszone)
+			rc = json_object_set_new(j, "zone_time_last", j_time_last);
+		else
+			rc = json_object_set_new(j, "time_last", j_time_last);
 		assert(rc == 0);
 
 		/* rrname */
