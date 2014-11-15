@@ -24,6 +24,7 @@ struct dnstable_entry {
 	uint32_t		rrtype;
 	rdata_vec		*rdatas;
 	uint64_t		time_first, time_last, count;
+	bool			iszone;
 };
 
 static void
@@ -446,6 +447,12 @@ dnstable_entry_type
 dnstable_entry_get_type(struct dnstable_entry *e)
 {
 	return (e->e_type);
+}
+
+void
+dnstable_entry_set_iszone(struct dnstable_entry *e, bool iszone)
+{
+	e->iszone = iszone;
 }
 
 dnstable_res
