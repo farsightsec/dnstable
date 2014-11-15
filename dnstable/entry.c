@@ -157,14 +157,9 @@ dnstable_entry_to_json(struct dnstable_entry *e)
 	j = json_object();
 	assert(j != NULL);
 
-	if (e->e_type == DNSTABLE_ENTRY_TYPE_RRSET) {
-		/* bailiwick */
-		wdns_domain_to_str(e->bailiwick.data, e->bailiwick.len, name);
-		json_t *j_bailiwick = json_string(name);
-		assert(j_bailiwick != NULL);
-		rc = json_object_set_new(j, "bailiwick", j_bailiwick);
-		assert(rc == 0);
-
+	if (e->e_type == DNSTABLE_ENTRY_TYPE_RRSET ||
+	    e->e_type == DNSTABLE_ENTRY_TYPE_RDATA)
+	{
 		/* count */
 		json_t *j_count = json_integer((json_int_t) e->count);
 		assert(j_count != NULL);
@@ -197,9 +192,28 @@ dnstable_entry_to_json(struct dnstable_entry *e)
 		assert(rc == 0);
 
 		/* rrtype */
-		json_t *j_rrtype = json_integer((json_int_t) e->rrtype);
-		assert(j_rrtype != NULL);
-		rc = json_object_set_new(j, "rrtype", j_rrtype);
+		const char *s_rrtype = wdns_rrtype_to_str(e->rrtype);
+		if (s_rrtype) {
+			json_t *j_rrtype = json_string(s_rrtype);
+			assert(j_rrtype != NULL);
+			rc = json_object_set_new(j, "rrtype", j_rrtype);
+			assert(rc == 0);
+		} else {
+			char buf[sizeof("TYPE65535")];
+			snprintf(buf, sizeof(buf), "TYPE%hu", e->rrtype);
+			json_t *j_rrtype = json_string(buf);
+			assert(j_rrtype != NULL);
+			rc = json_object_set_new(j, "rrtype", j_rrtype);
+			assert(rc == 0);
+		}
+	}
+
+	if (e->e_type == DNSTABLE_ENTRY_TYPE_RRSET) {
+		/* bailiwick */
+		wdns_domain_to_str(e->bailiwick.data, e->bailiwick.len, name);
+		json_t *j_bailiwick = json_string(name);
+		assert(j_bailiwick != NULL);
+		rc = json_object_set_new(j, "bailiwick", j_bailiwick);
 		assert(rc == 0);
 
 		/* resource records */
@@ -220,19 +234,6 @@ dnstable_entry_to_json(struct dnstable_entry *e)
 	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_RDATA) {
 		if (rdata_vec_size(e->rdatas) != 1)
 			goto out;
-
-		/* rrname */
-		wdns_domain_to_str(e->name.data, e->name.len, name);
-		json_t *j_rrname = json_string(name);
-		assert(j_rrname != NULL);
-		rc = json_object_set_new(j, "rrname", j_rrname);
-		assert(rc == 0);
-
-		/* rrtype */
-		json_t *j_rrtype = json_integer((json_int_t) e->rrtype);
-		assert(j_rrtype != NULL);
-		rc = json_object_set_new(j, "rrtype", j_rrtype);
-		assert(rc == 0);
 
 		/* rdata */
 		wdns_rdata_t *rdata = rdata_vec_value(e->rdatas, 0);
