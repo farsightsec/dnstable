@@ -40,6 +40,4 @@ local:
 LIBDNSTABLE_0.7.0 {
 global:
         dnstable_entry_set_iszone;
-local:
-        *;
-};
+} LIBDNSTABLE_0.6.0;
