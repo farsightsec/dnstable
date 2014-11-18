@@ -200,7 +200,7 @@ dnstable_entry_to_json(struct dnstable_entry *e)
 			assert(rc == 0);
 		} else {
 			char buf[sizeof("TYPE65535")];
-			snprintf(buf, sizeof(buf), "TYPE%hu", e->rrtype);
+			snprintf(buf, sizeof(buf), "TYPE%hu", (uint16_t) e->rrtype);
 			json_t *j_rrtype = json_string(buf);
 			assert(j_rrtype != NULL);
 			rc = json_object_set_new(j, "rrtype", j_rrtype);
