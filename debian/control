@@ -10,7 +10,8 @@ Build-Depends:
  libjansson-dev,
  libmtbl-dev,
  libnmsg-dev (>= 0.9.0),
- nmsg-msg-module-sie-dev, libprotobuf-c0-dev,
+ nmsg-msg-module-sie-dev,
+ libprotobuf-c-dev,
  libwdns-dev (>= 0.6.0),
  asciidoc, xmlto
 Standards-Version: 3.9.6
