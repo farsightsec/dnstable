@@ -1,5 +1,6 @@
 libdnstable.so.0 libdnstable0 #MINVER#
  LIBDNSTABLE_0.6.0@LIBDNSTABLE_0.6.0 0.6.0
+ LIBDNSTABLE_0.7.0@LIBDNSTABLE_0.7.0 0.7.0
  dnstable_entry_decode@LIBDNSTABLE_0.6.0 0.6.0
  dnstable_entry_destroy@LIBDNSTABLE_0.6.0 0.6.0
  dnstable_entry_get_bailiwick@LIBDNSTABLE_0.6.0 0.6.0
@@ -12,8 +13,9 @@ libdnstable.so.0 libdnstable0 #MINVER#
  dnstable_entry_get_time_first@LIBDNSTABLE_0.6.0 0.6.0
  dnstable_entry_get_time_last@LIBDNSTABLE_0.6.0 0.6.0
  dnstable_entry_get_type@LIBDNSTABLE_0.6.0 0.6.0
- dnstable_entry_to_json@LIBDNSTABLE_0.6.0 0.6.0
- dnstable_entry_to_text@LIBDNSTABLE_0.6.0 0.6.0
+ dnstable_entry_set_iszone@LIBDNSTABLE_0.7.0 0.7.0
+ dnstable_entry_to_json@LIBDNSTABLE_0.6.0 0.7.0
+ dnstable_entry_to_text@LIBDNSTABLE_0.6.0 0.7.0
  dnstable_iter_destroy@LIBDNSTABLE_0.6.0 0.6.0
  dnstable_iter_init@LIBDNSTABLE_0.6.0 0.6.0
  dnstable_iter_next@LIBDNSTABLE_0.6.0 0.6.0
