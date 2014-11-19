@@ -1,3 +1,15 @@
+dnstable (0.7.0)
+
+  * New function dnstable_entry_set_iszone(), which controls how the timestamp
+    fields are named in the formatted output produced by
+    dnstable_entry_to_text() and dnstable_entry_to_json().
+
+  * dnstable_entry_to_json() now produces output compatible with the format
+    used by the DNSDB API service. This also alters the JSON output produced
+    by the dnstable_dump debugging utility.
+
+ -- Robert Edmonds <edmonds@fsi.io>  Wed, 19 Nov 2014 13:54:41 -0500
+
 dnstable (0.6.0)
 
   * Check the return value of wdns_reverse_name(). This depends on wdns >=

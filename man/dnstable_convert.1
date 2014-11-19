@@ -1,0 +1,39 @@
+'\" t
+.\"     Title: dnstable_convert
+.\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
+.\" Generator: DocBook XSL Stylesheets v1.78.1 <http://docbook.sf.net/>
+.\"      Date: 11/19/2014
+.\"    Manual: \ \&
+.\"    Source: \ \&
+.\"  Language: English
+.\"
+.TH "DNSTABLE_CONVERT" "1" "11/19/2014" "\ \&" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+dnstable_convert \- convert passive DNS NMSG data to dnstable MTBL format
+.SH "SYNOPSIS"
+.sp
+\fBdnstable_convert\fR \fINMSG\-FILE\fR \fIDB\-FILE\fR \fIDB\-DNSSEC\-FILE\fR
+.SH "DESCRIPTION"
+.sp
+Converts passive DNS data from NMSG format to MTBL format\&. The input NMSG data in \fINMSG\-FILE\fR must be encoded using the SIE/dnsdedupe message schema, and the output data will be written to two separate MTBL files: the \fIDB\-FILE\fR containing "plain" DNS records, and the \fIDB\-DNSSEC\-FILE\fR, containing DNSSEC\-related records\&. (Specifically, all resource records of type DS, RRSIG, NSEC, DNSKEY, NSEC3, NSEC3PARAM, and DLV are stored in the \fIDB\-DNSSEC\-FILE\fR, and resource records of all other types are stored in the \fIDB\-FILE\fR\&.)
+.sp
+The output files produced by \fBdnstable_convert\fR are suitable for use with other dnstable tools like \fBdnstable_dump\fR(1) and \fBdnstable_merge\fR(1), or with the \fBdnstable_reader\fR(3) API\&. Since they are in MTBL format, they can also be read with the \fBmtbl_reader\fR(3) API\&.

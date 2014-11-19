@@ -154,6 +154,9 @@ dnstable_entry_to_json(struct dnstable_entry *);
 dnstable_entry_type
 dnstable_entry_get_type(struct dnstable_entry *);
 
+void
+dnstable_entry_set_iszone(struct dnstable_entry *, bool);
+
 /*
  * valid for:
  *	entry_type_rrset
