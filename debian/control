@@ -10,7 +10,7 @@ Build-Depends:
  libjansson-dev,
  libmtbl-dev,
  libnmsg-dev (>= 0.9.0),
- nmsg-msg-module-sie-dev,
+ nmsg-msg-module-sie-dev (>= 0.17.0-2),
  libprotobuf-c-dev,
  libwdns-dev (>= 0.6.0),
  asciidoc, xmlto
@@ -89,7 +89,7 @@ Section: utils
 Architecture: any
 Depends: ${misc:Depends}, ${shlibs:Depends},
  mtbl-bin,
- nmsg-msg8-module-sie
+ nmsg-msg-module-sie
 Description: passive DNS encoding format library (utilities)
  dnstable implements an encoding format for passive DNS data. It consists of a
  C library, libdnstable, and several command line utilities for creating,
