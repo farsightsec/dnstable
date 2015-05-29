@@ -41,6 +41,25 @@ fmt_uint64(ubuf *u, uint64_t v)
 	ubuf_add_cstr(u, s);
 }
 
+static size_t
+fmt_uint64_str(char *s, uint64_t u)
+{
+	size_t len = 1;
+	uint64_t q = u;
+
+	while (q > 9) {
+		len++;
+		q /= 10;
+	}
+	s += len;
+	do {
+		*--s = '0' + (u % 10);
+		u /= 10;
+	} while (u);
+
+	return (len);
+}
+
 static void
 fmt_time(ubuf *u, uint64_t v)
 {
@@ -188,7 +207,7 @@ dnstable_entry_to_json(struct dnstable_entry *e)
 		/* count */
 		add_yajl_string(g, "count");
 
-		len = snprintf(intstr, sizeof(intstr), "%" PRIu64, e->count);
+		len = fmt_uint64_str(intstr, e->count);
 		assert(len > 0);
 		status = yajl_gen_number(g, intstr, len);
 		assert(status == yajl_gen_status_ok);
@@ -199,7 +218,7 @@ dnstable_entry_to_json(struct dnstable_entry *e)
 		else
 			add_yajl_string(g, "time_first");
 
-		len = snprintf(intstr, sizeof(intstr), "%" PRIu64, e->time_first);
+		len = fmt_uint64_str(intstr, e->time_first);
 		assert(len > 0);
 		status = yajl_gen_number(g, intstr, len);
 		assert(status == yajl_gen_status_ok);
@@ -210,7 +229,7 @@ dnstable_entry_to_json(struct dnstable_entry *e)
 		else
 			add_yajl_string(g, "time_last");
 
-		len = snprintf(intstr, sizeof(intstr), "%" PRIu64, e->time_last);
+		len = fmt_uint64_str(intstr, e->time_last);
 		assert(len > 0);
 		status = yajl_gen_number(g, intstr, len);
 		assert(status == yajl_gen_status_ok);
