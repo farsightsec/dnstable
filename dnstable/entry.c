@@ -163,47 +163,47 @@ dnstable_entry_to_json(struct dnstable_entry *e)
 		/* count */
 		json_t *j_count = json_integer((json_int_t) e->count);
 		assert(j_count != NULL);
-		rc = json_object_set_new(j, "count", j_count);
+		rc = json_object_set_new_nocheck(j, "count", j_count);
 		assert(rc == 0);
 
 		/* first seen */
 		json_t *j_time_first = json_integer((json_int_t) e->time_first);
 		assert(j_time_first != NULL);
 		if (e->iszone)
-			rc = json_object_set_new(j, "zone_time_first", j_time_first);
+			rc = json_object_set_new_nocheck(j, "zone_time_first", j_time_first);
 		else
-			rc = json_object_set_new(j, "time_first", j_time_first);
+			rc = json_object_set_new_nocheck(j, "time_first", j_time_first);
 		assert(rc == 0);
 
 		/* last seen */
 		json_t *j_time_last = json_integer((json_int_t) e->time_last);
 		assert(j_time_last != NULL);
 		if (e->iszone)
-			rc = json_object_set_new(j, "zone_time_last", j_time_last);
+			rc = json_object_set_new_nocheck(j, "zone_time_last", j_time_last);
 		else
-			rc = json_object_set_new(j, "time_last", j_time_last);
+			rc = json_object_set_new_nocheck(j, "time_last", j_time_last);
 		assert(rc == 0);
 
 		/* rrname */
 		wdns_domain_to_str(e->name.data, e->name.len, name);
-		json_t *j_rrname = json_string(name);
+		json_t *j_rrname = json_string_nocheck(name);
 		assert(j_rrname != NULL);
-		rc = json_object_set_new(j, "rrname", j_rrname);
+		rc = json_object_set_new_nocheck(j, "rrname", j_rrname);
 		assert(rc == 0);
 
 		/* rrtype */
 		const char *s_rrtype = wdns_rrtype_to_str(e->rrtype);
 		if (s_rrtype) {
-			json_t *j_rrtype = json_string(s_rrtype);
+			json_t *j_rrtype = json_string_nocheck(s_rrtype);
 			assert(j_rrtype != NULL);
-			rc = json_object_set_new(j, "rrtype", j_rrtype);
+			rc = json_object_set_new_nocheck(j, "rrtype", j_rrtype);
 			assert(rc == 0);
 		} else {
 			char buf[sizeof("TYPE65535")];
 			snprintf(buf, sizeof(buf), "TYPE%hu", (uint16_t) e->rrtype);
-			json_t *j_rrtype = json_string(buf);
+			json_t *j_rrtype = json_string_nocheck(buf);
 			assert(j_rrtype != NULL);
-			rc = json_object_set_new(j, "rrtype", j_rrtype);
+			rc = json_object_set_new_nocheck(j, "rrtype", j_rrtype);
 			assert(rc == 0);
 		}
 	}
@@ -211,9 +211,9 @@ dnstable_entry_to_json(struct dnstable_entry *e)
 	if (e->e_type == DNSTABLE_ENTRY_TYPE_RRSET) {
 		/* bailiwick */
 		wdns_domain_to_str(e->bailiwick.data, e->bailiwick.len, name);
-		json_t *j_bailiwick = json_string(name);
+		json_t *j_bailiwick = json_string_nocheck(name);
 		assert(j_bailiwick != NULL);
-		rc = json_object_set_new(j, "bailiwick", j_bailiwick);
+		rc = json_object_set_new_nocheck(j, "bailiwick", j_bailiwick);
 		assert(rc == 0);
 
 		/* resource records */
@@ -223,13 +223,13 @@ dnstable_entry_to_json(struct dnstable_entry *e)
 			wdns_rdata_t *rdata = rdata_vec_value(e->rdatas, i);
 			char *data = wdns_rdata_to_str(rdata->data, rdata->len,
 						       e->rrtype, WDNS_CLASS_IN);
-			json_t *j_rdata = json_string(data);
+			json_t *j_rdata = json_string_nocheck(data);
 			assert(j_rdata != NULL);
 			rc = json_array_append_new(j_rdatas, j_rdata);
 			assert(rc == 0);
 			my_free(data);
 		}
-		rc = json_object_set_new(j, "rdata", j_rdatas);
+		rc = json_object_set_new_nocheck(j, "rdata", j_rdatas);
 		assert(rc == 0);
 	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_RDATA) {
 		if (rdata_vec_size(e->rdatas) != 1)
@@ -239,9 +239,9 @@ dnstable_entry_to_json(struct dnstable_entry *e)
 		wdns_rdata_t *rdata = rdata_vec_value(e->rdatas, 0);
 		char *data = wdns_rdata_to_str(rdata->data, rdata->len,
 					       e->rrtype, WDNS_CLASS_IN);
-		json_t *j_rdata = json_string(data);
+		json_t *j_rdata = json_string_nocheck(data);
 		assert(j_rdata != NULL);
-		rc = json_object_set_new(j, "rdata", j_rdata);
+		rc = json_object_set_new_nocheck(j, "rdata", j_rdata);
 		assert(rc == 0);
 		my_free(data);
 	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD ||
