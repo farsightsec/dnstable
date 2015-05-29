@@ -8,10 +8,10 @@ AM_CPPFLAGS = \
 
 AM_CFLAGS = \
 	${my_CFLAGS} \
-	$(libjansson_CFLAGS) \
 	$(libmtbl_CFLAGS) \
 	$(libnmsg_CFLAGS) \
-	$(libwdns_CFLAGS)
+	$(libwdns_CFLAGS) \
+	$(libyajl_CFLAGS)
 
 AM_LDFLAGS =
 
@@ -39,9 +39,9 @@ dnstable_libdnstable_la_SOURCES = \
 	libmy/ubuf.h
 
 dnstable_libdnstable_la_LIBADD = \
-	$(libjansson_LIBS) \
 	$(libmtbl_LIBS) \
-	$(libwdns_LIBS)
+	$(libwdns_LIBS) \
+	$(libyajl_LIBS)
 dnstable_libdnstable_la_LDFLAGS = $(AM_LDFLAGS) \
 	-version-info $(LIBDNSTABLE_CURRENT):$(LIBDNSTABLE_REVISION):$(LIBDNSTABLE_AGE)
 if HAVE_LD_VERSION_SCRIPT

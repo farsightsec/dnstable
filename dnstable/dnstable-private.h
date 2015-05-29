@@ -43,9 +43,9 @@
 #include <time.h>
 #include <unistd.h>
 
-#include <jansson.h>
 #include <mtbl.h>
 #include <wdns.h>
+#include <yajl_gen.h>
 
 #include "dnstable.h"
 

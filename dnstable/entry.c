@@ -18,6 +18,12 @@
 
 VECTOR_GENERATE(rdata_vec, wdns_rdata_t *);
 
+#define add_yajl_string(g, s) do {                                              \
+	yajl_gen_status g_status;                                               \
+	g_status = yajl_gen_string(g, (const unsigned  char *) s, strlen(s));   \
+	assert(g_status == yajl_gen_status_ok);                                 \
+} while (0)
+
 struct dnstable_entry {
 	dnstable_entry_type	e_type;
 	wdns_name_t		name, bailiwick;
@@ -146,103 +152,125 @@ out:
 	return ((char *) (s));
 }
 
+static void
+callback_print_yajl_ubuf(void *ctx, const char *str, size_t len)
+{
+	ubuf *u = (ubuf *) ctx;
+	ubuf_append(u, (const uint8_t *) str, len);
+}
+
 char *
 dnstable_entry_to_json(struct dnstable_entry *e)
 {
 	int rc;
-	json_t *j;
-	char *s = NULL;
+	uint8_t *s = NULL;
 	char name[WDNS_PRESLEN_NAME];
+	char intstr[sizeof("18446744073709551615")];
+	size_t len;
+	ubuf *u;
+	yajl_gen g;
+	yajl_gen_status status;
 
-	j = json_object();
-	assert(j != NULL);
+	u = ubuf_init(256);
+
+	g = yajl_gen_alloc(NULL);
+	assert(g != NULL);
+
+	rc = yajl_gen_config(g, yajl_gen_print_callback, callback_print_yajl_ubuf, (void *) u);
+	assert(rc != 0);
+
+	status = yajl_gen_map_open(g);
+	assert(status == yajl_gen_status_ok);
 
 	if (e->e_type == DNSTABLE_ENTRY_TYPE_RRSET ||
 	    e->e_type == DNSTABLE_ENTRY_TYPE_RDATA)
 	{
 		/* count */
-		json_t *j_count = json_integer((json_int_t) e->count);
-		assert(j_count != NULL);
-		rc = json_object_set_new_nocheck(j, "count", j_count);
-		assert(rc == 0);
+		add_yajl_string(g, "count");
+
+		len = snprintf(intstr, sizeof(intstr), "%" PRIu64, e->count);
+		assert(len > 0);
+		status = yajl_gen_number(g, intstr, len);
+		assert(status == yajl_gen_status_ok);
 
 		/* first seen */
-		json_t *j_time_first = json_integer((json_int_t) e->time_first);
-		assert(j_time_first != NULL);
 		if (e->iszone)
-			rc = json_object_set_new_nocheck(j, "zone_time_first", j_time_first);
+			add_yajl_string(g, "zone_time_first");
 		else
-			rc = json_object_set_new_nocheck(j, "time_first", j_time_first);
-		assert(rc == 0);
+			add_yajl_string(g, "time_first");
+
+		len = snprintf(intstr, sizeof(intstr), "%" PRIu64, e->time_first);
+		assert(len > 0);
+		status = yajl_gen_number(g, intstr, len);
+		assert(status == yajl_gen_status_ok);
 
 		/* last seen */
-		json_t *j_time_last = json_integer((json_int_t) e->time_last);
-		assert(j_time_last != NULL);
 		if (e->iszone)
-			rc = json_object_set_new_nocheck(j, "zone_time_last", j_time_last);
+			add_yajl_string(g, "zone_time_last");
 		else
-			rc = json_object_set_new_nocheck(j, "time_last", j_time_last);
-		assert(rc == 0);
+			add_yajl_string(g, "time_last");
+
+		len = snprintf(intstr, sizeof(intstr), "%" PRIu64, e->time_last);
+		assert(len > 0);
+		status = yajl_gen_number(g, intstr, len);
+		assert(status == yajl_gen_status_ok);
 
 		/* rrname */
+		add_yajl_string(g, "rrname");
+
 		wdns_domain_to_str(e->name.data, e->name.len, name);
-		json_t *j_rrname = json_string_nocheck(name);
-		assert(j_rrname != NULL);
-		rc = json_object_set_new_nocheck(j, "rrname", j_rrname);
-		assert(rc == 0);
+		add_yajl_string(g, name);
 
 		/* rrtype */
+		add_yajl_string(g, "rrtype");
+
 		const char *s_rrtype = wdns_rrtype_to_str(e->rrtype);
 		if (s_rrtype) {
-			json_t *j_rrtype = json_string_nocheck(s_rrtype);
-			assert(j_rrtype != NULL);
-			rc = json_object_set_new_nocheck(j, "rrtype", j_rrtype);
-			assert(rc == 0);
+			add_yajl_string(g, s_rrtype);
 		} else {
 			char buf[sizeof("TYPE65535")];
-			snprintf(buf, sizeof(buf), "TYPE%hu", (uint16_t) e->rrtype);
-			json_t *j_rrtype = json_string_nocheck(buf);
-			assert(j_rrtype != NULL);
-			rc = json_object_set_new_nocheck(j, "rrtype", j_rrtype);
-			assert(rc == 0);
+			len = snprintf(buf, sizeof(buf), "TYPE%hu", (uint16_t) e->rrtype);
+			assert(len > 0);
+			status = yajl_gen_string(g, (uint8_t *) buf, len);
+			assert(status == yajl_gen_status_ok);
 		}
 	}
 
 	if (e->e_type == DNSTABLE_ENTRY_TYPE_RRSET) {
 		/* bailiwick */
+		add_yajl_string(g, "bailiwick");
+
 		wdns_domain_to_str(e->bailiwick.data, e->bailiwick.len, name);
-		json_t *j_bailiwick = json_string_nocheck(name);
-		assert(j_bailiwick != NULL);
-		rc = json_object_set_new_nocheck(j, "bailiwick", j_bailiwick);
-		assert(rc == 0);
+		add_yajl_string(g, name);
 
 		/* resource records */
-		json_t *j_rdatas = json_array();
-		assert(j_rdatas != NULL);
-		for (size_t i = 0; i < rdata_vec_size(e->rdatas); i++) {
+		add_yajl_string(g, "rdata");
+
+		status = yajl_gen_array_open(g);
+		assert(status == yajl_gen_status_ok);
+
+		const size_t n_rdatas = rdata_vec_size(e->rdatas);
+		for (size_t i = 0; i < n_rdatas; i++) {
 			wdns_rdata_t *rdata = rdata_vec_value(e->rdatas, i);
 			char *data = wdns_rdata_to_str(rdata->data, rdata->len,
 						       e->rrtype, WDNS_CLASS_IN);
-			json_t *j_rdata = json_string_nocheck(data);
-			assert(j_rdata != NULL);
-			rc = json_array_append_new(j_rdatas, j_rdata);
-			assert(rc == 0);
+			add_yajl_string(g, data);
 			my_free(data);
 		}
-		rc = json_object_set_new_nocheck(j, "rdata", j_rdatas);
-		assert(rc == 0);
+
+		status = yajl_gen_array_close(g);
+		assert(status == yajl_gen_status_ok);
 	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_RDATA) {
 		if (rdata_vec_size(e->rdatas) != 1)
 			goto out;
 
 		/* rdata */
+		add_yajl_string(g, "rdata");
+
 		wdns_rdata_t *rdata = rdata_vec_value(e->rdatas, 0);
 		char *data = wdns_rdata_to_str(rdata->data, rdata->len,
 					       e->rrtype, WDNS_CLASS_IN);
-		json_t *j_rdata = json_string_nocheck(data);
-		assert(j_rdata != NULL);
-		rc = json_object_set_new_nocheck(j, "rdata", j_rdata);
-		assert(rc == 0);
+		add_yajl_string(g, data);
 		my_free(data);
 	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD ||
 		   e->e_type == DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV)
@@ -250,10 +278,15 @@ dnstable_entry_to_json(struct dnstable_entry *e)
 		goto out;
 	}
 
-	s = json_dumps(j, 0);
+	status = yajl_gen_map_close(g);
+	assert(status == yajl_gen_status_ok);
+
+	ubuf_cterm(u);
+	ubuf_detach(u, &s, &len);
 out:
-	json_decref(j);
-	return (s);
+	ubuf_destroy(&u);
+	yajl_gen_free(g);
+	return ((char *) s);
 }
 
 static dnstable_res
