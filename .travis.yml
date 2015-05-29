@@ -10,7 +10,7 @@ before_install:
     - sudo apt-get -qq update
 
 install:
-    - sudo apt-get install -q libyajl-dev libmtbl-dev libnmsg-dev nmsg-msg-module-sie-dev libprotobuf-c0-dev libwdns-dev
+    - sudo apt-get install -q libyajl-dev libmtbl-dev libnmsg-dev nmsg-msg-module-sie-dev libprotobuf-c-dev libwdns-dev
 
 script:
     - ./autogen.sh
