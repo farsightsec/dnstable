@@ -36,7 +36,7 @@ fi
 PKG_CHECK_MODULES([libmtbl], [libmtbl >= 0.8.0])
 PKG_CHECK_MODULES([libnmsg], [libnmsg])
 PKG_CHECK_MODULES([libwdns], [libwdns >= 0.6.0])
-PKG_CHECK_MODULES([libyajl], [yajl])
+PKG_CHECK_MODULES([libyajl], [yajl >= 2])
 
 AC_CHECK_HEADERS([google/protobuf-c/protobuf-c.h],
                  [],
