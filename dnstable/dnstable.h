@@ -133,7 +133,13 @@ struct dnstable_iter *
 dnstable_reader_iter_rrset(struct dnstable_reader *);
 
 struct dnstable_iter *
+dnstable_reader_iter_rrset_names(struct dnstable_reader *);
+
+struct dnstable_iter *
 dnstable_reader_iter_rdata(struct dnstable_reader *);
+
+struct dnstable_iter *
+dnstable_reader_iter_rdata_names(struct dnstable_reader *);
 
 struct dnstable_iter *
 dnstable_reader_query(struct dnstable_reader *, struct dnstable_query *);

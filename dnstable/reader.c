@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012 by Farsight Security, Inc.
+ * Copyright (c) 2012, 2014-2015 by Farsight Security, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,9 @@ struct dnstable_reader {
 	const struct mtbl_source	*source;
 	struct mtbl_fileset		*fs;
 };
+
+static struct dnstable_iter *
+reader_iter_prefix(struct dnstable_reader *, uint8_t);
 
 static void
 reader_iter_free(void *);
@@ -81,25 +84,40 @@ dnstable_reader_iter(struct dnstable_reader *r)
 struct dnstable_iter *
 dnstable_reader_iter_rrset(struct dnstable_reader *r)
 {
-	uint8_t prefix[] = { ENTRY_TYPE_RRSET };
-	struct reader_iter *it = my_calloc(1, sizeof(*it));
-	it->m_it = mtbl_source_get_prefix(r->source, prefix, 1);
-	return (dnstable_iter_init(reader_iter_next, reader_iter_free, it));
+	return (reader_iter_prefix(r, ENTRY_TYPE_RRSET));
+}
+
+struct dnstable_iter *
+dnstable_reader_iter_rrset_names(struct dnstable_reader *r)
+{
+	return (reader_iter_prefix(r, ENTRY_TYPE_RRSET_NAME_FWD));
 }
 
 struct dnstable_iter *
 dnstable_reader_iter_rdata(struct dnstable_reader *r)
 {
-	uint8_t prefix[] = { ENTRY_TYPE_RDATA };
-	struct reader_iter *it = my_calloc(1, sizeof(*it));
-	it->m_it = mtbl_source_get_prefix(r->source, prefix, 1);
-	return (dnstable_iter_init(reader_iter_next, reader_iter_free, it));
+	return (reader_iter_prefix(r, ENTRY_TYPE_RDATA));
+}
+
+struct dnstable_iter *
+dnstable_reader_iter_rdata_names(struct dnstable_reader *r)
+{
+	return (reader_iter_prefix(r, ENTRY_TYPE_RDATA_NAME_REV));
 }
 
 struct dnstable_iter *
 dnstable_reader_query(struct dnstable_reader *r, struct dnstable_query *q)
 {
 	return (dnstable_query_iter(q, r->source));
+}
+
+static struct dnstable_iter *
+reader_iter_prefix(struct dnstable_reader *r, uint8_t prefix_byte)
+{
+	uint8_t prefix[] = { prefix_byte };
+	struct reader_iter *it = my_calloc(1, sizeof(*it));
+	it->m_it = mtbl_source_get_prefix(r->source, prefix, 1);
+	return (dnstable_iter_init(reader_iter_next, reader_iter_free, it));
 }
 
 static void

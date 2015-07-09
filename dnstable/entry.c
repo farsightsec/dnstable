@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012 by Farsight Security, Inc.
+ * Copyright (c) 2012, 2014-2015 by Farsight Security, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -312,10 +312,14 @@ dnstable_entry_to_json(struct dnstable_entry *e)
 					       e->rrtype, WDNS_CLASS_IN);
 		add_yajl_string(g, data);
 		my_free(data);
-	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD ||
-		   e->e_type == DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV)
-	{
-		goto out;
+	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD) {
+		add_yajl_string(g, "rrset_name");
+		wdns_domain_to_str(e->name.data, e->name.len, name);
+		add_yajl_string(g, name);
+	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV) {
+		add_yajl_string(g, "rdata_name");
+		wdns_domain_to_str(e->name.data, e->name.len, name);
+		add_yajl_string(g, name);
 	}
 
 	status = yajl_gen_map_close(g);

@@ -44,5 +44,7 @@ global:
 
 LIBDNSTABLE_0.8.0 {
 global:
+        dnstable_reader_iter_rdata_names;
+        dnstable_reader_iter_rrset_names;
         dnstable_reader_reload_setfile;
 } LIBDNSTABLE_0.7.0;
