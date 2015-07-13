@@ -197,11 +197,13 @@ dnstable_entry_to_json(struct dnstable_entry *e)
 {
 	uint8_t *s = NULL;
 	char name[WDNS_PRESLEN_NAME];
-	char intstr[sizeof("18446744073709551615")];
 	size_t len;
 	ubuf *u;
 	yajl_gen g;
 	yajl_gen_status status;
+
+	/* Big enough to hold a decimal-formatted UINT64_MAX. */
+	char intstr[sizeof("18446744073709551615")];
 
 	u = ubuf_init(256);
 
