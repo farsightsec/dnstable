@@ -172,7 +172,15 @@ out:
 }
 
 static void
-callback_print_yajl_ubuf(void *ctx, const char *str, size_t len)
+callback_print_yajl_ubuf(void *ctx,
+			 const char *str,
+#ifdef HAVE_YAJL_1
+			 unsigned int
+#else
+			 size_t
+#endif
+				len
+			 )
 {
 	ubuf *u = (ubuf *) ctx;
 	ubuf_append(u, (const uint8_t *) str, len);
@@ -181,7 +189,6 @@ callback_print_yajl_ubuf(void *ctx, const char *str, size_t len)
 char *
 dnstable_entry_to_json(struct dnstable_entry *e)
 {
-	int rc;
 	uint8_t *s = NULL;
 	char name[WDNS_PRESLEN_NAME];
 	char intstr[sizeof("18446744073709551615")];
@@ -192,11 +199,17 @@ dnstable_entry_to_json(struct dnstable_entry *e)
 
 	u = ubuf_init(256);
 
+
+#ifdef HAVE_YAJL_1
+	g = yajl_gen_alloc2(callback_print_yajl_ubuf, NULL, NULL, (void *) u);
+	assert(g != NULL);
+#else
 	g = yajl_gen_alloc(NULL);
 	assert(g != NULL);
 
-	rc = yajl_gen_config(g, yajl_gen_print_callback, callback_print_yajl_ubuf, (void *) u);
+	int rc = yajl_gen_config(g, yajl_gen_print_callback, callback_print_yajl_ubuf, (void *) u);
 	assert(rc != 0);
+#endif
 
 	status = yajl_gen_map_open(g);
 	assert(status == yajl_gen_status_ok);
