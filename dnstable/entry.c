@@ -41,6 +41,12 @@ fmt_uint64(ubuf *u, uint64_t v)
 	ubuf_add_cstr(u, s);
 }
 
+
+/**
+ * fmt_uint64_str() requires that the caller allocate enough space in 's' for
+ * the decimal-formatted string representation of the uint64_t in 'u'.
+ * This is up to 20 bytes, to represent UINT64_MAX.
+ */
 static size_t
 fmt_uint64_str(char *s, uint64_t u)
 {
