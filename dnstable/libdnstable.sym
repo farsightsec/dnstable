@@ -41,3 +41,8 @@ LIBDNSTABLE_0.7.0 {
 global:
         dnstable_entry_set_iszone;
 } LIBDNSTABLE_0.6.0;
+
+LIBDNSTABLE_0.8.0 {
+global:
+        dnstable_reader_reload_setfile;
+} LIBDNSTABLE_0.7.0;

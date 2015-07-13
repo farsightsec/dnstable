@@ -55,6 +55,13 @@ dnstable_reader_init_setfile(const char *setfile)
 }
 
 void
+dnstable_reader_reload_setfile(struct dnstable_reader *r)
+{
+	if (r->fs != NULL)
+		mtbl_fileset_reload_now(r->fs);
+}
+
+void
 dnstable_reader_destroy(struct dnstable_reader **r)
 {
 	if (*r) {
