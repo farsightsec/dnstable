@@ -18,6 +18,10 @@ dnstable_reader_init_setfile(const char *'setfile');^
 
 [verse]
 ^void
+dnstable_reader_reload_setfile(struct dnstable_reader *'r');^
+
+[verse]
+^void
 dnstable_reader_destroy(struct dnstable_reader **'r');^
 
 [verse]
@@ -46,6 +50,10 @@ interface.
 ^dnstable_reader_init^(), which takes an ^mtbl_source^ object, or by calling
 ^dnstable_reader_init_setfile^(), which takes the path to a "setfile", which is
 a text file containing a list of dnstable data file paths, one per line.
+
+^dnstable_reader_reload_setfile^() will force a reload of a ^dnstable_reader^
+object initialized by ^dnstable_reader_init_setfile^() by re-reading the
+underlying setfile.
 
 ^dnstable_reader_iter^() iterates over every entry object in the data source.
 
