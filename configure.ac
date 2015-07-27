@@ -34,7 +34,7 @@ else
 fi
 
 PKG_CHECK_MODULES([libjansson], [jansson])
-PKG_CHECK_MODULES([libmtbl], [libmtbl])
+PKG_CHECK_MODULES([libmtbl], [libmtbl >= 0.8.0])
 PKG_CHECK_MODULES([libnmsg], [libnmsg])
 PKG_CHECK_MODULES([libwdns], [libwdns >= 0.6.0])
 
