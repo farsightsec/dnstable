@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014 by Farsight Security, Inc.
+ * Copyright (c) 2012, 2014-2015 by Farsight Security, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,6 +33,8 @@
 static bool g_json;
 static bool g_rrset;
 static bool g_rdata;
+static bool g_rrset_names;
+static bool g_rdata_names;
 static char *g_fname;
 
 static argv_t args[] = {
@@ -56,6 +58,22 @@ static argv_t args[] = {
 		NULL,
 		"output rdata records" },
 
+	{ ARGV_ONE_OF },
+
+	{ '\0', "rrset_names",
+		ARGV_BOOL,
+		&g_rrset_names,
+		NULL,
+		"output rrset names" },
+
+	{ ARGV_ONE_OF },
+
+	{ '\0', "rdata_names",
+		ARGV_BOOL,
+		&g_rdata_names,
+		NULL,
+		"output rdata names" },
+
 	{ ARGV_MAND, NULL,
 		ARGV_CHAR_P,
 		&g_fname,
@@ -68,9 +86,11 @@ static argv_t args[] = {
 static void
 print_entry(struct dnstable_entry *ent)
 {
-	if (dnstable_entry_get_type(ent) == DNSTABLE_ENTRY_TYPE_RRSET ||
-	    dnstable_entry_get_type(ent) == DNSTABLE_ENTRY_TYPE_RDATA)
-	{
+	switch (dnstable_entry_get_type(ent)) {
+	case DNSTABLE_ENTRY_TYPE_RRSET:
+	case DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD:
+	case DNSTABLE_ENTRY_TYPE_RDATA:
+	case DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV: {
 		char *s;
 		if (g_json)
 			s = dnstable_entry_to_json(ent);
@@ -85,6 +105,7 @@ print_entry(struct dnstable_entry *ent)
 			}
 			free(s);
 		}
+	}
 	}
 }
 
@@ -121,10 +142,15 @@ main(int argc, char **argv)
 
 	d_reader = dnstable_reader_init(mtbl_reader_source(m_reader));
 
-	if (g_rrset)
+	if (g_rrset) {
 		d_it = dnstable_reader_iter_rrset(d_reader);
-	else if (g_rdata)
+	} else if (g_rdata) {
 		d_it = dnstable_reader_iter_rdata(d_reader);
+	} else if (g_rrset_names) {
+		d_it = dnstable_reader_iter_rrset_names(d_reader);
+	} else if (g_rdata_names) {
+		d_it = dnstable_reader_iter_rdata_names(d_reader);
+	}
 
 	assert(d_it != NULL);
 	do_dump(d_it);
