@@ -1,3 +1,17 @@
+dnstable (0.8.0-1) wheezy-farsightsec; urgency=medium
+
+  * New upstream release.
+  * [406918a6] debian/gbp.conf: Add [dch], set debian-branch = upstream-branch
+    = next
+  * [ce738d12] debian/control: Add versioned build-dependency on libmtbl-dev
+    (>= 0.8.0)
+  * [b7f0fa29] debian/control: Replace build-dependency libjansson-dev with
+    libyajl-dev
+  * [d7c056db] debian/libdnstable0.symbols: Update symbols for 0.8.0
+  * [d1d6b246] debian/copyright: 2015
+
+ -- Robert Edmonds <edmonds@debian.org>  Mon, 31 Aug 2015 19:17:41 -0400
+
 dnstable (0.7.0-1) wheezy-farsightsec; urgency=medium
 
   * New upstream release.
