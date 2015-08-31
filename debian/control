@@ -8,7 +8,7 @@ Build-Depends:
  dh-autoreconf (>= 5~),
  dpkg-dev (>= 1.16.0~),
  libjansson-dev,
- libmtbl-dev,
+ libmtbl-dev (>= 0.8.0),
  libnmsg-dev (>= 0.9.0),
  libprotobuf-c-dev,
  libwdns-dev (>= 0.6.0),
