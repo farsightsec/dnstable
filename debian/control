@@ -3,18 +3,63 @@ Section: libs
 Priority: optional
 Maintainer: Robert Edmonds <edmonds@debian.org>
 Build-Depends:
- dpkg-dev (>= 1.16.0~),
+ asciidoc,
  debhelper (>= 9~),
  dh-autoreconf (>= 5~),
- pkg-config,
+ dpkg-dev (>= 1.16.0~),
  libjansson-dev,
  libmtbl-dev,
  libnmsg-dev (>= 0.9.0),
- nmsg-msg-module-sie-dev (>= 0.17.0-2),
  libprotobuf-c-dev,
  libwdns-dev (>= 0.6.0),
- asciidoc, xmlto
+ nmsg-msg-module-sie-dev (>= 0.17.0-2),
+ pkg-config,
+ xmlto,
 Standards-Version: 3.9.6
+
+Package: dnstable-bin
+Section: utils
+Architecture: any
+Depends: mtbl-bin, nmsg-msg-module-sie, ${misc:Depends}, ${shlibs:Depends}
+Description: passive DNS encoding format library (utilities)
+ dnstable implements an encoding format for passive DNS data. It consists of a
+ C library, libdnstable, and several command line utilities for creating,
+ querying, and merging dnstable data files.
+ .
+ It stores key-value records in Sorted String Table (SSTable) files and
+ provides high-level interfaces for querying or iterating over the stored
+ records.  dnstable encodes individual records using a format tailored for
+ efficiently storing passive DNS data and can quickly perform both "forward"
+ and "inverse" searches.
+ .
+ dnstable relies on libmtbl for the actual storage of passive DNS records.
+ libmtbl provides fast lookups of partial keys, so the precise encoding of
+ dnstable records is optimized to take advantage of this property.
+ .
+ This package contains command line utilities for libdnstable.
+
+Package: libdnstable-dev
+Section: libdevel
+Architecture: any
+Depends: libdnstable0 (= ${binary:Version}), libmtbl-dev, ${misc:Depends}
+Multi-Arch: same
+Description: passive DNS encoding format library (development files)
+ dnstable implements an encoding format for passive DNS data. It consists of a
+ C library, libdnstable, and several command line utilities for creating,
+ querying, and merging dnstable data files.
+ .
+ It stores key-value records in Sorted String Table (SSTable) files and
+ provides high-level interfaces for querying or iterating over the stored
+ records.  dnstable encodes individual records using a format tailored for
+ efficiently storing passive DNS data and can quickly perform both "forward"
+ and "inverse" searches.
+ .
+ dnstable relies on libmtbl for the actual storage of passive DNS records.
+ libmtbl provides fast lookups of partial keys, so the precise encoding of
+ dnstable records is optimized to take advantage of this property.
+ .
+ This package contains the static library, header file, and documentation
+ for libdnstable.
 
 Package: libdnstable0
 Architecture: any
@@ -60,49 +105,3 @@ Description: passive DNS encoding format library (debug symbols)
  dnstable records is optimized to take advantage of this property.
  .
  This package contains detached debugging symbols for libdnstable.
-
-Package: libdnstable-dev
-Section: libdevel
-Architecture: any
-Depends: ${misc:Depends}, libdnstable0 (= ${binary:Version}), libmtbl-dev
-Multi-Arch: same
-Description: passive DNS encoding format library (development files)
- dnstable implements an encoding format for passive DNS data. It consists of a
- C library, libdnstable, and several command line utilities for creating,
- querying, and merging dnstable data files.
- .
- It stores key-value records in Sorted String Table (SSTable) files and
- provides high-level interfaces for querying or iterating over the stored
- records.  dnstable encodes individual records using a format tailored for
- efficiently storing passive DNS data and can quickly perform both "forward"
- and "inverse" searches.
- .
- dnstable relies on libmtbl for the actual storage of passive DNS records.
- libmtbl provides fast lookups of partial keys, so the precise encoding of
- dnstable records is optimized to take advantage of this property.
- .
- This package contains the static library, header file, and documentation
- for libdnstable.
-
-Package: dnstable-bin
-Section: utils
-Architecture: any
-Depends: ${misc:Depends}, ${shlibs:Depends},
- mtbl-bin,
- nmsg-msg-module-sie
-Description: passive DNS encoding format library (utilities)
- dnstable implements an encoding format for passive DNS data. It consists of a
- C library, libdnstable, and several command line utilities for creating,
- querying, and merging dnstable data files.
- .
- It stores key-value records in Sorted String Table (SSTable) files and
- provides high-level interfaces for querying or iterating over the stored
- records.  dnstable encodes individual records using a format tailored for
- efficiently storing passive DNS data and can quickly perform both "forward"
- and "inverse" searches.
- .
- dnstable relies on libmtbl for the actual storage of passive DNS records.
- libmtbl provides fast lookups of partial keys, so the precise encoding of
- dnstable records is optimized to take advantage of this property.
- .
- This package contains command line utilities for libdnstable.
