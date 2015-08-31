@@ -1,3 +1,17 @@
+dnstable (0.8.0)
+
+  * Replace Jansson with YAJL for JSON rendering, which results in a
+    substantial performance improvement.
+
+  * dnstable_dump: Add "--rrset_names" and "--rdata_names" options which dump
+    the RRSET_NAME_FWD and RDATA_NAME_REV indices.
+
+  * New function dnstable_reader_reload_setfile(), which calls
+    mtbl_fileset_reload_now() on a dnstable_reader object's underlying
+    mtbl_fileset object, if present. This requires libmtbl >= 0.8.0.
+
+ -- Robert Edmonds <edmonds@fsi.io>  Mon, 31 Aug 2015 19:00:15 -0400
+
 dnstable (0.7.0)
 
   * New function dnstable_entry_set_iszone(), which controls how the timestamp
