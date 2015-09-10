@@ -29,6 +29,7 @@
 #include <mtbl.h>
 #include <nmsg.h>
 #include <nmsg/isc/defs.h>
+#include <nmsg/sie/defs.h>
 #include <nmsg/sie/dnsdedupe.pb-c.h>
 #include <wdns.h>
 
@@ -360,6 +361,11 @@ do_read(void)
 		if (res == nmsg_res_eof)
 			break;
 		assert(res == nmsg_res_success);
+
+		int32_t vid = nmsg_message_get_vid(msg);
+		int32_t msgtype = nmsg_message_get_msgtype(msg);
+		assert(vid == NMSG_VENDOR_SIE_ID);
+		assert(msgtype == NMSG_VENDOR_SIE_DNSDEDUPE_ID);
 
 		dns = (Nmsg__Sie__DnsDedupe *) nmsg_message_get_payload(msg);
 		assert(dns != NULL);
