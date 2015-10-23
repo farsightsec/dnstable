@@ -23,12 +23,13 @@
 
 struct dnstable_query {
 	dnstable_query_type	q_type;
-	bool			do_rrtype;
+	bool			do_rrtype, do_timeout;
 	char			*err;
 	wdns_name_t		name, bailiwick;
 	uint32_t		rrtype;
 	size_t			len_rdata, len_rdata2;
 	uint8_t			*rdata, *rdata2;
+	struct timespec		timeout;
 };
 
 struct query_iter {
@@ -320,6 +321,20 @@ dnstable_query_set_rrtype(struct dnstable_query *q, const char *s_rrtype)
 }
 
 dnstable_res
+dnstable_query_set_timeout(struct dnstable_query *q, struct timespec *s_ts)
+{
+	if (s_ts == NULL) {
+		q->do_timeout = false;
+		return (dnstable_res_success);
+	}
+
+	q->do_timeout = true;
+	q->timeout = *s_ts;
+
+	return (dnstable_res_success);
+}
+
+dnstable_res
 dnstable_query_filter(struct dnstable_query *q, struct dnstable_entry *e, bool *pass)
 {
 	dnstable_res res;
@@ -375,12 +390,24 @@ static dnstable_res
 query_iter_next(void *clos, struct dnstable_entry **ent)
 {
 	struct query_iter *it = (struct query_iter *) clos;
+	struct timespec expiry, now;
+
+	my_gettime(CLOCK_MONOTONIC_RAW, &expiry);
+	if (it->query->do_timeout) {
+		my_timespec_add(&(it->query->timeout), &expiry);
+	}
 
 	for (;;) {
 		bool pass = false;
 		dnstable_res res;
 		const uint8_t *key, *val;
 		size_t len_key, len_val;
+
+		if (it->query->do_timeout) {
+			my_gettime(CLOCK_MONOTONIC_RAW, &now);
+			if (my_timespec_cmp(&now, &expiry) >= 0)
+				return (dnstable_res_timeout);
+		}
 
 		if (mtbl_iter_next(it->m_iter, &key, &len_key, &val, &len_val) != mtbl_res_success)
 			return (dnstable_res_failure);
@@ -405,8 +432,20 @@ query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t t
 	size_t len_key, len_val;
 	bool pass = false;
 	dnstable_res res;
+	struct timespec expiry, now;
+
+	my_gettime(CLOCK_MONOTONIC_RAW, &expiry);
+	if (it->query->do_timeout) {
+		my_timespec_add(&(it->query->timeout), &expiry);
+	}
 
 	for (;;) {
+		if (it->query->do_timeout) {
+			my_gettime(CLOCK_MONOTONIC_RAW, &now);
+			if (my_timespec_cmp(&now, &expiry) >= 0)
+				return (dnstable_res_timeout);
+		}
+
 		if (it->m_iter == NULL) {
 			if (mtbl_iter_next(it->m_iter2,
 					   &key, &len_key,

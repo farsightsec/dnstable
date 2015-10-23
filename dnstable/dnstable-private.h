@@ -40,7 +40,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <unistd.h>
 
 #include <mtbl.h>
@@ -55,6 +54,7 @@
 #include "dnstable.h"
 
 #include "libmy/my_alloc.h"
+#include "libmy/my_time.h"
 #include "libmy/ubuf.h"
 
 #define ENTRY_TYPE_RRSET			'\x00'
