@@ -24,12 +24,16 @@
 struct dnstable_query {
 	dnstable_query_type	q_type;
 	bool			do_rrtype, do_timeout;
+	bool			do_time_first_before, do_time_first_after;
+	bool			do_time_last_before, do_time_last_after;
 	char			*err;
 	wdns_name_t		name, bailiwick;
 	uint32_t		rrtype;
 	size_t			len_rdata, len_rdata2;
 	uint8_t			*rdata, *rdata2;
 	struct timespec		timeout;
+	uint64_t		time_first_before, time_first_after;
+	uint64_t		time_last_before, time_last_after;
 };
 
 struct query_iter {
@@ -334,6 +338,47 @@ dnstable_query_set_timeout(struct dnstable_query *q, const struct timespec *time
 	return (dnstable_res_success);
 }
 
+#define set_filter_parameter(q, parameter, clos) \
+{ \
+	if (clos) { \
+		(q)->do_##parameter = true; \
+		(q)->parameter = *(clos); \
+	} else { \
+		(q)->do_##parameter = false; \
+	} \
+}
+
+dnstable_res
+dnstable_query_set_filter_parameter(struct dnstable_query *q,
+				    dnstable_filter_parameter_type parameter,
+				    void * clos)
+{
+	switch(parameter) {
+		case DNSTABLE_FILTER_PARAMETER_TIME_FIRST_BEFORE:
+			set_filter_parameter(q,
+					     time_first_before,
+					     (uint64_t*)clos);
+			return (dnstable_res_success);
+		case DNSTABLE_FILTER_PARAMETER_TIME_FIRST_AFTER:
+			set_filter_parameter(q,
+					     time_first_after,
+					     (uint64_t*)clos);
+			return (dnstable_res_success);
+		case DNSTABLE_FILTER_PARAMETER_TIME_LAST_BEFORE:
+			set_filter_parameter(q,
+					     time_last_before,
+					     (uint64_t*)clos);
+			return (dnstable_res_success);
+		case DNSTABLE_FILTER_PARAMETER_TIME_LAST_AFTER:
+			set_filter_parameter(q,
+					     time_last_after,
+					     (uint64_t*)clos);
+			return (dnstable_res_success);
+		default:
+			return (dnstable_res_failure);
+	}
+}
+
 dnstable_res
 dnstable_query_filter(struct dnstable_query *q, struct dnstable_entry *e, bool *pass)
 {
@@ -345,6 +390,30 @@ dnstable_query_filter(struct dnstable_query *q, struct dnstable_entry *e, bool *
 		if (res != dnstable_res_success)
 			return (res);
 		if (rrtype != q->rrtype)
+			goto fail;
+	}
+
+	if (q->do_time_first_before || q->do_time_first_after) {
+		uint64_t time_first;
+		res = dnstable_entry_get_time_first(e, &time_first);
+		if (res != dnstable_res_success)
+			return (res);
+
+		if (q->do_time_first_before && q->time_first_before < time_first)
+			goto fail;
+		if (q->do_time_first_after && q->time_first_after > time_first)
+			goto fail;
+	}
+
+	if (q->do_time_last_before || q->do_time_last_after) {
+		uint64_t time_last;
+		res = dnstable_entry_get_time_last(e, &time_last);
+		if (res != dnstable_res_success)
+			return (res);
+
+		if (q->do_time_last_before && q->time_last_before < time_last)
+			goto fail;
+		if (q->do_time_last_after && q->time_last_after > time_last)
 			goto fail;
 	}
 

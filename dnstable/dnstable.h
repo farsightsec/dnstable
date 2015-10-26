@@ -47,6 +47,13 @@ typedef enum {
 } dnstable_entry_type;
 
 typedef enum {
+	DNSTABLE_FILTER_PARAMETER_TIME_FIRST_BEFORE = 1,
+	DNSTABLE_FILTER_PARAMETER_TIME_FIRST_AFTER = 2,
+	DNSTABLE_FILTER_PARAMETER_TIME_LAST_BEFORE = 3,
+	DNSTABLE_FILTER_PARAMETER_TIME_LAST_AFTER = 4,
+} dnstable_filter_parameter_type;
+
+typedef enum {
 	DNSTABLE_QUERY_TYPE_RRSET = 0,
 	DNSTABLE_QUERY_TYPE_RDATA_NAME = 1,
 	DNSTABLE_QUERY_TYPE_RDATA_IP = 2,
@@ -111,6 +118,11 @@ dnstable_query_set_bailiwick(struct dnstable_query *,
 dnstable_res
 dnstable_query_set_timeout(struct dnstable_query *,
 			   const struct timespec *);
+
+dnstable_res
+dnstable_query_set_filter_parameter(struct dnstable_query *,
+				    dnstable_filter_parameter_type,
+				    void * clos);
 
 dnstable_res
 dnstable_query_filter(struct dnstable_query *, struct dnstable_entry *, bool *);
