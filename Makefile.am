@@ -34,6 +34,7 @@ dnstable_libdnstable_la_SOURCES = \
 	libmy/ip_arith.h \
 	libmy/hex_decode.h \
 	libmy/my_alloc.h \
+	libmy/my_time.h \
 	libmy/print_string.h \
 	libmy/vector.h \
 	libmy/ubuf.h
