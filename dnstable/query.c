@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012 by Farsight Security, Inc.
+ * Copyright (c) 2012-2015 by Farsight Security, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -321,15 +321,15 @@ dnstable_query_set_rrtype(struct dnstable_query *q, const char *s_rrtype)
 }
 
 dnstable_res
-dnstable_query_set_timeout(struct dnstable_query *q, struct timespec *s_ts)
+dnstable_query_set_timeout(struct dnstable_query *q, const struct timespec *timeout)
 {
-	if (s_ts == NULL) {
+	if (timeout == NULL) {
 		q->do_timeout = false;
 		return (dnstable_res_success);
 	}
 
 	q->do_timeout = true;
-	q->timeout = *s_ts;
+	q->timeout = *timeout;
 
 	return (dnstable_res_success);
 }
@@ -390,11 +390,11 @@ static dnstable_res
 query_iter_next(void *clos, struct dnstable_entry **ent)
 {
 	struct query_iter *it = (struct query_iter *) clos;
-	struct timespec expiry = {0,0}, now;
+	struct timespec expiry = {0};
 
 	if (it->query->do_timeout) {
 		my_gettime(CLOCK_MONOTONIC_RAW, &expiry);
-		my_timespec_add(&(it->query->timeout), &expiry);
+		my_timespec_add(&it->query->timeout, &expiry);
 	}
 
 	for (;;) {
@@ -402,6 +402,7 @@ query_iter_next(void *clos, struct dnstable_entry **ent)
 		dnstable_res res;
 		const uint8_t *key, *val;
 		size_t len_key, len_val;
+		struct timespec now = {0};
 
 		if (it->query->do_timeout) {
 			my_gettime(CLOCK_MONOTONIC_RAW, &now);
@@ -432,7 +433,7 @@ query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t t
 	size_t len_key, len_val;
 	bool pass = false;
 	dnstable_res res;
-	struct timespec expiry = {0,0}, now;
+	struct timespec expiry = {0};
 
 	if (it->query->do_timeout) {
 		my_gettime(CLOCK_MONOTONIC_RAW, &expiry);
@@ -440,6 +441,8 @@ query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t t
 	}
 
 	for (;;) {
+		struct timespec now = {0};
+
 		if (it->query->do_timeout) {
 			my_gettime(CLOCK_MONOTONIC_RAW, &now);
 			if (my_timespec_cmp(&now, &expiry) >= 0)

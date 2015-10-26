@@ -110,7 +110,7 @@ dnstable_query_set_bailiwick(struct dnstable_query *,
 
 dnstable_res
 dnstable_query_set_timeout(struct dnstable_query *,
-                           struct timespec *);
+			   const struct timespec *);
 
 dnstable_res
 dnstable_query_filter(struct dnstable_query *, struct dnstable_entry *, bool *);
