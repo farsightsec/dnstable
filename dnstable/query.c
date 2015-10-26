@@ -390,10 +390,10 @@ static dnstable_res
 query_iter_next(void *clos, struct dnstable_entry **ent)
 {
 	struct query_iter *it = (struct query_iter *) clos;
-	struct timespec expiry, now;
+	struct timespec expiry = {0,0}, now;
 
-	my_gettime(CLOCK_MONOTONIC_RAW, &expiry);
 	if (it->query->do_timeout) {
+		my_gettime(CLOCK_MONOTONIC_RAW, &expiry);
 		my_timespec_add(&(it->query->timeout), &expiry);
 	}
 
@@ -432,10 +432,10 @@ query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t t
 	size_t len_key, len_val;
 	bool pass = false;
 	dnstable_res res;
-	struct timespec expiry, now;
+	struct timespec expiry = {0,0}, now;
 
-	my_gettime(CLOCK_MONOTONIC_RAW, &expiry);
 	if (it->query->do_timeout) {
+		my_gettime(CLOCK_MONOTONIC_RAW, &expiry);
 		my_timespec_add(&(it->query->timeout), &expiry);
 	}
 
