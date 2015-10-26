@@ -37,6 +37,9 @@ else
     AC_MSG_ERROR([pkg-config is required!])
 fi
 
+AC_SEARCH_LIBS([clock_gettime], [rt])
+AC_CHECK_FUNCS([clock_gettime])
+
 PKG_CHECK_MODULES([libmtbl], [libmtbl >= 0.8.0])
 PKG_CHECK_MODULES([libnmsg], [libnmsg])
 PKG_CHECK_MODULES([libwdns], [libwdns >= 0.6.0])
