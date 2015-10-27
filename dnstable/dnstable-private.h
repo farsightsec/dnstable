@@ -67,6 +67,16 @@
 #define DNS_MTBL_BLOCK_SIZE			8192
 #define DNSSEC_MTBL_BLOCK_SIZE			65536
 
+/* best clock for my_gettime() */
+
+#if defined(CLOCK_MONOTONIC_RAW)
+# define DNSTABLE__CLOCK_MONOTONIC CLOCK_MONOTONIC_RAW
+#elif defined(CLOCK_MONOTONIC)
+# define DNSTABLE__CLOCK_MONOTONIC CLOCK_MONOTONIC
+#else
+# error Neither CLOCK_MONOTONIC nor CLOCK_MONOTONIC_RAW are available.
+#endif
+
 /* triplet */
 
 size_t

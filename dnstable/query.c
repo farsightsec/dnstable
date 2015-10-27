@@ -393,7 +393,7 @@ query_iter_next(void *clos, struct dnstable_entry **ent)
 	struct timespec expiry = {0};
 
 	if (it->query->do_timeout) {
-		my_gettime(CLOCK_MONOTONIC_RAW, &expiry);
+		my_gettime(DNSTABLE__CLOCK_MONOTONIC, &expiry);
 		my_timespec_add(&it->query->timeout, &expiry);
 	}
 
@@ -405,7 +405,7 @@ query_iter_next(void *clos, struct dnstable_entry **ent)
 		struct timespec now = {0};
 
 		if (it->query->do_timeout) {
-			my_gettime(CLOCK_MONOTONIC_RAW, &now);
+			my_gettime(DNSTABLE__CLOCK_MONOTONIC, &now);
 			if (my_timespec_cmp(&now, &expiry) >= 0)
 				return (dnstable_res_timeout);
 		}
@@ -436,7 +436,7 @@ query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t t
 	struct timespec expiry = {0};
 
 	if (it->query->do_timeout) {
-		my_gettime(CLOCK_MONOTONIC_RAW, &expiry);
+		my_gettime(DNSTABLE__CLOCK_MONOTONIC, &expiry);
 		my_timespec_add(&(it->query->timeout), &expiry);
 	}
 
@@ -444,7 +444,7 @@ query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t t
 		struct timespec now = {0};
 
 		if (it->query->do_timeout) {
-			my_gettime(CLOCK_MONOTONIC_RAW, &now);
+			my_gettime(DNSTABLE__CLOCK_MONOTONIC, &now);
 			if (my_timespec_cmp(&now, &expiry) >= 0)
 				return (dnstable_res_timeout);
 		}
