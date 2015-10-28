@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014 by Farsight Security, Inc.
+ * Copyright (c) 2012-2015 by Farsight Security, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@
 #include <dnstable.h>
 #include <mtbl.h>
 #include <nmsg.h>
-#include <nmsg/isc/defs.h>
+#include <nmsg/base/defs.h>
 #include <nmsg/sie/defs.h>
 #include <nmsg/sie/dnsdedupe.pb-c.h>
 #include <wdns.h>
