@@ -500,6 +500,108 @@ query_iter_next(void *clos, struct dnstable_entry **ent)
 }
 
 static dnstable_res
+query_iter_next_ip(void *clos, struct dnstable_entry **ent)
+{
+	struct query_iter *it = (struct query_iter *) clos;
+	struct timespec expiry = {0,0}, now;
+
+	if (it->query->do_timeout) {
+		my_gettime(CLOCK_MONOTONIC_RAW, &expiry);
+		my_timespec_add(&(it->query->timeout), &expiry);
+	}
+
+	for (;;) {
+		bool pass = false;
+		dnstable_res res;
+		const uint8_t *key, *val;
+		size_t len_key, len_val;
+
+		if (it->query->do_timeout) {
+			my_gettime(CLOCK_MONOTONIC_RAW, &now);
+			if (my_timespec_cmp(&now, &expiry) >= 0)
+				return (dnstable_res_timeout);
+		}
+
+		if (mtbl_iter_next(it->m_iter, &key, &len_key, &val, &len_val) != mtbl_res_success)
+			return (dnstable_res_failure);
+		*ent = dnstable_entry_decode(key, len_key, val, len_val);
+		assert(*ent != NULL);
+
+		/* it->key2 != NULL implies that this is used only for prefix
+		 * and range lookups. */
+		if (it->query->do_rrtype && it->key2 != NULL) {
+			uint16_t rrtype;
+			res = dnstable_entry_get_rrtype(*ent, &rrtype);
+			if (res != dnstable_res_success) {
+				dnstable_entry_destroy(ent);
+				return (res);
+			}
+
+			if (rrtype != it->query->rrtype) {
+				assert(ubuf_size(it->key) <= len_key);
+
+				/* We make a new start point with the prefix
+				 * of the current key, plus the target rrtype.
+				 */
+				ubuf *new_key = ubuf_init(64);
+				size_t rrtype_len = mtbl_varint_length(it->query->rrtype);
+				size_t key_prefix_len = ubuf_size(it->key) - rrtype_len;
+				ubuf_append(new_key, key, key_prefix_len);
+				add_rrtype_to_key(new_key, it->query->rrtype);
+
+				/* Advance to the next key if there are no
+				 * more possible matches with this prefix. */
+				if (memcmp(ubuf_data(new_key), key, ubuf_size(new_key)) <= 0) {
+					/* This loop advances us to the next
+					 * IP address.  It handles the case
+					 * of 10.0.255.255 -> 10.1.0.0. */
+					for (uint8_t *ptr = ubuf_data(new_key) + key_prefix_len - 1;;) {
+						(*ptr)++;
+						if (*ptr) {
+							break;
+						/* Check for overflow. If so
+						 * there are no more keys. */
+						} else if (ptr == ubuf_data(new_key)) {
+							ubuf_destroy(&new_key);
+							dnstable_entry_destroy(ent);
+							mtbl_iter_destroy(&it->m_iter);
+							return (dnstable_res_failure);
+						}
+						ptr--;
+					}
+
+				}
+				assert(ubuf_size(new_key) == ubuf_size(it->key));
+
+				dnstable_entry_destroy(ent);
+
+				/* To be replaced with mtbl_iter_seek once
+				 * available. */
+				mtbl_iter_destroy(&it->m_iter);
+				it->m_iter = mtbl_source_get_range(it->source,
+						ubuf_data(new_key),
+						ubuf_size(new_key),
+						ubuf_data(it->key2),
+						ubuf_size(it->key2));
+
+				ubuf_destroy(&new_key);
+				continue;
+			}
+		}
+
+		res = dnstable_query_filter(it->query, *ent, &pass);
+		assert(res == dnstable_res_success);
+		if (pass) {
+			return (dnstable_res_success);
+		} else {
+			dnstable_entry_destroy(ent);
+			continue;
+		}
+	}
+}
+
+
+static dnstable_res
 query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t type_byte)
 {
 	struct query_iter *it = (struct query_iter *) clos;
@@ -773,7 +875,7 @@ query_init_rdata_ip(struct query_iter *it)
 						    ubuf_data(it->key), ubuf_size(it->key),
 						    ubuf_data(it->key2), ubuf_size(it->key2));
 	}
-	return dnstable_iter_init(query_iter_next, query_iter_free, it);
+	return dnstable_iter_init(query_iter_next_ip, query_iter_free, it);
 }
 
 static struct dnstable_iter *
