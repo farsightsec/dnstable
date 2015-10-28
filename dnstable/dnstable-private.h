@@ -40,7 +40,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <unistd.h>
 
 #include <mtbl.h>
@@ -55,6 +54,7 @@
 #include "dnstable.h"
 
 #include "libmy/my_alloc.h"
+#include "libmy/my_time.h"
 #include "libmy/ubuf.h"
 
 #define ENTRY_TYPE_RRSET			'\x00'
@@ -66,6 +66,16 @@
 
 #define DNS_MTBL_BLOCK_SIZE			8192
 #define DNSSEC_MTBL_BLOCK_SIZE			65536
+
+/* best clock for my_gettime() */
+
+#if defined(CLOCK_MONOTONIC_RAW)
+# define DNSTABLE__CLOCK_MONOTONIC CLOCK_MONOTONIC_RAW
+#elif defined(CLOCK_MONOTONIC)
+# define DNSTABLE__CLOCK_MONOTONIC CLOCK_MONOTONIC
+#else
+# error Neither CLOCK_MONOTONIC nor CLOCK_MONOTONIC_RAW are available.
+#endif
 
 /* triplet */
 

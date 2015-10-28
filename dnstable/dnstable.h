@@ -24,6 +24,7 @@ extern "C" {
 #include <sys/types.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <time.h>
 
 #include <mtbl.h>
 
@@ -34,7 +35,8 @@ struct dnstable_reader;
 
 typedef enum {
 	dnstable_res_failure = 0,
-	dnstable_res_success = 1
+	dnstable_res_success = 1,
+	dnstable_res_timeout = 2
 } dnstable_res;
 
 typedef enum {
@@ -105,6 +107,10 @@ dnstable_query_set_rrtype(struct dnstable_query *,
 dnstable_res
 dnstable_query_set_bailiwick(struct dnstable_query *,
 			     const char *);
+
+dnstable_res
+dnstable_query_set_timeout(struct dnstable_query *,
+			   const struct timespec *);
 
 dnstable_res
 dnstable_query_filter(struct dnstable_query *, struct dnstable_entry *, bool *);
