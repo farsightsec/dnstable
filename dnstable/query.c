@@ -339,40 +339,40 @@ dnstable_query_set_timeout(struct dnstable_query *q, const struct timespec *time
 }
 
 #define set_filter_parameter(q, parameter, clos) \
-{ \
+do { \
 	if (clos) { \
 		(q)->do_##parameter = true; \
 		(q)->parameter = *(clos); \
 	} else { \
 		(q)->do_##parameter = false; \
 	} \
-}
+} while (0)
 
 dnstable_res
 dnstable_query_set_filter_parameter(struct dnstable_query *q,
 				    dnstable_filter_parameter_type parameter,
-				    void * clos)
+				    void *clos)
 {
-	switch(parameter) {
+	switch (parameter) {
 		case DNSTABLE_FILTER_PARAMETER_TIME_FIRST_BEFORE:
 			set_filter_parameter(q,
 					     time_first_before,
-					     (uint64_t*)clos);
+					     (uint64_t *) clos);
 			return (dnstable_res_success);
 		case DNSTABLE_FILTER_PARAMETER_TIME_FIRST_AFTER:
 			set_filter_parameter(q,
 					     time_first_after,
-					     (uint64_t*)clos);
+					     (uint64_t *) clos);
 			return (dnstable_res_success);
 		case DNSTABLE_FILTER_PARAMETER_TIME_LAST_BEFORE:
 			set_filter_parameter(q,
 					     time_last_before,
-					     (uint64_t*)clos);
+					     (uint64_t *) clos);
 			return (dnstable_res_success);
 		case DNSTABLE_FILTER_PARAMETER_TIME_LAST_AFTER:
 			set_filter_parameter(q,
 					     time_last_after,
-					     (uint64_t*)clos);
+					     (uint64_t *) clos);
 			return (dnstable_res_success);
 		default:
 			return (dnstable_res_failure);
