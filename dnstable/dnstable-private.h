@@ -69,12 +69,12 @@
 
 /* best clock for my_gettime() */
 
-#if defined(CLOCK_MONOTONIC_RAW)
-# define DNSTABLE__CLOCK_MONOTONIC CLOCK_MONOTONIC_RAW
+#if defined(CLOCK_MONOTONIC_COARSE)
+# define DNSTABLE__CLOCK_MONOTONIC CLOCK_MONOTONIC_COARSE
 #elif defined(CLOCK_MONOTONIC)
 # define DNSTABLE__CLOCK_MONOTONIC CLOCK_MONOTONIC
 #else
-# error Neither CLOCK_MONOTONIC nor CLOCK_MONOTONIC_RAW are available.
+# error Neither CLOCK_MONOTONIC nor CLOCK_MONOTONIC_COARSE are available.
 #endif
 
 /* triplet */
