@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014 by Farsight Security, Inc.
+ * Copyright (c) 2012-2015 by Farsight Security, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,8 @@
 #include <dnstable.h>
 #include <mtbl.h>
 #include <nmsg.h>
-#include <nmsg/isc/defs.h>
+#include <nmsg/base/defs.h>
+#include <nmsg/sie/defs.h>
 #include <nmsg/sie/dnsdedupe.pb-c.h>
 #include <wdns.h>
 
@@ -360,6 +361,11 @@ do_read(void)
 		if (res == nmsg_res_eof)
 			break;
 		assert(res == nmsg_res_success);
+
+		int32_t vid = nmsg_message_get_vid(msg);
+		int32_t msgtype = nmsg_message_get_msgtype(msg);
+		assert(vid == NMSG_VENDOR_SIE_ID);
+		assert(msgtype == NMSG_VENDOR_SIE_DNSDEDUPE_ID);
 
 		dns = (Nmsg__Sie__DnsDedupe *) nmsg_message_get_payload(msg);
 		assert(dns != NULL);
