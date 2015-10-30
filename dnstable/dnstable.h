@@ -118,7 +118,7 @@ dnstable_query_set_bailiwick(struct dnstable_query *,
 dnstable_res
 dnstable_query_set_filter_parameter(struct dnstable_query *,
 				    dnstable_filter_parameter_type,
-				    void *clos);
+				    const void *, const size_t);
 
 dnstable_res
 dnstable_query_set_timeout(struct dnstable_query *,

@@ -338,44 +338,40 @@ dnstable_query_set_timeout(struct dnstable_query *q, const struct timespec *time
 	return (dnstable_res_success);
 }
 
-#define set_filter_parameter(q, parameter, clos) \
+#define set_filter_parameter(q, p_name, param, len_param) \
 do { \
-	if (clos) { \
-		(q)->do_##parameter = true; \
-		(q)->parameter = *(clos); \
+	if (param != NULL) { \
+		(q)->do_##p_name = true; \
+		memcpy(&(q)->p_name, param, len_param); \
 	} else { \
-		(q)->do_##parameter = false; \
+		(q)->do_##p_name = false; \
 	} \
 } while (0)
 
 dnstable_res
 dnstable_query_set_filter_parameter(struct dnstable_query *q,
-				    dnstable_filter_parameter_type parameter,
-				    void *clos)
+				    dnstable_filter_parameter_type p_type,
+				    const void *param,
+				    const size_t len_param)
 {
-	switch (parameter) {
-		case DNSTABLE_FILTER_PARAMETER_TIME_FIRST_BEFORE:
-			set_filter_parameter(q,
-					     time_first_before,
-					     (uint64_t *) clos);
-			return (dnstable_res_success);
-		case DNSTABLE_FILTER_PARAMETER_TIME_FIRST_AFTER:
-			set_filter_parameter(q,
-					     time_first_after,
-					     (uint64_t *) clos);
-			return (dnstable_res_success);
-		case DNSTABLE_FILTER_PARAMETER_TIME_LAST_BEFORE:
-			set_filter_parameter(q,
-					     time_last_before,
-					     (uint64_t *) clos);
-			return (dnstable_res_success);
-		case DNSTABLE_FILTER_PARAMETER_TIME_LAST_AFTER:
-			set_filter_parameter(q,
-					     time_last_after,
-					     (uint64_t *) clos);
-			return (dnstable_res_success);
-		default:
-			return (dnstable_res_failure);
+	if (len_param != sizeof(uint64_t))
+		return (dnstable_res_failure);
+
+	switch (p_type) {
+	case DNSTABLE_FILTER_PARAMETER_TIME_FIRST_BEFORE:
+		set_filter_parameter(q, time_first_before, param, len_param);
+		return (dnstable_res_success);
+	case DNSTABLE_FILTER_PARAMETER_TIME_FIRST_AFTER:
+		set_filter_parameter(q, time_first_after, param, len_param);
+		return (dnstable_res_success);
+	case DNSTABLE_FILTER_PARAMETER_TIME_LAST_BEFORE:
+		set_filter_parameter(q, time_last_before, param, len_param);
+		return (dnstable_res_success);
+	case DNSTABLE_FILTER_PARAMETER_TIME_LAST_AFTER:
+		set_filter_parameter(q, time_last_after, param, len_param);
+		return (dnstable_res_success);
+	default:
+		return (dnstable_res_failure);
 	}
 }
 
