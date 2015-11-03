@@ -170,10 +170,8 @@ query_set_data_rdata_ip_range(struct dnstable_query *q, const char *data)
 	q->do_rrtype = true;
 	if (q->len_rdata == 4) {
 		q->rrtype = WDNS_TYPE_A;
-		ip4_incr(q->rdata2);
 	} else if (q->len_rdata == 16) {
 		q->rrtype = WDNS_TYPE_AAAA;
-		ip6_incr(q->rdata2);
 	}
 	res = dnstable_res_success;
 out:
@@ -223,7 +221,6 @@ query_set_data_rdata_ip_prefix(struct dnstable_query *q, const char *data)
 		q->rdata2 = my_malloc(len_ip);
 		ip4_lower(ip, plen, q->rdata);
 		ip4_upper(ip, plen, q->rdata2);
-		ip4_incr(q->rdata2);
 		res = dnstable_res_success;
 	} else if (len_ip == 16) {
 		q->do_rrtype = true;
@@ -237,7 +234,6 @@ query_set_data_rdata_ip_prefix(struct dnstable_query *q, const char *data)
 		q->rdata2 = my_malloc(len_ip);
 		ip6_lower(ip, plen, q->rdata);
 		ip6_upper(ip, plen, q->rdata2);
-		ip6_incr(q->rdata2);
 		res = dnstable_res_success;
 	}
 
@@ -449,6 +445,18 @@ add_rrtype_to_key(ubuf *key, uint32_t rrtype)
 	assert(rrtype != WDNS_TYPE_ANY);
 	ubuf_reserve(key, ubuf_size(key) + mtbl_varint_length(rrtype));
 	ubuf_advance(key, mtbl_varint_encode32(ubuf_ptr(key), rrtype));
+}
+
+static dnstable_res
+increment_key(ubuf *key, size_t pos)
+{
+	for (uint8_t *ptr = ubuf_data(key) + pos; ptr >= ubuf_data(key); ptr--) {
+		(*ptr)++;
+		if (*ptr != 0) {
+			return (dnstable_res_success);
+		}
+	}
+	return (dnstable_res_failure);
 }
 
 static dnstable_res
@@ -750,6 +758,8 @@ query_init_rdata_ip(struct query_iter *it)
 		/* key: type byte, rdata */
 		ubuf_add(it->key2, ENTRY_TYPE_RDATA);
 		ubuf_append(it->key2, it->query->rdata2, it->query->len_rdata2);
+		add_rrtype_to_key(it->key2, it->query->rrtype);
+		increment_key(it->key2, ubuf_size(it->key2) - 1);
 	}
 
 	if (it->key2 == NULL) {
