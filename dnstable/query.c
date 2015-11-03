@@ -552,22 +552,17 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 				/* Advance to the next key if there are no
 				 * more possible matches with this prefix. */
 				if (memcmp(ubuf_data(new_key), key, ubuf_size(new_key)) <= 0) {
-					/* This loop advances us to the next
+					/* This advances us to the next
 					 * IP address.  It handles the case
 					 * of 10.0.255.255 -> 10.1.0.0. */
-					for (uint8_t *ptr = ubuf_data(new_key) + key_prefix_len - 1;;) {
-						(*ptr)++;
-						if (*ptr) {
-							break;
-						/* Check for overflow. If so
-						 * there are no more keys. */
-						} else if (ptr == ubuf_data(new_key)) {
-							ubuf_destroy(&new_key);
-							dnstable_entry_destroy(ent);
-							mtbl_iter_destroy(&it->m_iter);
-							return (dnstable_res_failure);
-						}
-						ptr--;
+					res = increment_key(new_key, key_prefix_len - 1);
+					/* Check for overflow. If so
+					 * there are no more keys. */
+					if (res != dnstable_res_success) {
+						ubuf_destroy(&new_key);
+						dnstable_entry_destroy(ent);
+						mtbl_iter_destroy(&it->m_iter);
+						return (dnstable_res_failure);
 					}
 
 				}
