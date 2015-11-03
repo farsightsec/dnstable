@@ -450,6 +450,7 @@ add_rrtype_to_key(ubuf *key, uint32_t rrtype)
 static dnstable_res
 increment_key(ubuf *key, size_t pos)
 {
+	assert(pos < ubuf_size(key));
 	for (uint8_t *ptr = ubuf_data(key) + pos; ptr >= ubuf_data(key); ptr--) {
 		(*ptr)++;
 		if (*ptr != 0) {
