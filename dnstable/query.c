@@ -756,10 +756,12 @@ query_init_rdata_ip(struct query_iter *it)
 	if (it->query->rdata2 != NULL) {
 		it->key2 = ubuf_init(64);
 
-		/* key: type byte, rdata */
+		/* key2: type byte, rdata2, rrtype */
 		ubuf_add(it->key2, ENTRY_TYPE_RDATA);
 		ubuf_append(it->key2, it->query->rdata2, it->query->len_rdata2);
 		add_rrtype_to_key(it->key2, it->query->rrtype);
+
+		/* increment key2 starting from the last byte */
 		increment_key(it->key2, ubuf_size(it->key2) - 1);
 	}
 
