@@ -546,6 +546,12 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 				assert(ubuf_size(it->key) <= len_key);
 
 				/*
+				 * Destroy the current entry. It will not be
+				 * processed since it's the wrong rrtype.
+				 */
+				dnstable_entry_destroy(ent);
+
+				/*
 				 * Create a new start key with the prefix of the
 				 * current entry's key, plus the target rrtype.
 				 * This ends up being an IP address derived from
@@ -600,7 +606,6 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 					 */
 					if (res != dnstable_res_success) {
 						ubuf_destroy(&new_key);
-						dnstable_entry_destroy(ent);
 						mtbl_iter_destroy(&it->m_iter);
 						return (dnstable_res_failure);
 					}
@@ -613,12 +618,6 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 				 * exactly as long as the original search key.
 				 */
 				assert(ubuf_size(new_key) == ubuf_size(it->key));
-
-				/*
-				 * Destroy the current entry. It will not be
-				 * processed since it's the wrong rrtype.
-				 */
-				dnstable_entry_destroy(ent);
 
 				/*
 				 * Destroy our current iterator and replace it
