@@ -528,9 +528,13 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 		*ent = dnstable_entry_decode(key, len_key, val, len_val);
 		assert(*ent != NULL);
 
-		/* it->key2 != NULL implies that this is used only for prefix
-		 * and range lookups. */
+		/*
+		 * it->key2 != NULL implies an IP prefix/range search, for which
+		 * we can perform a special optimization to skip past irrelevant
+		 * entries.
+		 */
 		if (it->query->do_rrtype && it->key2 != NULL) {
+			/* Get the rrtype of the decoded entry. */
 			uint16_t rrtype;
 			res = dnstable_entry_get_rrtype(*ent, &rrtype);
 			if (res != dnstable_res_success) {
@@ -541,8 +545,17 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 			if (rrtype != it->query->rrtype) {
 				assert(ubuf_size(it->key) <= len_key);
 
-				/* We make a new start point with the prefix
-				 * of the current key, plus the target rrtype.
+				/*
+				 * Create a new start key with the prefix of the
+				 * current entry's key, plus the target rrtype.
+				 * This ends up being an IP address derived from
+				 * the first 4 or 16 bytes of the current key's
+				 * rdata, sandwiched between the entry type byte
+				 * and the rrtype.
+				 *
+				 * This is helpful when the query rrtype is AAAA
+				 * (28), which comes numerically after many
+				 * common rrtypes.
 				 */
 				ubuf *new_key = ubuf_init(64);
 				size_t rrtype_len = mtbl_varint_length(it->query->rrtype);
@@ -550,37 +563,82 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 				ubuf_append(new_key, key, key_prefix_len);
 				add_rrtype_to_key(new_key, it->query->rrtype);
 
-				/* Advance to the next key if there are no
-				 * more possible matches with this prefix. */
+				/*
+				 * Check if the key that we just generated sorts
+				 * prior to the current entry's key. If so, it's
+				 * OK to skip ahead to the next IP address,
+				 * because we must have *already* consumed any
+				 * entries between the key we just generated up
+				 * to the current entry's key.
+				 *
+				 * This check is very likely to succeed for IPv4
+				 * addresses, since rrtype A (1) is the lowest
+				 * rrtype value in use, but less likely to
+				 * succeed for IPv6 addresses since rrtype AAAA
+				 * (28) sorts after many common rrtypes.
+				 */
 				if (memcmp(ubuf_data(new_key), key, ubuf_size(new_key)) <= 0) {
-					/* This advances us to the next
-					 * IP address.  It handles the case
-					 * of 10.0.255.255 -> 10.1.0.0. */
+					/*
+					 * Increment the IP address in the
+					 * middle of our key by one. This
+					 * correctly handles octet overflow,
+					 * e.g. 10.0.255.255 -> 10.1.0.0.
+					 *
+					 * This potentially eliminates a large
+					 * number of irrelevant entries, which
+					 * we would otherwise have to retrieve
+					 * and filter out.
+					 */
 					res = increment_key(new_key, key_prefix_len - 1);
-					/* Check for overflow. If so
-					 * there are no more keys. */
+
+					/*
+					 * If increment_key() failed, then we
+					 * were already at the all-ones A/AAAA
+					 * address. Entries up to and including
+					 * that address have already been
+					 * consumed, so stop iterating now.
+					 */
 					if (res != dnstable_res_success) {
 						ubuf_destroy(&new_key);
 						dnstable_entry_destroy(ent);
 						mtbl_iter_destroy(&it->m_iter);
 						return (dnstable_res_failure);
 					}
-
 				}
+
+				/*
+				 * Safety check: we should have generated a key
+				 * containing embedded data exactly as long as
+				 * an IP address, and thus the key should be
+				 * exactly as long as the original search key.
+				 */
 				assert(ubuf_size(new_key) == ubuf_size(it->key));
 
+				/*
+				 * Destroy the current entry. It will not be
+				 * processed since it's the wrong rrtype.
+				 */
 				dnstable_entry_destroy(ent);
 
-				/* To be replaced with mtbl_iter_seek once
-				 * available. */
+				/*
+				 * Destroy our current iterator and replace it
+				 * with a new iterator starting from our newly
+				 * generated key.
+				 *
+				 * TODO: Replace with mtbl_iter_seek() once
+				 * available.
+				 */
 				mtbl_iter_destroy(&it->m_iter);
 				it->m_iter = mtbl_source_get_range(it->source,
 						ubuf_data(new_key),
 						ubuf_size(new_key),
 						ubuf_data(it->key2),
 						ubuf_size(it->key2));
-
 				ubuf_destroy(&new_key);
+
+				/*
+				 * Restart processing starting from the new key.
+				 */
 				continue;
 			}
 		}
@@ -595,7 +653,6 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 		}
 	}
 }
-
 
 static dnstable_res
 query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t type_byte)
