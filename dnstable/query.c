@@ -543,8 +543,6 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 			}
 
 			if (rrtype != it->query->rrtype) {
-				assert(ubuf_size(it->key) <= len_key);
-
 				/*
 				 * Destroy the current entry. It will not be
 				 * processed since it's the wrong rrtype.
@@ -563,10 +561,18 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 				 * (28), which comes numerically after many
 				 * common rrtypes.
 				 */
-				ubuf *new_key = ubuf_init(64);
+				ubuf *new_key = ubuf_init(ubuf_size(it->key));
 				size_t rrtype_len = mtbl_varint_length(it->query->rrtype);
 				size_t key_prefix_len = ubuf_size(it->key) - rrtype_len;
-				ubuf_append(new_key, key, key_prefix_len);
+				if (key_prefix_len >= len_key) {
+					ubuf_append(new_key, key, key_prefix_len);
+				} else {
+					/* Zero fill short keys. */
+					ubuf_append(new_key, key, len_key);
+					ubuf_advance(new_key, key_prefix_len - len_key);
+					memset(ubuf_data(new_key) + len_key, 0,
+					       key_prefix_len - len_key);
+				}
 				add_rrtype_to_key(new_key, it->query->rrtype);
 
 				/*
