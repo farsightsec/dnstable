@@ -583,7 +583,9 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 				 * succeed for IPv6 addresses since rrtype AAAA
 				 * (28) sorts after many common rrtypes.
 				 */
-				if (memcmp(ubuf_data(new_key), key, ubuf_size(new_key)) <= 0) {
+				if (bytes_compare(ubuf_data(new_key), ubuf_size(new_key),
+						  key, len_key) <= 0)
+				{
 					/*
 					 * Increment the IP address in the
 					 * middle of our key by one. This
