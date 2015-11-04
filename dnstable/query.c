@@ -503,10 +503,10 @@ static dnstable_res
 query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 {
 	struct query_iter *it = (struct query_iter *) clos;
-	struct timespec expiry = {0,0}, now;
+	struct timespec expiry = {0};
 
 	if (it->query->do_timeout) {
-		my_gettime(CLOCK_MONOTONIC_RAW, &expiry);
+		my_gettime(DNSTABLE__CLOCK_MONOTONIC, &expiry);
 		my_timespec_add(&(it->query->timeout), &expiry);
 	}
 
@@ -517,7 +517,8 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 		size_t len_key, len_val;
 
 		if (it->query->do_timeout) {
-			my_gettime(CLOCK_MONOTONIC_RAW, &now);
+			struct timespec now;
+			my_gettime(DNSTABLE__CLOCK_MONOTONIC, &now);
 			if (my_timespec_cmp(&now, &expiry) >= 0)
 				return (dnstable_res_timeout);
 		}
