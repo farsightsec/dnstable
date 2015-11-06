@@ -564,10 +564,11 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 				ubuf *new_key = ubuf_init(ubuf_size(it->key));
 				size_t rrtype_len = mtbl_varint_length(it->query->rrtype);
 				size_t key_prefix_len = ubuf_size(it->key) - rrtype_len;
-				if (key_prefix_len >= len_key) {
+				if (key_prefix_len <= len_key) {
 					ubuf_append(new_key, key, key_prefix_len);
 				} else {
 					/* Zero fill short keys. */
+					ubuf_reserve(new_key, key_prefix_len);
 					ubuf_append(new_key, key, len_key);
 					ubuf_advance(new_key, key_prefix_len - len_key);
 					memset(ubuf_data(new_key) + len_key, 0,
