@@ -1,3 +1,32 @@
+dnstable (0.9.0)
+
+  [ Henry Stern ]
+  * New "query timeout" feature which allows for a configurable timeout on the
+    execution of certain types of queries. Introduces new function
+    dnstable_query_set_timeout() and new result code dnstable_res_timeout
+    (#8).
+
+  * New "time fencing" feature which filters based on 'time_first' and
+    'time_last' values. Introduces new enum dnstable_filter_parameter_type and
+    new function dnstable_query_set_filter_parameter() (#9).
+
+  * Performance enhancement for some IP range and prefix searches (#11).
+
+  * Fix unhandled IPv4/IPv6 address overflow for IP range/prefix queries
+    (#14).
+
+  [ Robert Edmonds ]
+  * dnstable_convert: Assert vendor 'SIE' and message type 'dnsdedupe' so that
+    the following cast of the return value of nmsg_message_get_payload() is
+    safe (#10).
+
+  * Use CLOCK_MONOTONIC_COARSE rather than CLOCK_MONOTONIC_RAW for query
+    timeouts (#12).
+
+  * query_iter_next_ip(): Fix zero fill condition (#15).
+
+ -- Robert Edmonds <edmonds@fsi.io>  Tue, 10 Nov 2015 22:45:57 -0500
+
 dnstable (0.8.0)
 
   * Replace Jansson with YAJL for JSON rendering, which results in a
