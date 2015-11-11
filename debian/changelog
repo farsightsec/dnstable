@@ -1,3 +1,11 @@
+dnstable (0.9.0-1) wheezy-farsightsec; urgency=medium
+
+  * New upstream release.
+  * [eed0608c] debian/libdnstable0.symbols: LIBDNSTABLE_0.9.0 symbols
+  * [fa970aa0] debian/control: Update Maintainer
+
+ -- Robert Edmonds <edmonds@fsi.io>  Tue, 10 Nov 2015 22:51:47 -0500
+
 dnstable (0.8.0-1) wheezy-farsightsec; urgency=medium
 
   * New upstream release.
