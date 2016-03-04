@@ -336,10 +336,20 @@ out:
 static dnstable_res
 decode_val_triplet(struct dnstable_entry *e, const uint8_t *val, size_t len_val)
 {
-	return (triplet_unpack(val, len_val,
-			       &e->time_first,
-			       &e->time_last,
-			       &e->count));
+	dnstable_res res;
+
+	res = triplet_unpack(val, len_val, &e->time_first, &e->time_last, &e->count);
+	if (res == dnstable_res_success) {
+		/* Fixups for "odd" data patterns. */
+		if (e->count == 0) {
+			e->count = 1;
+		}
+		if (e->time_last == 0) {
+			e->time_last = e->time_first;
+		}
+	}
+
+	return (res);
 }
 
 static dnstable_res
