@@ -1,3 +1,12 @@
+dnstable (0.9.1-1) wheezy-farsightsec; urgency=medium
+
+  * New upstream release.
+  * debian/changelog: Fix my email address
+  * debian/gbp.conf: Remove [dch] id-length
+  * debian/changelog: Remove commit hashes
+
+ -- Robert Edmonds <edmonds@fsi.io>  Tue, 19 Apr 2016 19:03:12 -0400
+
 dnstable (0.9.0-1) wheezy-farsightsec; urgency=medium
 
   * New upstream release.
