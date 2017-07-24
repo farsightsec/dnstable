@@ -7,7 +7,7 @@ Build-Depends:
  debhelper (>= 9~),
  dh-autoreconf (>= 5~),
  dpkg-dev (>= 1.16.0~),
- libmtbl-dev (>= 0.8.0),
+ libmtbl-dev (>= 1.1.0),
  libnmsg-dev (>= 0.9.0),
  libprotobuf-c-dev,
  libwdns-dev (>= 0.6.0),
@@ -20,7 +20,7 @@ Standards-Version: 3.9.6
 Package: dnstable-bin
 Section: utils
 Architecture: any
-Depends: mtbl-bin, nmsg-msg-module-sie, ${misc:Depends}, ${shlibs:Depends}
+Depends: mtbl-bin, nmsg-msg-module-sie, ${misc:Depends}, ${shlibs:Depends}, libmtbl1 (>= 1.1.0)
 Description: passive DNS encoding format library (utilities)
  dnstable implements an encoding format for passive DNS data. It consists of a
  C library, libdnstable, and several command line utilities for creating,
@@ -63,7 +63,7 @@ Description: passive DNS encoding format library (development files)
 
 Package: libdnstable0
 Architecture: any
-Depends: ${misc:Depends}, ${shlibs:Depends}
+Depends: ${misc:Depends}, ${shlibs:Depends}, libmtbl1 (>= 1.1.0)
 Pre-Depends: ${misc:Pre-Depends}
 Multi-Arch: same
 Description: passive DNS encoding format library
