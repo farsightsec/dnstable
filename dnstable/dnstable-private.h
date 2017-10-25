@@ -25,6 +25,11 @@
 # endif
 #endif
 
+#ifdef __APPLE__
+#include <libkern/OSByteOrder.h>
+#define htole16(x) OSSwapHostToLittleInt16(x)
+#endif
+
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
