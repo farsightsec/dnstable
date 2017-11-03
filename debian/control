@@ -20,7 +20,7 @@ Standards-Version: 3.9.6
 Package: dnstable-bin
 Section: utils
 Architecture: any
-Depends: mtbl-bin, nmsg-msg-module-sie, ${misc:Depends}, ${shlibs:Depends}, libmtbl1 (>= 1.1.0)
+Depends: mtbl-bin, nmsg-msg-module-sie, ${misc:Depends}, ${shlibs:Depends}
 Description: passive DNS encoding format library (utilities)
  dnstable implements an encoding format for passive DNS data. It consists of a
  C library, libdnstable, and several command line utilities for creating,
@@ -63,7 +63,7 @@ Description: passive DNS encoding format library (development files)
 
 Package: libdnstable0
 Architecture: any
-Depends: ${misc:Depends}, ${shlibs:Depends}, libmtbl1 (>= 1.1.0)
+Depends: ${misc:Depends}, ${shlibs:Depends}
 Pre-Depends: ${misc:Pre-Depends}
 Multi-Arch: same
 Description: passive DNS encoding format library

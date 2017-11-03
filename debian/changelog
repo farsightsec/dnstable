@@ -1,4 +1,4 @@
-dnstable (0.9.1-3~fsi7) wheezy-fsi; urgency=medium
+dnstable (0.9.1-3) wheezy-fsi; urgency=medium
 
   * Rebuilt with latest mtbl; depend on latest version; no source changes.
 
