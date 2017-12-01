@@ -36,6 +36,7 @@
 #include "dnstable-private.h"
 
 #include "libmy/ubuf.h"
+#include "libmy/my_byteorder.h"
 
 static const char		*nmsg_fname;
 static const char		*db_fname;
