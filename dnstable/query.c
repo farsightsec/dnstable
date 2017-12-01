@@ -16,6 +16,8 @@
 
 #include <arpa/inet.h>
 
+#include "libmy/my_byteorder.h"
+
 #include "dnstable-private.h"
 
 #include "libmy/ip_arith.h"
