@@ -1,3 +1,9 @@
+dnstable (0.10.0-1) wheezy-fsi; urgency=medium
+
+  * Remove dnstable_convert to simplify dependencies
+
+ -- Farsight Security, Inc. <software@farsightsecurity.com>  Wed, 21 Mar 2018 20:00:00 -0500
+
 dnstable (0.9.1-3) wheezy-fsi; urgency=medium
 
   * Rebuilt with latest mtbl; depend on latest version; no source changes.

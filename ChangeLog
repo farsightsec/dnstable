@@ -1,3 +1,9 @@
+dnstable (0.10.0)
+
+  * Remove dnstable_convert to simplify dependencies
+
+ -- David Waitzman <djw@fsi.io>  Wed, 21 Mar 2018 20:00:00 -0500
+
 dnstable (0.9.1)
 
   * Fix strange values in data value triplets (#16). A 'count' field that has

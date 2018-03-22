@@ -9,7 +9,6 @@ AM_CPPFLAGS = \
 AM_CFLAGS = \
 	${my_CFLAGS} \
 	$(libmtbl_CFLAGS) \
-	$(libnmsg_CFLAGS) \
 	$(libwdns_CFLAGS) \
 	$(libyajl_CFLAGS)
 
@@ -66,15 +65,7 @@ CLEANFILES += dnstable/libdnstable.pc
 
 EXTRA_DIST += src/dnstable_merge
 
-bin_PROGRAMS = src/dnstable_convert
-src_dnstable_convert_SOURCES = src/dnstable_convert.c
-src_dnstable_convert_LDADD = \
-	dnstable/libdnstable.la \
-	$(libmtbl_LIBS) \
-	$(libnmsg_LIBS) \
-	$(libwdns_LIBS)
-
-bin_PROGRAMS += src/dnstable_dump
+bin_PROGRAMS = src/dnstable_dump
 src_dnstable_dump_SOURCES = \
 	libmy/argv.c \
 	libmy/argv.h \
@@ -115,7 +106,6 @@ ASCIIDOC_PROCESS = $(AM_V_GEN) $(ASCIIDOC) -f manpage --no-xmllint --asciidoc-op
 
 dist_man_MANS = \
 	man/dnstable-encoding.5 \
-	man/dnstable_convert.1 \
 	man/dnstable_dump.1 \
 	man/dnstable_lookup.1 \
 	man/dnstable_merge.1 \
@@ -129,7 +119,6 @@ endif
 
 EXTRA_DIST += \
 	man/dnstable-encoding.5.txt \
-	man/dnstable_convert.1.txt \
 	man/dnstable_dump.1.txt \
 	man/dnstable_lookup.1.txt \
 	man/dnstable_merge.1.txt \
