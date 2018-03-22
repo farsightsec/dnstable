@@ -19,30 +19,7 @@ provides an immutable mapping of keys to values. This format allows fast lookups
 of key prefixes, so the precise encoding and layout of dnstable keys are chosen
 to take advantage of this property.
 
-The utility ^dnstable_convert^(1) included with the dnstable distribution reads
-the following fields in the ^NMSG^-encoded input ^dnsdedupe^ payloads:
-
-- ^rrname^, the RRset owner name.
-
-- ^rrclass^, the RRset class, which is always Internet (`IN`) class, so is
-  omitted from actually being encoded.
-
-- ^rrtype^, the RRset type.
-
-- ^rdata^, an array of one or more record data values, in sorted order.
-
-- ^bailiwick^, the domain name of the closest enclosing zone of the RRset.
-
-- ^time_first^, earliest timestamp that the RRset was observed.
-
-- ^time_last^, latest timestamp that the RRset was observed.
-
-- ^count^, the number of times the RRset was observed between ^time_first^ and
-  ^time_last^.
-
-Multiple key-value entries are generated for each RRset payload and these
-key-value entries are stored in an ^MTBL^-encoded data file. These entries then
-allow for various types of useful passive DNS specific lookups. ^MTBL^ keys and
+^MTBL^ keys and
 values are arbitrary byte arrays, and because ^MTBL^ keys are stored in sorted
 order it is possible to look up entire key-value entries by searching for the
 initial part of a key.
@@ -427,8 +404,7 @@ The following entries will be generated:
 == SEE ALSO ==
 
 _ISC Passive DNS Architecture_,
-http://users.isc.org/~edmonds/passive-dns-architecture.pdf, for a description of
-the process that generates the data that ^dnstable_convert^(1) reads as input.
+http://users.isc.org/~edmonds/passive-dns-architecture.pdf
 
 _Google Protocol Buffers Encoding_,
 https://developers.google.com/protocol-buffers/docs/encoding, for the base-128

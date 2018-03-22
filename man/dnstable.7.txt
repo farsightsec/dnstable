@@ -15,9 +15,6 @@ For details about how dnstable entries are encoded in data files, see
 
 The command line dnstable utilities are:
 
-^dnstable_convert^(1)::
-Converts passive DNS data to dnstable format.
-
 ^dnstable_dump^(1)::
 Prints dnstable format files in text or JSON.
 

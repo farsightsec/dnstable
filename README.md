@@ -16,15 +16,8 @@ searches.
 
 dnstable has the following dependencies:
 
-* [yajl](http://lloyd.github.io/yajl/), for converting data to JSON format.
-
 * [libmtbl](https://github.com/farsightsec/mtbl), for encoding the underlying
   SSTable files in the MTBL format.
-
-* [libnmsg](https://github.com/farsightsec/nmsg), for importing passive DNS
-  data in NMSG format. Additionally, the
-  [sie-nmsg](https://github.com/farsightsec/sie-nmsg) message module
-  (containing the `SIE/dnsdedupe` message type) is required.
 
 * [libwdns](https://github.com/farsightsec/wdns), for low-level DNS utility
   functions.
@@ -32,3 +25,5 @@ dnstable has the following dependencies:
 `dnstable` relies on `libmtbl` for the actual storage of passive DNS records.
 `libmtbl` provides fast lookups of partial keys, so the precise encoding of
 dnstable records is optimized to take advantage of this property.
+
+The `dnstable_convert` utility previously in this repository has been split out into its own repository at [dnstable-convert](https://github.com/dnsdb/dnstable-convert) to reduce the dependencies of `dnstable`.
