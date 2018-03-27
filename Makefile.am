@@ -36,7 +36,8 @@ dnstable_libdnstable_la_SOURCES = \
 	libmy/my_time.h \
 	libmy/print_string.h \
 	libmy/vector.h \
-	libmy/ubuf.h
+	libmy/ubuf.h \
+	libmy/my_byteorder.h
 
 dnstable_libdnstable_la_LIBADD = \
 	$(libmtbl_LIBS) \
