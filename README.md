@@ -26,4 +26,4 @@ dnstable has the following dependencies:
 `libmtbl` provides fast lookups of partial keys, so the precise encoding of
 dnstable records is optimized to take advantage of this property.
 
-The `dnstable_convert` utility previously in this repository has been split out into its own repository at [dnstable-convert](https://github.com/dnsdb/dnstable-convert) to reduce the dependencies of `dnstable`.
+The `dnstable_convert` utility previously in this repository has been split out into its own repository at [dnstable-convert](https://github.com/farsightsec/dnstable-convert) to reduce the dependencies of `dnstable`.
