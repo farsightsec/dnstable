@@ -62,11 +62,6 @@
 #define ENTRY_TYPE_RDATA			'\x02'
 #define ENTRY_TYPE_RDATA_NAME_REV		'\x03'
 
-#define STATS_INTERVAL				1000000
-
-#define DNS_MTBL_BLOCK_SIZE			8192
-#define DNSSEC_MTBL_BLOCK_SIZE			65536
-
 /* best clock for my_gettime() */
 
 #if defined(CLOCK_MONOTONIC_COARSE)
