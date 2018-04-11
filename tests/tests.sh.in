@@ -2,8 +2,19 @@
 
 DNSTQ=@abs_top_builddir@/src/dnstable_lookup
 export DNSTABLE_FNAME=@abs_top_srcdir@/tests/test-dns.mtbl
+
+#
+# If test script is run with dnstable_lookup arguments, perform the lookup.
+# Otherwise, run all tests.
+#
+if [ -n "$*" ]; then
+	$DNSTQ -j $*
+	exit 0
+fi
+
 NL="
 "
+
 code=0
 
 test_lookup() {
