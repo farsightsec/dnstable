@@ -6,13 +6,13 @@ dnstable_lookup - lookup individual records in a dnstable data file or set of da
 
 == SYNOPSIS ==
 
-^dnstable_lookup rrset^ <OWNER> [<RRTYPE> [<BAILIWICK>]]
+^dnstable_lookup^ [^-j^] ^rrset^ <OWNER> [<RRTYPE> [<BAILIWICK>]]
 
-^dnstable_lookup rdata ip^ <ADDRESS | RANGE | PREFIX>
+^dnstable_lookup^ [^-j^] ^rdata ip^ <ADDRESS | RANGE | PREFIX>
 
-^dnstable_lookup rdata raw^ <HEX STRING> [<RRTYPE>]
+^dnstable_lookup^ [^-j^] ^rdata raw^ <HEX STRING> [<RRTYPE>]
 
-^dnstable_lookup rdata name^ <RDATA NAME> [<RRTYPE>]
+^dnstable_lookup^ [^-j^] ^rdata name^ <RDATA NAME> [<RRTYPE>]
 
 == DESCRIPTION ==
 
@@ -31,6 +31,12 @@ the specified data value, expressed as a hexademical string.
 
 ^dnstable_lookup rdata name^ returns Resource Records whose record data matches
 the specified domain name.
+
+== OPTIONS ==
+
+^-j^::
+    Use JSON format for output. One JSON-formatted entry per line will be
+    printed.
 
 == ENVIRONMENT VARIABLES ==
 
