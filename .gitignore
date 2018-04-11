@@ -13,6 +13,7 @@
 /configure
 /libtool
 /stamp-h1
+test-suite.log
 Makefile
 Makefile.in
 TAGS

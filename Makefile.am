@@ -84,7 +84,8 @@ src_dnstable_lookup_LDADD = \
 	$(libmtbl_LIBS) \
 	$(libwdns_LIBS)
 
-TESTS =
+TESTS = tests/tests.sh
+EXTRA_DIST += tests/test-dns.mtbl
 
 check_PROGRAMS =
 
