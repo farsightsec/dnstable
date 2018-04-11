@@ -86,11 +86,11 @@ test_lookup rdata name ns1.example.com << EOF
 EOF
 
 test_lookup rdata name ns1.example.com SOA << EOF
-{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"SOA","bailiwick":"example.com.","rdata":["ns1.example.com. hostmaster.example.com. 2018032701 30 30 86400 300"]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"SOA","rdata":"ns1.example.com. hostmaster.example.com. 2018032701 30 30 86400 300"}
 EOF
 
 test_lookup rdata name ldap.example.com << EOF
-{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"_ldap._tcp.example.com.","rrtype":"SRV","bailiwick":"example.com.","rdata":["10 1 389 ldap.example.com."]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"_ldap._tcp.example.com.","rrtype":"SRV","rdata":"10 1 389 ldap.example.com."}
 EOF
 
 exit $code
