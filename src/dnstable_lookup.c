@@ -27,15 +27,22 @@
 #include <dnstable.h>
 #include <mtbl.h>
 
+bool g_json;
+
 static void
 print_entry(struct dnstable_entry *ent)
 {
-	char *s = dnstable_entry_to_text(ent);
+	char *s;
+
+	if (g_json) {
+		s = dnstable_entry_to_json(ent);
+	} else {
+		s = dnstable_entry_to_text(ent);
+	}
 	assert(s != NULL);
 	if (strlen(s) > 0) {
 		fputs(s, stdout);
-		if (dnstable_entry_get_type(ent) == DNSTABLE_ENTRY_TYPE_RRSET)
-			putchar('\n');
+		putchar('\n');
 		free(s);
 	}
 }
@@ -52,16 +59,17 @@ do_dump(struct dnstable_iter *it)
 		dnstable_entry_destroy(&ent);
 		count++;
 	}
-	fprintf(stderr, ";;; Dumped %'" PRIu64 " entries.\n", count);
+	if (!g_json)
+		fprintf(stderr, ";;; Dumped %'" PRIu64 " entries.\n", count);
 }
 
 static void
 usage(void)
 {
-	fprintf(stderr, "Usage: dnstable_lookup rrset <OWNER NAME> [<RRTYPE> [<BAILIWICK>]]\n");
-	fprintf(stderr, "Usage: dnstable_lookup rdata ip <ADDRESS | RANGE | PREFIX>\n");
-	fprintf(stderr, "Usage: dnstable_lookup rdata raw <HEX STRING> [<RRTYPE>]\n");
-	fprintf(stderr, "Usage: dnstable_lookup rdata name <RDATA NAME> [<RRTYPE>]\n");
+	fprintf(stderr, "Usage: dnstable_lookup [-j] rrset <OWNER NAME> [<RRTYPE> [<BAILIWICK>]]\n");
+	fprintf(stderr, "Usage: dnstable_lookup [-j] rdata ip <ADDRESS | RANGE | PREFIX>\n");
+	fprintf(stderr, "Usage: dnstable_lookup [-j] rdata raw <HEX STRING> [<RRTYPE>]\n");
+	fprintf(stderr, "Usage: dnstable_lookup [-j] rdata name <RDATA NAME> [<RRTYPE>]\n");
 	exit(EXIT_FAILURE);
 }
 
@@ -86,29 +94,41 @@ main(int argc, char **argv)
 	if (argc < 3)
 		usage();
 
-	if (strcmp(argv[1], "rrset") == 0) {
+	switch (getopt(argc, argv, "j")) {
+	case 'j':
+		g_json = true;
+		break;
+	case -1:
+		break;
+	default:
+		usage();
+	}
+	argv += optind;
+	argc -= optind;
+
+	if (strcmp(argv[0], "rrset") == 0) {
 		d_qtype = DNSTABLE_QUERY_TYPE_RRSET;
+		if (argc >= 2)
+			arg_owner_name = argv[1];
 		if (argc >= 3)
-			arg_owner_name = argv[2];
+			arg_rrtype = argv[2];
 		if (argc >= 4)
-			arg_rrtype = argv[3];
-		if (argc >= 5)
-			arg_bailiwick = argv[4];
+			arg_bailiwick = argv[3];
 		if (argc > 5)
 			usage();
-	} else if (strcmp(argv[1], "rdata") == 0) {
-		if (strcmp(argv[2], "ip") == 0 && argc == 4) {
+	} else if (strcmp(argv[0], "rdata") == 0) {
+		if (strcmp(argv[1], "ip") == 0 && argc == 3) {
 			d_qtype = DNSTABLE_QUERY_TYPE_RDATA_IP;
-		} else if (strcmp(argv[2], "raw") == 0 && (argc == 4 || argc == 5)) {
+		} else if (strcmp(argv[1], "raw") == 0 && (argc == 3 || argc == 4)) {
 			d_qtype = DNSTABLE_QUERY_TYPE_RDATA_RAW;
-		} else if (strcmp(argv[2], "name") == 0 && (argc == 4 || argc == 5)) {
+		} else if (strcmp(argv[1], "name") == 0 && (argc == 3 || argc == 4)) {
 			d_qtype = DNSTABLE_QUERY_TYPE_RDATA_NAME;
 		} else {
 			usage();
 		}
-		arg_rdata = argv[3];
-		if (argc == 5)
-			arg_rrtype = argv[4];
+		arg_rdata = argv[2];
+		if (argc == 4)
+			arg_rrtype = argv[3];
 	} else {
 		usage();
 	}
