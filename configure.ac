@@ -24,6 +24,7 @@ AC_SUBST([my_CFLAGS])
 
 AC_CONFIG_HEADERS(config.h)
 AC_CONFIG_FILES([Makefile dnstable/libdnstable.pc])
+AC_CONFIG_FILES([tests/tests.sh], [chmod +x tests/tests.sh])
 
 PKG_PROG_PKG_CONFIG
 if test -n "$PKG_CONFIG"; then
@@ -41,15 +42,10 @@ AC_SEARCH_LIBS([clock_gettime], [rt])
 AC_CHECK_FUNCS([clock_gettime])
 
 PKG_CHECK_MODULES([libmtbl], [libmtbl >= 0.8.0])
-PKG_CHECK_MODULES([libnmsg], [libnmsg])
 PKG_CHECK_MODULES([libwdns], [libwdns >= 0.6.0])
 PKG_CHECK_MODULES([libyajl], [yajl >= 2], [], [MY_CHECK_YAJL_1])
 
 AC_CHECK_HEADERS([google/protobuf-c/protobuf-c.h],
-                 [],
-                 [AC_MSG_ERROR([required header file not found])])
-
-AC_CHECK_HEADERS([nmsg/sie/dnsdedupe.pb-c.h],
                  [],
                  [AC_MSG_ERROR([required header file not found])])
 

@@ -13,10 +13,10 @@
 /configure
 /libtool
 /stamp-h1
+test-suite.log
 Makefile
 Makefile.in
 TAGS
 dnstable/libdnstable.pc
-src/dnstable_convert
 src/dnstable_dump
 src/dnstable_lookup

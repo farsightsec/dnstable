@@ -16,6 +16,8 @@
 
 #include <arpa/inet.h>
 
+#include "libmy/my_byteorder.h"
+
 #include "dnstable-private.h"
 
 #include "libmy/ip_arith.h"
@@ -700,8 +702,20 @@ query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t t
 			    != wdns_res_success)
 				return (dnstable_res_failure);
 			ubuf_advance(it->key, len_key - 1);
-			if (it->query->do_rrtype)
+			if (it->query->do_rrtype &&
+				(type_byte == ENTRY_TYPE_RRSET))
 				add_rrtype_to_key(it->key, it->query->rrtype);
+			else if (it->query->do_rrtype) {
+				switch(it->query->rrtype) {
+				case WDNS_TYPE_NS:
+				case WDNS_TYPE_CNAME:
+				case WDNS_TYPE_DNAME:
+				case WDNS_TYPE_PTR:
+				case WDNS_TYPE_MX:
+				case WDNS_TYPE_SRV:
+					add_rrtype_to_key(it->key, it->query->rrtype);
+				}
+			}
 			it->m_iter = mtbl_source_get_prefix(it->source,
 							    ubuf_data(it->key),
 							    ubuf_size(it->key));
@@ -896,8 +910,17 @@ query_init_rdata_name(struct query_iter *it)
 	ubuf_append(it->key, it->query->name.data, it->query->name.len);
 
 	/* key: rrtype */
-	if (it->query->do_rrtype)
-		add_rrtype_to_key(it->key, it->query->rrtype);
+	if (it->query->do_rrtype) {
+		switch(it->query->rrtype) {
+		case WDNS_TYPE_NS:
+		case WDNS_TYPE_CNAME:
+		case WDNS_TYPE_DNAME:
+		case WDNS_TYPE_PTR:
+		case WDNS_TYPE_MX:
+		case WDNS_TYPE_SRV:
+			add_rrtype_to_key(it->key, it->query->rrtype);
+		}
+	}
 
 	it->m_iter = mtbl_source_get_prefix(it->source, ubuf_data(it->key), ubuf_size(it->key));
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);

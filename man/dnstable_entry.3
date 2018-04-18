@@ -1,0 +1,180 @@
+'\" t
+.\"     Title: dnstable_entry
+.\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
+.\" Generator: DocBook XSL Stylesheets v1.79.1 <http://docbook.sf.net/>
+.\"      Date: 04/18/2018
+.\"    Manual: \ \&
+.\"    Source: \ \&
+.\"  Language: English
+.\"
+.TH "DNSTABLE_ENTRY" "3" "04/18/2018" "\ \&" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+dnstable_entry \- dnstable entry objects
+.SH "SYNOPSIS"
+.sp
+\fB#include <dnstable\&.h>\fR
+.sp
+.nf
+\fBtypedef enum {
+    \fR\fB\fIDNSTABLE_ENTRY_TYPE_RRSET\fR\fR\fB,
+    \fR\fB\fIDNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD\fR\fR\fB,
+    \fR\fB\fIDNSTABLE_ENTRY_TYPE_RDATA\fR\fR\fB,
+    \fR\fB\fIDNSTABLE_ENTRY_TYPE_RDATA_NAME_REV\fR\fR\fB,
+} dnstable_entry_type;\fR
+.fi
+.sp
+.nf
+\fBstruct dnstable_entry *
+dnstable_entry_decode(
+    const uint8_t *\fR\fB\fIkey\fR\fR\fB, size_t \fR\fB\fIlen_key\fR\fR\fB,
+    const uint8_t *\fR\fB\fIval\fR\fR\fB, size_t \fR\fB\fIlen_val\fR\fR\fB);\fR
+.fi
+.sp
+.nf
+\fBvoid
+dnstable_entry_destroy(struct dnstable_entry **\fR\fB\fIent\fR\fR\fB);\fR
+.fi
+.sp
+.nf
+\fBchar *
+dnstable_entry_to_text(struct dnstable_entry *\fR\fB\fIent\fR\fR\fB);\fR
+.fi
+.sp
+.nf
+\fBchar *
+dnstable_entry_to_json(struct dnstable_entry *\fR\fB\fIent\fR\fR\fB);\fR
+.fi
+.sp
+.nf
+\fBdnstable_entry_type
+dnstable_entry_get_type(struct dnstable_entry *\fR\fB\fIent\fR\fR\fB);\fR
+.fi
+.sp
+.nf
+/* valid for entry types:
+ *      DNSTABLE_ENTRY_TYPE_RRSET
+ *      DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD
+ *      DNSTABLE_ENTRY_TYPE_RDATA
+ */
+\fBdnstable_res
+dnstable_entry_get_rrname(
+    struct dnstable_entry *\fR\fB\fIent\fR\fR\fB,
+    const uint8_t **\fR\fB\fIowner\fR\fR\fB, size_t *\fR\fB\fIlen_owner\fR\fR\fB);\fR
+.fi
+.sp
+.nf
+/* valid for entry types:
+ *      DNSTABLE_ENTRY_TYPE_RRSET
+ *      DNSTABLE_ENTRY_TYPE_RDATA
+ */
+\fBdnstable_res
+dnstable_entry_get_rrtype(
+    struct dnstable_entry *\fR\fB\fIent\fR\fR\fB,
+    uint16_t *\fR\fB\fIrrtype\fR\fR\fB);\fR
+.fi
+.sp
+.nf
+/* valid for entry types:
+ *      DNSTABLE_ENTRY_TYPE_RRSET
+ */
+\fBdnstable_res
+dnstable_entry_get_bailiwick(
+    struct dnstable_entry *\fR\fB\fIent\fR\fR\fB,
+    const uint8_t **\fR\fB\fIbailiwick\fR\fR\fB, size_t *\fR\fB\fIlen_bailiwick\fR\fR\fB);\fR
+.fi
+.sp
+.nf
+/* valid for entry types:
+ *      DNSTABLE_ENTRY_TYPE_RRSET
+ *      DNSTABLE_ENTRY_TYPE_RDATA
+ */
+\fBdnstable_res
+dnstable_entry_get_num_rdata(
+    struct dnstable_entry *\fR\fB\fIent\fR\fR\fB,
+    size_t *\fR\fB\fInum_rdata\fR\fR\fB);\fR
+.fi
+.sp
+.nf
+/* valid for entry types:
+ *      DNSTABLE_ENTRY_TYPE_RRSET
+ *      DNSTABLE_ENTRY_TYPE_RDATA
+ */
+\fBdnstable_res
+dnstable_entry_get_rdata(
+    struct dnstable_entry *\fR\fB\fIent\fR\fR\fB,
+    const uint8_t **\fR\fB\fIrdata\fR\fR\fB, size_t *\fR\fB\fIlen_rdata\fR\fR\fB);\fR
+.fi
+.sp
+.nf
+/* valid for entry types:
+ *      DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV
+ */
+\fBdnstable_res
+dnstable_entry_get_rdata_name(
+    struct dnstable_entry *\fR\fB\fIent\fR\fR\fB,
+    const uint8_t **\fR\fB\fIrdata_name\fR\fR\fB, size_t *\fR\fB\fIlen_rdata_name\fR\fR\fB);\fR
+.fi
+.sp
+.nf
+/* valid for entry types:
+ *      DNSTABLE_ENTRY_TYPE_RRSET
+ *      DNSTABLE_ENTRY_TYPE_RDATA
+ */
+\fBdnstable_res
+dnstable_entry_get_time_first(
+    struct dnstable_entry *\fR\fB\fIent\fR\fR\fB,
+    uint64_t *\fR\fB\fItime_first\fR\fR\fB);\fR
+.fi
+.sp
+.nf
+/* valid for entry types:
+ *      DNSTABLE_ENTRY_TYPE_RRSET
+ *      DNSTABLE_ENTRY_TYPE_RDATA
+ */
+\fBdnstable_res
+dnstable_entry_get_time_last(
+    struct dnstable_entry *\fR\fB\fIent\fR\fR\fB,
+    uint64_t *\fR\fB\fItime_last\fR\fR\fB);\fR
+.fi
+.sp
+.nf
+/* valid for entry types:
+ *      DNSTABLE_ENTRY_TYPE_RRSET
+ *      DNSTABLE_ENTRY_TYPE_RDATA
+ */
+\fBdnstable_res
+dnstable_entry_get_count(
+    struct dnstable_entry *\fR\fB\fIent\fR\fR\fB,
+    uint64_t *\fR\fB\fIcount\fR\fR\fB);\fR
+.fi
+.SH "DESCRIPTION"
+.sp
+\fBdnstable_entry\fR objects represent the data entries stored in dnstable data files\&. Various dnstable library functions return \fBdnstable_entry\fR objects through the \fBdnstable_iter\fR(3) interface, or they can be created directly by the \fBdnstable_entry_decode\fR() function, which parses raw dnstable\-encoded key/value pairs\&.
+.sp
+A \fBdnstable_entry\fR object has a particular type which can be retrieved with the \fBdnstable_entry_get_type\fR() function\&. Possible values are enumerated in \fBdnstable_entry_type\fR\&. For details about how each type is encoded, see \fBdnstable\-encoding\fR(5)\&.
+.sp
+For presentation or interchange purposes, the \fBdnstable_entry_to_text\fR() and \fBdnstable_entry_to_json\fR() functions can be used to generate the text or JSON\-encoded form of a \fBdnstable_entry\fR object\&. These functions return a dynamically allocated string which must be \fBfree\fR()\*(Aqd by the caller\&.
+.sp
+The remaining \fBdnstable_entry_get_*\fR() accessor functions return particular fields of the \fBdnstable_entry\fR object, if present\&. \fBdnstable_res_success\fR will be returned if the entry has the requested field, and \fBdnstable_res_failure\fR if not\&. None of the accessor functions allocate memory\&. For the accessors which return pointers, these pointers are valid as long as the \fBdnstable_entry\fR object is valid\&. For field descriptions, see \fBdnstable\-encoding\fR(5)\&.
+.SH "SEE ALSO"
+.sp
+\fBdnstable\-encoding\fR(5)
