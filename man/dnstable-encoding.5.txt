@@ -404,7 +404,7 @@ The following entries will be generated:
 == SEE ALSO ==
 
 _ISC Passive DNS Architecture_,
-http://users.isc.org/~edmonds/passive-dns-architecture.pdf
+https://www.farsightsecurity.com/assets/media/download/passive-dns-architecture.pdf
 
 _Google Protocol Buffers Encoding_,
 https://developers.google.com/protocol-buffers/docs/encoding, for the base-128
