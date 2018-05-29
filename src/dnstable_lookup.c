@@ -42,7 +42,9 @@ print_entry(struct dnstable_entry *ent)
 	assert(s != NULL);
 	if (strlen(s) > 0) {
 		fputs(s, stdout);
-		putchar('\n');
+		if (g_json ||
+		    (dnstable_entry_get_type(ent) == DNSTABLE_ENTRY_TYPE_RRSET))
+			putchar('\n');
 		free(s);
 	}
 }
