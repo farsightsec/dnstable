@@ -39,6 +39,10 @@ dnstable_entry_to_json(struct dnstable_entry *'ent');^
 dnstable_entry_get_type(struct dnstable_entry *'ent');^
 
 [verse]
+^void
+dnstable_entry_set_iszone(struct dnstable_entry *'ent', bool 'iszone');^
+
+[verse]
 /* valid for entry types:
  *      DNSTABLE_ENTRY_TYPE_RRSET
  *      DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD
@@ -144,6 +148,11 @@ For presentation or interchange purposes, the ^dnstable_entry_to_text^() and
 ^dnstable_entry_to_json^() functions can be used to generate the text or
 JSON-encoded form of a ^dnstable_entry^ object. These functions return a
 dynamically allocated string which must be ^free^()'d by the caller.
+
+The ^dnstable_entry_set_iszone^() function sets or clears a flag if
+this entry is from a zone file.  This controls how the timestamp
+fields are named in the formatted output produced by
+^dnstable_entry_to_text^() and ^dnstable_entry_to_json^().
 
 The remaining ^dnstable_entry_get_*^() accessor functions return particular
 fields of the ^dnstable_entry^ object, if present. ^dnstable_res_success^ will

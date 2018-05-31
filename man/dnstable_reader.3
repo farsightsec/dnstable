@@ -1,0 +1,90 @@
+'\" t
+.\"     Title: dnstable_reader
+.\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
+.\" Generator: DocBook XSL Stylesheets v1.79.1 <http://docbook.sf.net/>
+.\"      Date: 05/31/2018
+.\"    Manual: \ \&
+.\"    Source: \ \&
+.\"  Language: English
+.\"
+.TH "DNSTABLE_READER" "3" "05/31/2018" "\ \&" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+dnstable_reader \- read dnstable data from an mtbl source
+.SH "SYNOPSIS"
+.sp
+\fB#include <dnstable\&.h>\fR
+.sp
+.nf
+\fBstruct dnstable_reader *
+dnstable_reader_init(const struct mtbl_source *\fR\fB\fIs\fR\fR\fB);\fR
+.fi
+.sp
+.nf
+\fBstruct dnstable_reader *
+dnstable_reader_init_setfile(const char *\fR\fB\fIsetfile\fR\fR\fB);\fR
+.fi
+.sp
+.nf
+\fBvoid
+dnstable_reader_reload_setfile(struct dnstable_reader *\fR\fB\fIr\fR\fR\fB);\fR
+.fi
+.sp
+.nf
+\fBvoid
+dnstable_reader_destroy(struct dnstable_reader **\fR\fB\fIr\fR\fR\fB);\fR
+.fi
+.sp
+.nf
+\fBstruct dnstable_iter *
+dnstable_reader_iter(struct dnstable_reader *\fR\fB\fIr\fR\fR\fB);\fR
+.fi
+.sp
+.nf
+\fBstruct dnstable_iter *
+dnstable_reader_iter_rrset(struct dnstable_reader *\fR\fB\fIr\fR\fR\fB);\fR
+.fi
+.sp
+.nf
+\fBstruct dnstable_iter *
+dnstable_reader_iter_rdata(struct dnstable_reader *\fR\fB\fIr\fR\fR\fB);\fR
+.fi
+.sp
+.nf
+\fBstruct dnstable_iter *
+dnstable_reader_query(struct dnstable_reader *\fR\fB\fIr\fR\fR\fB, struct dnstable_query *\fR\fB\fIq\fR\fR\fB);\fR
+.fi
+.SH "DESCRIPTION"
+.sp
+\fBdnstable_reader\fR is the high\-level interface for reading dnstable entries from a dnstable data source\&. Results are returned through the \fBdnstable_iter\fR interface\&.
+.sp
+\fBdnstable_reader\fR objects can be initialized by calling \fBdnstable_reader_init\fR(), which takes an \fBmtbl_source\fR object, or by calling \fBdnstable_reader_init_setfile\fR(), which takes a full path name to a "setfile", which is a text file containing a list of dnstable data file paths, one per line\&. The directory name of that path is prepended to each data file\(cqs path\&. For example, if the setfile path is "/export/dnstable/mtbl/dns\&.fileset", and a line in it is of the form "dns\&.2017\&.Y\&.mtbl" then \fBdnstable\fR will try to open "/export/dnstable/mtbl/dns\&.2017\&.Y\&.mtbl"\&.
+.sp
+\fBdnstable_reader_reload_setfile\fR() will force a reload of a \fBdnstable_reader\fR object initialized by \fBdnstable_reader_init_setfile\fR() by re\-reading the underlying setfile\&.
+.sp
+\fBdnstable_reader_iter\fR() iterates over every entry object in the data source\&.
+.sp
+\fBdnstable_reader_iter_rrset\fR() iterates over just the entries of type \fIDNSTABLE_ENTRY_TYPE_RRSET\fR\&. Likewise, \fBdnstable_reader_iter_rdata\fR() iterates over just the entries of type \fIDNSTABLE_ENTRY_TYPE_RDATA\fR\&.
+.sp
+\fBdnstable_reader_query\fR() iterates over all the entry objects that match the specified query object\&.
+.SH "SEE ALSO"
+.sp
+\fBdnstable_iter\fR(3), \fBdnstable_query\fR(3), \fBmtbl_source\fR(3)
