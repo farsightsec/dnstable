@@ -48,8 +48,12 @@ interface.
 
 ^dnstable_reader^ objects can be initialized by calling
 ^dnstable_reader_init^(), which takes an ^mtbl_source^ object, or by calling
-^dnstable_reader_init_setfile^(), which takes the path to a "setfile", which is
+^dnstable_reader_init_setfile^(), which takes a full path name to a "setfile", which is
 a text file containing a list of dnstable data file paths, one per line.
+The directory name of that path is prepended to each data file's path.
+For example, if the setfile path is "/export/dnstable/mtbl/dns.fileset", and
+a line in it is of the form "dns.2017.Y.mtbl" then ^dnstable^ will try to open
+"/export/dnstable/mtbl/dns.2017.Y.mtbl".
 
 ^dnstable_reader_reload_setfile^() will force a reload of a ^dnstable_reader^
 object initialized by ^dnstable_reader_init_setfile^() by re-reading the
