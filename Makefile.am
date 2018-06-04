@@ -54,17 +54,16 @@ dnstable_libdnstable_la_LDFLAGS += \
 endif
 EXTRA_DIST += dnstable/libdnstable.sym
 
-install-exec-hook: src/dnstable_merge
-	install -m 0755 ${top_srcdir}/src/dnstable_merge $(DESTDIR)$(bindir)/dnstable_merge
-
-uninstall-hook:
-	rm -f $(DESTDIR)$(bindir)/dnstable_merge
+EXTRA_DIST += src/dnstable_merge.sh.in
+bin_SCRIPTS = src/dnstable_merge
+CLEANFILES = $(bin_SCRIPTS)
+src/dnstable_merge:
+	sed -e "s/@LIBDNSTABLE_CURRENT@/$(LIBDNSTABLE_CURRENT)/" ${srcdir}/src/dnstable_merge.sh.in >$@
+	chmod +x $@
 
 pkgconfig_DATA = dnstable/libdnstable.pc
 EXTRA_DIST += dnstable/libdnstable.pc.in
 CLEANFILES += dnstable/libdnstable.pc
-
-EXTRA_DIST += src/dnstable_merge
 
 bin_PROGRAMS = src/dnstable_dump
 src_dnstable_dump_SOURCES = \

@@ -1,5 +1,5 @@
 #!/bin/sh
-export MTBL_MERGE_DSO="libdnstable.so.0"
+export MTBL_MERGE_DSO="libdnstable.so.@LIBDNSTABLE_CURRENT@"
 export MTBL_MERGE_FUNC_PREFIX="dnstable_merge"
 
 if [ -z "$1" -o -z "$2" ]; then
