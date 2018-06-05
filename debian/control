@@ -12,8 +12,8 @@ Build-Depends:
  libwdns-dev (>= 0.6.0),
  libyajl-dev,
  pkg-config,
- xmlto,
-Standards-Version: 3.9.6
+ xmlto
+Standards-Version: 3.9.8
 
 Package: dnstable-bin
 Section: utils
