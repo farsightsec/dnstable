@@ -1,6 +1,6 @@
 AC_PREREQ(2.64)
 AC_INIT([dnstable],
-        [0.9.1],
+        [0.10.0],
         [https://github.com/farsightsec/dnstable/issues],
         [dnstable],
         [https://github.com/farsightsec/dnstable])
@@ -41,7 +41,7 @@ fi
 AC_SEARCH_LIBS([clock_gettime], [rt])
 AC_CHECK_FUNCS([clock_gettime])
 
-PKG_CHECK_MODULES([libmtbl], [libmtbl >= 0.8.0])
+PKG_CHECK_MODULES([libmtbl], [libmtbl >= 1.2.1])
 PKG_CHECK_MODULES([libwdns], [libwdns >= 0.6.0])
 PKG_CHECK_MODULES([libyajl], [yajl >= 2], [], [MY_CHECK_YAJL_1])
 

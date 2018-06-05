@@ -1,8 +1,24 @@
 dnstable (0.10.0)
 
-  * Remove dnstable_convert to simplify dependencies
+  * Remove dnstable_convert into a separate repo to simplify
+    dependencies. https://github.com/farsightsec/dnstable-convert/
 
- -- David Waitzman <djw@fsi.io>  Wed, 21 Mar 2018 20:00:00 -0500
+  * Add generated man pages to source.
+
+  * Document dnstable_entry_set_iszone().
+
+  * Improve dnstable_reader(3) documentation.
+
+  * Add JSON output (-j option) to dnstable_lookup.
+
+  * Add test cases based on dnstable_lookup.
+
+  * Only encode RDATA so the hostname is at the beginning for NS, CNAME,
+    DNAME, PTR, MX, and SRV record types.
+
+  * Fix byteorder macros for macOS.
+
+ -- Farsight Security, Inc. <software@farsightsecurity.com>  Tue, 05 Jun 2018 13:35:03 +0000
 
 dnstable (0.9.1)
 
