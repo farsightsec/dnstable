@@ -45,11 +45,7 @@
 #include <mtbl.h>
 #include <wdns.h>
 
-#ifdef HAVE_YAJL_1
-# include <yajl/yajl_gen.h>
-#else
-# include <yajl_gen.h>
-#endif
+#include <yajl/yajl_gen.h>
 
 #include "dnstable.h"
 
