@@ -45,10 +45,6 @@ PKG_CHECK_MODULES([libmtbl], [libmtbl >= 1.2.1])
 PKG_CHECK_MODULES([libwdns], [libwdns >= 0.6.0])
 PKG_CHECK_MODULES([libyajl], [yajl >= 2], [], [MY_CHECK_YAJL_1])
 
-AC_CHECK_HEADERS([google/protobuf-c/protobuf-c.h],
-                 [],
-                 [AC_MSG_ERROR([required header file not found])])
-
 AX_PTHREAD([
     LIBS="$PTHREAD_LIBS $LIBS"
     CFLAGS="$CFLAGS $PTHREAD_CFLAGS"

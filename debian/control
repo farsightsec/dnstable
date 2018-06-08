@@ -8,7 +8,6 @@ Build-Depends:
  dh-autoreconf (>= 5~),
  dpkg-dev (>= 1.16.0~),
  libmtbl-dev (>= 1.2.1),
- libprotobuf-c-dev,
  libwdns-dev (>= 0.6.0),
  libyajl-dev,
  pkg-config,
