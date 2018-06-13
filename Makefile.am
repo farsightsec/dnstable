@@ -105,6 +105,8 @@ ASCIIDOC_PROCESS = $(AM_V_GEN) $(ASCIIDOC) -f manpage --no-xmllint --asciidoc-op
 .7.txt.7:
 	$(ASCIIDOC_PROCESS)
 
+endif
+
 dist_man_MANS = \
 	man/dnstable-encoding.5 \
 	man/dnstable_dump.1 \
@@ -116,7 +118,6 @@ dist_man_MANS = \
 	man/dnstable_reader.3 \
 	man/dnstable_merge_func.3 \
 	man/dnstable.7
-endif
 
 EXTRA_DIST += \
 	man/dnstable-encoding.5.txt \
