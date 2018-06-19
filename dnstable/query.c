@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <sys/socket.h>
 #include <arpa/inet.h>
 
 #include "libmy/my_byteorder.h"

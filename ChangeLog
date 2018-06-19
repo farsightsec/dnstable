@@ -1,3 +1,15 @@
+dnstable (0.10.1)
+
+  * Check for endian.h headers.
+
+  * Add sys/socket.h include.
+
+  * Expunge protobuf-c references.
+
+  * Correct libyajl include path.
+
+ -- Farsight Security, Inc <software@farsightsecurity.com>  Mon, 18 Jun 2018 15:50:31 -0400
+
 dnstable (0.10.0)
 
   * Remove dnstable_convert into a separate repo to simplify
