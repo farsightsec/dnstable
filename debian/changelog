@@ -1,3 +1,10 @@
+dnstable (0.10.1-1) wheezy-farsightsec; urgency=medium
+
+  * New upstream release.
+  * Add libmtbl dependency.
+
+ -- Farsight Security, Inc. <software@farsightsecurity.com>  Mon, 18 Jun 2018 15:50:31 -0400
+
 dnstable (0.10.0-1) wheezy-farsightsec; urgency=medium
 
   * New upstream release.
