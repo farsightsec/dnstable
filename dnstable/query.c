@@ -821,10 +821,10 @@ query_init_rrset(struct query_iter *it)
 	uint8_t name[WDNS_MAXLEN_NAME];
 	it->key = ubuf_init(64);
 
-	if (is_right_wildcard(&it->query->name))
-		return query_init_rrset_right_wildcard(it);
 	if (is_left_wildcard(&it->query->name))
 		return query_init_rrset_left_wildcard(it);
+	if (is_right_wildcard(&it->query->name))
+		return query_init_rrset_right_wildcard(it);
 
 	/* key: type byte */
 	ubuf_add(it->key, ENTRY_TYPE_RRSET);
