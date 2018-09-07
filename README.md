@@ -16,7 +16,8 @@ searches.
 
 dnstable has the following dependencies:
 
-* [yajl](http://lloyd.github.io/yajl/), for converting data to JSON format.
+* [yajl](http://lloyd.github.io/yajl/) >= 1.0.8, for converting data to JSON
+  format.
 
 * [libmtbl](https://github.com/farsightsec/mtbl), for encoding the underlying
   SSTable files in the MTBL format.
