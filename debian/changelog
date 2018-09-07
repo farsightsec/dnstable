@@ -1,3 +1,9 @@
+dnstable (0.10.2-1) wheezy-farsightsec; urgency=medium
+
+  * New upstream release.
+
+ -- Farsight Security, Inc. <software@farsightsecurity.com>  Thu, 06 Sep 2018 18:37:23 -0400
+
 dnstable (0.10.1-1) wheezy-farsightsec; urgency=medium
 
   * New upstream release.
