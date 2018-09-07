@@ -18,7 +18,7 @@ AC_DEFUN([MY_CHECK_YAJL_1], [
       libyajl_LIBS="-lyajl"
       AC_DEFINE([HAVE_YAJL_1], [1], [Define to 1 if YAJL is version 1.])
     ],
-    [AC_MSG_ERROR([required library not found])]
+    [AC_MSG_ERROR([yajl >= 1.0.8 not found])]
   )
 
   CFLAGS="$save_CFLAGS"
