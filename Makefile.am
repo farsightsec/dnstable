@@ -88,6 +88,13 @@ EXTRA_DIST += tests/test-dns.mtbl
 
 check_PROGRAMS =
 
+TESTS += tests/test-dnstable
+check_PROGRAMS += tests/test-dnstable
+tests_test_dnstable_LDADD = \
+	dnstable/libdnstable.la \
+	$(libmtbl_LIBS)
+tests_test_dnstable_SOURCES = tests/test-dnstable.c
+
 if BUILD_MAN
 SUFFIXES = .1.txt .3.txt .5.txt .7.txt .1 .3 .5 .7
 
