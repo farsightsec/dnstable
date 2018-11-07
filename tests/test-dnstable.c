@@ -36,8 +36,6 @@ test_basic(void)
 	dnstable_res res, res2, res3, res4, res5;
 	size_t n;
 
-//	reader = dnstable_reader_init_setfile("./tests/generic-tests/test.mtbl");
-
 	mreader = mtbl_reader_init("./tests/generic-tests/test.mtbl", NULL);
 	check_return(mreader != NULL);
 	reader = dnstable_reader_init(mtbl_reader_source(mreader));
@@ -162,6 +160,40 @@ test_basic(void)
 }
 
 static int
+test_filter_parameter(struct dnstable_query *query, struct dnstable_entry *entry, dnstable_filter_parameter_type tparam, uint64_t time_val_succeed, uint64_t time_val_fail) {
+	dnstable_res res;
+	uint64_t tmptime;
+	bool passes;
+
+	/* Reset everything. */
+	tmptime = ~(0);
+	res = dnstable_query_set_filter_parameter(query, DNSTABLE_FILTER_PARAMETER_TIME_FIRST_BEFORE, &tmptime, sizeof(tmptime));
+	check_return(res == dnstable_res_success);
+	res = dnstable_query_set_filter_parameter(query, DNSTABLE_FILTER_PARAMETER_TIME_LAST_BEFORE, &tmptime, sizeof(tmptime));
+	check_return(res == dnstable_res_success);
+
+	tmptime = 0;
+	res = dnstable_query_set_filter_parameter(query, DNSTABLE_FILTER_PARAMETER_TIME_FIRST_AFTER, &tmptime, sizeof(tmptime));
+	check_return(res == dnstable_res_success);
+	res = dnstable_query_set_filter_parameter(query, DNSTABLE_FILTER_PARAMETER_TIME_LAST_AFTER, &tmptime, sizeof(tmptime));
+	check_return(res == dnstable_res_success);
+
+	/* Check first condition. */
+	res = dnstable_query_set_filter_parameter(query, tparam, &time_val_succeed, sizeof(time_val_succeed));
+	check_return(res == dnstable_res_success);
+	check_return(dnstable_query_filter(query, entry, &passes) == dnstable_res_success);
+	check_return(passes == true);
+
+	/* Then opposite condition. */
+	res = dnstable_query_set_filter_parameter(query, tparam, &time_val_fail, sizeof(time_val_fail));
+	check_return(res == dnstable_res_success);
+	check_return(dnstable_query_filter(query, entry, &passes) == dnstable_res_success);
+	check_return(passes == false);
+
+	l_return_test_status();
+}
+
+static int
 test_query(void)
 {
 	struct mtbl_reader *mreader;
@@ -200,8 +232,24 @@ const char *qerror;
 	res = dnstable_query_set_bailiwick(query, "bkk1.cloud.z.com");
 	check_return(res == dnstable_res_success);
 
-//	iter = dnstable_query_iter(query, mtbl_reader_source(mreader));
+struct timespec ts = {0, 0};
+	res = dnstable_query_set_timeout(query, &ts);
+	check_return(res == dnstable_res_success);
+
 	iter = dnstable_reader_query(reader, query);
+	check_return(iter != NULL);
+
+	/* First attempt should timeout. */
+	res = dnstable_iter_next(iter, &entry);
+	check_return(res == dnstable_res_timeout);
+	dnstable_iter_destroy(&iter);
+
+	/* Second attempt should be fine. */
+	ts.tv_sec = 100;
+	res = dnstable_query_set_timeout(query, &ts);
+
+	iter = dnstable_query_iter(query, mtbl_reader_source(mreader));
+//	iter = dnstable_reader_query(reader, query);
 	check_return(iter != NULL);
 
 	res = dnstable_iter_next(iter, &entry);
@@ -216,12 +264,12 @@ const char *qerror;
 	res = dnstable_entry_get_rrname(entry, &rrname, &lrrname);
 	check_return(res == dnstable_res_success);
 	check_return(lrrname >= 5);
-const uint8_t *suffix = "\x03""com""\x00";
+const char *suffix = "\x03""com""\x00";
 	check_return(!memcmp(&rrname[lrrname - 5], suffix, 5));
 
 	res = dnstable_entry_get_bailiwick(entry, &bailiwick, &lbailiwick);
 	check_return(res == dnstable_res_success);
-const uint8_t *ebailiwick = "\x04""bkk1""\x05""cloud""\x01""z""\x03""com\x00";
+const char *ebailiwick = "\x04""bkk1""\x05""cloud""\x01""z""\x03""com\x00";
 	check_return(lbailiwick == 18);
 	check_return(!memcmp(bailiwick, ebailiwick, strlen((const char *)ebailiwick) + 1));
 
@@ -235,30 +283,11 @@ bool passes;
 	check_return(dnstable_query_filter(query, entry, &passes) == dnstable_res_success);
 	check_return(passes == true);
 
-	first_time /= 2;
-	res = dnstable_query_set_filter_parameter(query, DNSTABLE_FILTER_PARAMETER_TIME_FIRST_BEFORE, &first_time, sizeof(first_time));
-	check_return(res == dnstable_res_success);
-	check_return(dnstable_query_filter(query, entry, &passes) == dnstable_res_success);
-	check_return(passes == false);
-
-	first_time = ~(0);
-	res = dnstable_query_set_filter_parameter(query, DNSTABLE_FILTER_PARAMETER_TIME_FIRST_BEFORE, &first_time, sizeof(first_time));
-	check_return(res == dnstable_res_success);
-	check_return(dnstable_query_filter(query, entry, &passes) == dnstable_res_success);
-	check_return(passes == true);
-
-	last_time += (last_time / 2);
-	res = dnstable_query_set_filter_parameter(query, DNSTABLE_FILTER_PARAMETER_TIME_LAST_AFTER, &last_time, sizeof(last_time));
-	check_return(res == dnstable_res_success);
-	check_return(dnstable_query_filter(query, entry, &passes) == dnstable_res_success);
-	check_return(passes == false);
-
-	last_time = 0;
-	res = dnstable_query_set_filter_parameter(query, DNSTABLE_FILTER_PARAMETER_TIME_LAST_AFTER, &last_time, sizeof(last_time));
-	check_return(res == dnstable_res_success);
-	check_return(dnstable_query_filter(query, entry, &passes) == dnstable_res_success);
-	check_return(passes == true);
-
+	/* Check various time fencing filters. */
+	return_if_error(test_filter_parameter(query, entry, DNSTABLE_FILTER_PARAMETER_TIME_FIRST_BEFORE, first_time + 1000, first_time - 1000));
+	return_if_error(test_filter_parameter(query, entry, DNSTABLE_FILTER_PARAMETER_TIME_LAST_BEFORE, last_time + 1000, first_time - 1000));
+	return_if_error(test_filter_parameter(query, entry, DNSTABLE_FILTER_PARAMETER_TIME_LAST_AFTER, last_time - 1000, ~(0)));
+	return_if_error(test_filter_parameter(query, entry, DNSTABLE_FILTER_PARAMETER_TIME_FIRST_AFTER, first_time - 1000, first_time + 1000));
 
 	dnstable_entry_destroy(&entry);
 	dnstable_iter_destroy(&iter);
@@ -381,12 +410,88 @@ size_t lrdata_name;
 	l_return_test_status();
 }
 
+static int
+compare_merger_to_file(struct mtbl_iter *iter, const char *mtbl_file) {
+	struct mtbl_iter *riter;
+	struct mtbl_reader *reader;
+	const uint8_t *key1, *key2, *val1, *val2;
+	size_t len_key1, len_key2, len_val1, len_val2;
+
+	reader = mtbl_reader_init(mtbl_file, NULL);
+	check_return(reader != NULL);
+
+	riter = mtbl_source_iter(mtbl_reader_source(reader));
+	check_return(riter != NULL);
+
+	while (1) {
+		mtbl_res res1, res2;
+
+		res1 = mtbl_iter_next(riter, &key1, &len_key1, &val1, &len_val1);
+		res2 = mtbl_iter_next(iter, &key2, &len_key2, &val2, &len_val2);
+
+		if (res1 != mtbl_res_success)
+			break;
+
+		check_return(res1 == res2);
+		check_return(len_key1 == len_key2);
+		check_return(len_val1 == len_val2);
+		check_return(!memcmp(val1, val2, len_val1));
+		check_return(!memcmp(key1, key2, len_key1));
+	}
+
+	mtbl_iter_destroy(&riter);
+	mtbl_reader_destroy(&reader);
+
+	l_return_test_status();
+}
+
+static int
+test_merger(void)
+{
+	struct mtbl_merger *merger;
+	struct mtbl_merger_options *moptions;
+	const struct mtbl_source *msource;
+	struct mtbl_reader *reader;
+	struct mtbl_iter *iter;
+
+	moptions = mtbl_merger_options_init();
+	check_return(moptions != NULL);
+
+	mtbl_merger_options_set_merge_func(moptions, dnstable_merge_func, NULL);
+
+	merger = mtbl_merger_init(moptions);
+	check_return(merger != NULL);
+
+	reader = mtbl_reader_init("./tests/generic-tests/m1.mtbl", NULL);
+	check_return(reader != NULL);
+	mtbl_merger_add_source(merger, mtbl_reader_source(reader));
+
+	reader = mtbl_reader_init("./tests/generic-tests/m2.mtbl", NULL);
+	check_return(reader != NULL);
+	mtbl_merger_add_source(merger, mtbl_reader_source(reader));
+
+	msource = mtbl_merger_source(merger);
+	check_return(msource != NULL);
+
+	iter = mtbl_source_iter(msource);
+	check_return(iter != NULL);
+
+	return_if_error(compare_merger_to_file(iter, "./tests/generic-tests/m12.mtbl"));
+
+	mtbl_iter_destroy(&iter);
+	mtbl_merger_options_destroy(&moptions);
+	mtbl_merger_destroy(&merger);
+
+	l_return_test_status();
+}
+
 int
 main(void)
 {
 	check_explicit2_display_only(test_basic() == 0, "test-dnstable/ test_basic");
 	check_explicit2_display_only(test_query() == 0, "test-dnstabl/ test_query");
 	check_explicit2_display_only(test_cust_iter() == 0, "test-dnstable/ test_cust_iter");
+	check_explicit2_display_only(test_merger() == 0, "test-dnstable/ test_merger");
 
         g_check_test_status(0);
 
