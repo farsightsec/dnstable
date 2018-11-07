@@ -407,6 +407,35 @@ size_t lrdata_name;
 	check_return(ival == 0x87654321);
 	dnstable_reader_destroy(&reader);
 
+
+	/* A special test for dnstable_entry_get_rdata_name(). */
+	mreader = mtbl_reader_init("./tests/generic-tests/test.mtbl", NULL);
+	check_return(mreader != NULL);
+	reader = dnstable_reader_init(mtbl_reader_source(mreader));
+	check_return(reader != NULL);
+
+	iter = dnstable_reader_iter_rdata_names(reader);
+	check_return(iter != NULL);
+
+	res = dnstable_iter_next(iter, &entry);
+	check_return(res == dnstable_res_success);
+
+	check_return(dnstable_entry_get_type(entry) == DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV);
+
+const uint8_t rev_name[24] = "\x12""bestbuddiespetcare""\x03""biz\x00";
+	res = dnstable_entry_get_rdata_name(entry, &rdata_name, &lrdata_name);
+	check_return(res == dnstable_res_success);
+	check_return(lrdata_name == 24);
+	check_return(!memcmp(rdata_name, rev_name, lrdata_name));
+
+	/* This shouldn't work here. */
+	res = dnstable_entry_get_rrtype(entry, &rrtype);
+	check_return(res != dnstable_res_success);
+
+	dnstable_entry_destroy(&entry);
+	dnstable_iter_destroy(&iter);
+	dnstable_reader_destroy(&reader);
+
 	l_return_test_status();
 }
 
