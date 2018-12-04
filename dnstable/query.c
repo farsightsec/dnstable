@@ -974,10 +974,6 @@ query_init_rdata_raw(struct query_iter *it)
 	/* key: rdata */
 	ubuf_append(it->key, it->query->rdata, it->query->len_rdata);
 
-	/* key: rrtype */
-	if (it->query->do_rrtype)
-		add_rrtype_to_key(it->key, it->query->rrtype);
-
 	it->m_iter = mtbl_source_get_prefix(it->source, ubuf_data(it->key), ubuf_size(it->key));
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
