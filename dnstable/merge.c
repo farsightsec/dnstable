@@ -37,9 +37,17 @@ dnstable_merge_func(void *clos,
 		res = triplet_unpack(val1, len_val1, &time_first1, &time_last1, &count1);
 		assert(res == dnstable_res_success);
 
-		time_first0 = (time_first0 < time_first1) ? time_first0 : time_first1;
-		time_last0 = (time_last0 > time_last1) ? time_last0 : time_last1;
-		count0 += count1;
+                if (time_first0 == time_first1 && time_last0 == time_last1) {
+                        /* if the time pairs are identical then use the maximum count */
+                        if (count1 > count0)
+                                count0 = count1;
+                } else {
+                        /* otherwise use the earliest of the first times,
+                           the latest of the last times, and sum the counts */
+                        time_first0 = (time_first0 < time_first1) ? time_first0 : time_first1;
+                        time_last0 = (time_last0 > time_last1) ? time_last0 : time_last1;
+                        count0 += count1;
+                }
 
 		*merged_val = my_malloc(32);
 		*len_merged_val = triplet_pack(*merged_val, time_first0, time_last0, count0);
