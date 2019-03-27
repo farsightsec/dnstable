@@ -32,6 +32,7 @@ struct dnstable_query {
 	char			*err;
 	wdns_name_t		name, bailiwick;
 	uint32_t		rrtype;
+	bool			aggregated;
 	size_t			len_rdata, len_rdata2;
 	uint8_t			*rdata, *rdata2;
 	struct timespec		timeout;
@@ -97,6 +98,7 @@ dnstable_query_init(dnstable_query_type q_type)
 	       q_type == DNSTABLE_QUERY_TYPE_RDATA_RAW);
 	struct dnstable_query *q = my_calloc(1, sizeof(*q));
 	q->q_type = q_type;
+	q->aggregated = true;
 	return (q);
 }
 
@@ -324,6 +326,18 @@ dnstable_query_set_rrtype(struct dnstable_query *q, const char *s_rrtype)
 }
 
 dnstable_res
+dnstable_query_set_aggregated(struct dnstable_query *q, bool aggregated)
+{
+	q->aggregated = aggregated;
+	return (dnstable_res_success);
+}
+
+bool dnstable_query_is_aggregated(const struct dnstable_query *q)
+{
+	return q->aggregated;
+}
+
+dnstable_res
 dnstable_query_set_timeout(struct dnstable_query *q, const struct timespec *timeout)
 {
 	if (timeout == NULL) {
@@ -486,7 +500,6 @@ query_iter_next(void *clos, struct dnstable_entry **ent)
 			if (my_timespec_cmp(&now, &expiry) >= 0)
 				return (dnstable_res_timeout);
 		}
-
 		if (mtbl_iter_next(it->m_iter, &key, &len_key, &val, &len_val) != mtbl_res_success)
 			return (dnstable_res_failure);
 		*ent = dnstable_entry_decode(key, len_key, val, len_val);
@@ -820,7 +833,6 @@ query_init_rrset(struct query_iter *it)
 {
 	uint8_t name[WDNS_MAXLEN_NAME];
 	it->key = ubuf_init(64);
-
 	if (is_left_wildcard(&it->query->name))
 		return query_init_rrset_left_wildcard(it);
 	if (is_right_wildcard(&it->query->name))
@@ -957,8 +969,8 @@ query_init_rdata_ip(struct query_iter *it)
 						    ubuf_data(it->key), ubuf_size(it->key));
 	} else {
 		it->m_iter = mtbl_source_get_range(it->source,
-						    ubuf_data(it->key), ubuf_size(it->key),
-						    ubuf_data(it->key2), ubuf_size(it->key2));
+						   ubuf_data(it->key), ubuf_size(it->key),
+						   ubuf_data(it->key2), ubuf_size(it->key2));
 	}
 	return dnstable_iter_init(query_iter_next_ip, query_iter_free, it);
 }

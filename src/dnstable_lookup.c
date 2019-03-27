@@ -27,7 +27,8 @@
 #include <dnstable.h>
 #include <mtbl.h>
 
-bool g_json;
+bool g_json = false;
+bool g_aggregate = true;
 
 static void
 print_entry(struct dnstable_entry *ent)
@@ -68,10 +69,15 @@ do_dump(struct dnstable_iter *it)
 static void
 usage(void)
 {
-	fprintf(stderr, "Usage: dnstable_lookup [-j] rrset <OWNER NAME> [<RRTYPE> [<BAILIWICK>]]\n");
-	fprintf(stderr, "Usage: dnstable_lookup [-j] rdata ip <ADDRESS | RANGE | PREFIX>\n");
-	fprintf(stderr, "Usage: dnstable_lookup [-j] rdata raw <HEX STRING> [<RRTYPE>]\n");
-	fprintf(stderr, "Usage: dnstable_lookup [-j] rdata name <RDATA NAME> [<RRTYPE>]\n");
+	fprintf(stderr, "Usage:\n");
+	fprintf(stderr, "\tdnstable_lookup [-j] [-u] rrset <OWNER NAME> [<RRTYPE> [<BAILIWICK>]]\n");
+	fprintf(stderr, "\tdnstable_lookup [-j] [-u] rdata ip <ADDRESS | RANGE | PREFIX>\n");
+	fprintf(stderr, "\tdnstable_lookup [-j] [-u] rdata raw <HEX STRING> [<RRTYPE>]\n");
+	fprintf(stderr, "\tdnstable_lookup [-j] [-u] rdata name <RDATA NAME> [<RRTYPE>]\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Flags:\n");
+	fprintf(stderr, "\t-j: output in JSON format; default is 'dig' presentation format\n");
+	fprintf(stderr, "\t-u: output unaggregated results; default is aggregated results\n");
 	exit(EXIT_FAILURE);
 }
 
@@ -92,32 +98,46 @@ main(int argc, char **argv)
 	struct dnstable_query *d_query;
 	dnstable_query_type d_qtype;
 	dnstable_res res;
+	int ch;
 
 	if (argc < 3)
 		usage();
 
-	switch (getopt(argc, argv, "j")) {
-	case 'j':
-		g_json = true;
-		break;
-	case -1:
-		break;
-	default:
-		usage();
+	while ((ch = getopt(argc, argv, "ju")) != -1) {
+	        switch (ch) {
+	        case 'j':
+	                g_json = true;
+	                break;
+	        case 'u':
+	                g_aggregate = false;
+	                break;
+	        case -1:
+	                break;
+	        case '?':
+	        default:
+	                usage();
+	        }
 	}
-	argv += optind;
+
 	argc -= optind;
+	argv += optind;
 
 	if (strcmp(argv[0], "rrset") == 0) {
+		if (argc < 2 || argc > 4)
+			usage();
 		d_qtype = DNSTABLE_QUERY_TYPE_RRSET;
-		if (argc >= 2)
-			arg_owner_name = argv[1];
+
+	        arg_owner_name = argv[1];
+
+	        if (strchr(arg_owner_name, '/') > 0) {
+	                fprintf(stderr, "/ is not allowed in OWNER NAME\n\n");
+	                usage();
+	        }
+
 		if (argc >= 3)
 			arg_rrtype = argv[2];
 		if (argc >= 4)
 			arg_bailiwick = argv[3];
-		if (argc > 5)
-			usage();
 	} else if (strcmp(argv[0], "rdata") == 0) {
 		if (strcmp(argv[1], "ip") == 0 && argc == 3) {
 			d_qtype = DNSTABLE_QUERY_TYPE_RDATA_IP;
@@ -146,6 +166,10 @@ main(int argc, char **argv)
 	if (env_setfile) {
 		d_reader = dnstable_reader_init_setfile(env_setfile);
 	} else {
+		if (g_aggregate == false) {
+			fprintf(stderr, "-u flag not valid with a single input mtbl file; it is only valid with a setfile\n");
+			exit(EXIT_FAILURE);
+		}
 		m_reader = mtbl_reader_init(env_fname, NULL);
 		if (m_reader == NULL) {
 			fprintf(stderr, "dnstable_lookup: unable to open file %s\n", env_fname);
@@ -192,7 +216,18 @@ main(int argc, char **argv)
 		}
 	}
 
+	res = dnstable_query_set_aggregated(d_query, g_aggregate);
+	if (res != dnstable_res_success) {
+		fprintf(stderr, "dnstable_lookup: dnstable_query_set_aggregated() failed\n");
+		exit(EXIT_FAILURE);
+	}
+
 	d_iter = dnstable_reader_query(d_reader, d_query);
+	if (d_iter == NULL) {
+		fprintf(stderr, "dnstable_lookup: dnstable_reader_query() failed\n");
+		exit(EXIT_FAILURE);
+	}
+
 	do_dump(d_iter);
 	dnstable_iter_destroy(&d_iter);
 	dnstable_query_destroy(&d_query);
