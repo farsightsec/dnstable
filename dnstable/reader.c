@@ -23,7 +23,9 @@ struct reader_iter {
 
 struct dnstable_reader {
 	const struct mtbl_source	*source;
+	const struct mtbl_source	*source_no_merge;
 	struct mtbl_fileset		*fs;
+	struct mtbl_fileset		*fs_no_merge;
 };
 
 static struct dnstable_iter *
@@ -53,7 +55,14 @@ dnstable_reader_init_setfile(const char *setfile)
 	mtbl_fileset_options_set_merge_func(fopt, dnstable_merge_func, NULL);
 	r->fs = mtbl_fileset_init(setfile, fopt);
 	mtbl_fileset_options_destroy(&fopt);
+
+	/* reset and redo the mtbl fileset options */
+	fopt = mtbl_fileset_options_init();
+	mtbl_fileset_options_set_merge_func(fopt, NULL, NULL);
+	r->fs_no_merge = mtbl_fileset_dup(r->fs, fopt);
+	mtbl_fileset_options_destroy(&fopt);
 	r->source = mtbl_fileset_source(r->fs);
+	r->source_no_merge = mtbl_fileset_source(r->fs_no_merge);
 	return (r);
 }
 
@@ -69,6 +78,7 @@ dnstable_reader_destroy(struct dnstable_reader **r)
 {
 	if (*r) {
 		mtbl_fileset_destroy(&(*r)->fs);
+		mtbl_fileset_destroy(&(*r)->fs_no_merge);
 		my_free(*r);
 	}
 }
@@ -105,10 +115,21 @@ dnstable_reader_iter_rdata_names(struct dnstable_reader *r)
 	return (reader_iter_prefix(r, ENTRY_TYPE_RDATA_NAME_REV));
 }
 
+/*
+ * dnstable_reader_query returns aggregated
+ * (e.g. a dnstable merge function is applied) or unaggregated results
+ * depending upon the query object's aggregated flag.
+ */
 struct dnstable_iter *
 dnstable_reader_query(struct dnstable_reader *r, struct dnstable_query *q)
 {
-	return (dnstable_query_iter(q, r->source));
+	if (dnstable_query_is_aggregated(q) == false) {
+		if (r->source_no_merge != NULL)
+			return (dnstable_query_iter(q, r->source_no_merge));
+		else
+			return NULL; /* this is an error */
+	} else
+		return (dnstable_query_iter(q, r->source));
 }
 
 static struct dnstable_iter *
