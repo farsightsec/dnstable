@@ -44,10 +44,6 @@ dnstable_query_set_aggregated(struct dnstable_query *'q',
     bool 'aggregated');^
 
 [verse]
-^bool
-dnstable_query_is_aggregated(const struct dnstable_query *'q');^
-
-[verse]
 ^dnstable_res
 dnstable_query_set_bailiwick(struct dnstable_query *'q',
     const char *'bailiwick');^
@@ -102,8 +98,6 @@ filtered against the value provided.
 If not called, no RRtype or bailiwick filtering will be performed.
 
 ^dnstable_query_set_aggregated^() sets if the results from queries should be aggregated or not.  The default is _True_ == aggregated.
-
-^dnstable_query_is_aggregated^() returns the aggregated setting for this query.  The default is _True_ == aggregated.
 
 ^dnstable_query_set_data^() specifies the main search parameter and is required.
 Its meaning depends on the query type.

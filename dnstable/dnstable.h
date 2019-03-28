@@ -114,9 +114,6 @@ dnstable_query_set_rrtype(struct dnstable_query *,
 dnstable_res
 dnstable_query_set_aggregated(struct dnstable_query *, bool);
 
-bool
-dnstable_query_is_aggregated(const struct dnstable_query *);
-
 dnstable_res
 dnstable_query_set_bailiwick(struct dnstable_query *,
 			     const char *);
