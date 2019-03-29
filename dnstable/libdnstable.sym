@@ -55,7 +55,7 @@ global:
         dnstable_query_set_timeout;
 } LIBDNSTABLE_0.8.0;
 
-LIBDNSTABLE_0.10.0 {
+LIBDNSTABLE_0.11.0 {
 global:
         dnstable_query_set_aggregated;
         dnstable_query_set_skip;

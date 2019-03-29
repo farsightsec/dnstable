@@ -1,3 +1,13 @@
+dnstable (0.11.0)
+
+  * Fix bug in raw rdata queries with rrtype specified.
+
+  * Add functionality for unagggregated query results.
+
+  * Add ability to skip query results.
+
+ -- Farsight Security, Inc. <software@farsightsecurity.com>  Fri, 29 Mar 2019 12:34:07 -0500
+
 dnstable (0.10.2)
 
   * Fix ordering for wildcard, processing continguous memory first.
