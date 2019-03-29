@@ -71,6 +71,12 @@ dnstable_query_set_rrtype(struct dnstable_query *\fR\fB\fIq\fR\fR\fB,
 .sp
 .nf
 \fBdnstable_res
+dnstable_query_set_skip(struct dnstable_query *\fR\fB\fIq\fR\fR\fB,
+    uint64_t \fR\fB\fIskip\fR\fR\fB);\fR
+.fi
+.sp
+.nf
+\fBdnstable_res
 dnstable_query_set_aggregated(struct dnstable_query *\fR\fB\fIq\fR\fR\fB,
     bool \fR\fB\fIaggregated\fR\fR\fB);\fR
 .fi
@@ -111,6 +117,8 @@ Once the query object has been constructed, \fBdnstable_query_iter\fR() iterates
 \fBdnstable_query_set_bailiwick\fR() is only valid for \fIDNSTABLE_QUERY_TYPE_RRSET\fR type queries\&. If set, it causes the bailiwick field of RRset entries to be filtered against the value provided\&.
 .sp
 \fBdnstable_query_set_rrtype\fR() and \fBdnstable_query_set_bailiwick\fR() are optional\&. If not called, no RRtype or bailiwick filtering will be performed\&.
+.sp
+\fBdnstable_query_set_skip()\fR sets the number of initial rows to skip from the results\&. The default is 0, which means to not skip any rows\&.
 .sp
 \fBdnstable_query_set_aggregated\fR() sets if the results from queries should be aggregated\&. The default is \fItrue\fR for aggregated results\&.
 .sp

@@ -58,4 +58,5 @@ global:
 LIBDNSTABLE_0.10.0 {
 global:
         dnstable_query_set_aggregated;
+        dnstable_query_set_skip;
 } LIBDNSTABLE_0.9.0;

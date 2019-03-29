@@ -38,6 +38,7 @@ struct dnstable_query {
 	struct timespec		timeout;
 	uint64_t		time_first_before, time_first_after;
 	uint64_t		time_last_before, time_last_after;
+	uint64_t		skip;
 };
 
 struct query_iter {
@@ -326,6 +327,13 @@ dnstable_query_set_rrtype(struct dnstable_query *q, const char *s_rrtype)
 }
 
 dnstable_res
+dnstable_query_set_skip(struct dnstable_query *q, uint64_t skip)
+{
+	q->skip = skip;
+	return (dnstable_res_success);
+}
+
+dnstable_res
 dnstable_query_set_aggregated(struct dnstable_query *q, bool aggregated)
 {
 	q->aggregated = aggregated;
@@ -502,11 +510,16 @@ query_iter_next(void *clos, struct dnstable_entry **ent)
 		}
 		if (mtbl_iter_next(it->m_iter, &key, &len_key, &val, &len_val) != mtbl_res_success)
 			return (dnstable_res_failure);
+
 		*ent = dnstable_entry_decode(key, len_key, val, len_val);
 		assert(*ent != NULL);
 		res = dnstable_query_filter(it->query, *ent, &pass);
 		assert(res == dnstable_res_success);
 		if (pass) {
+			/* skip initial rows */
+			if (it->query->skip > 0 && it->query->skip-- > 0)
+				continue;
+
 			return (dnstable_res_success);
 		} else {
 			dnstable_entry_destroy(ent);
@@ -541,6 +554,7 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 
 		if (mtbl_iter_next(it->m_iter, &key, &len_key, &val, &len_val) != mtbl_res_success)
 			return (dnstable_res_failure);
+
 		*ent = dnstable_entry_decode(key, len_key, val, len_val);
 		assert(*ent != NULL);
 
@@ -670,6 +684,10 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 		res = dnstable_query_filter(it->query, *ent, &pass);
 		assert(res == dnstable_res_success);
 		if (pass) {
+			/* skip initial rows */
+			if (it->query->skip > 0 && it->query->skip-- > 0)
+				continue;
+
 			return (dnstable_res_success);
 		} else {
 			dnstable_entry_destroy(ent);
@@ -744,11 +762,16 @@ query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t t
 			mtbl_iter_destroy(&it->m_iter);
 			continue;
 		}
+
 		*ent = dnstable_entry_decode(key, len_key, val, len_val);
 		assert(*ent != NULL);
 		res = dnstable_query_filter(it->query, *ent, &pass);
 		assert(res == dnstable_res_success);
 		if (pass) {
+			/* skip initial rows */
+			if (it->query->skip > 0 && it->query->skip-- > 0)
+				continue;
+
 			return (dnstable_res_success);
 		} else {
 			dnstable_entry_destroy(ent);

@@ -112,6 +112,10 @@ dnstable_query_set_rrtype(struct dnstable_query *,
 			  const char *);
 
 dnstable_res
+dnstable_query_set_skip(struct dnstable_query *,
+			uint64_t);
+
+dnstable_res
 dnstable_query_set_aggregated(struct dnstable_query *, bool);
 
 dnstable_res

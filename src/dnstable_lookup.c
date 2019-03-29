@@ -29,6 +29,7 @@
 
 bool g_json = false;
 bool g_aggregate = true;
+uint64_t g_skip = 0;
 
 static void
 print_entry(struct dnstable_entry *ent)
@@ -70,14 +71,15 @@ static void
 usage(void)
 {
 	fprintf(stderr, "Usage:\n");
-	fprintf(stderr, "\tdnstable_lookup [-j] [-u] rrset <OWNER NAME> [<RRTYPE> [<BAILIWICK>]]\n");
-	fprintf(stderr, "\tdnstable_lookup [-j] [-u] rdata ip <ADDRESS | RANGE | PREFIX>\n");
-	fprintf(stderr, "\tdnstable_lookup [-j] [-u] rdata raw <HEX STRING> [<RRTYPE>]\n");
-	fprintf(stderr, "\tdnstable_lookup [-j] [-u] rdata name <RDATA NAME> [<RRTYPE>]\n");
+	fprintf(stderr, "\tdnstable_lookup [-j] [-u] [-s #] rrset <OWNER NAME> [<RRTYPE> [<BAILIWICK>]]\n");
+	fprintf(stderr, "\tdnstable_lookup [-j] [-u] [-s #] rdata ip <ADDRESS | RANGE | PREFIX>\n");
+	fprintf(stderr, "\tdnstable_lookup [-j] [-u] [-s #] rdata raw <HEX STRING> [<RRTYPE>]\n");
+	fprintf(stderr, "\tdnstable_lookup [-j] [-u] [-s #] rdata name <RDATA NAME> [<RRTYPE>]\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Flags:\n");
 	fprintf(stderr, "\t-j: output in JSON format; default is 'dig' presentation format\n");
 	fprintf(stderr, "\t-u: output unaggregated results; default is aggregated results\n");
+	fprintf(stderr, "\t-s #: skip the first # results\n");
 	exit(EXIT_FAILURE);
 }
 
@@ -103,7 +105,7 @@ main(int argc, char **argv)
 	if (argc < 3)
 		usage();
 
-	while ((ch = getopt(argc, argv, "ju")) != -1) {
+	while ((ch = getopt(argc, argv, "jus:")) != -1) {
 	        switch (ch) {
 	        case 'j':
 	                g_json = true;
@@ -111,6 +113,11 @@ main(int argc, char **argv)
 	        case 'u':
 	                g_aggregate = false;
 	                break;
+		case 's':
+			g_skip = atoi(optarg);
+			if (g_skip <= 0)
+				usage();
+			break;
 	        case -1:
 	                break;
 	        case '?':
@@ -213,6 +220,14 @@ main(int argc, char **argv)
 					"dnstable_query_set_rrtype() failed\n");
 				exit(EXIT_FAILURE);
 			}
+		}
+	}
+
+	if (g_skip != 0) {
+		res = dnstable_query_set_skip(d_query, g_skip);
+		if (res != dnstable_res_success) {
+			fprintf(stderr, "dnstable_lookup: dnstable_query_set_skip() failed\n");
+			exit(EXIT_FAILURE);
 		}
 	}
 
