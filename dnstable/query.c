@@ -659,19 +659,12 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 				assert(ubuf_size(new_key) == ubuf_size(it->key));
 
 				/*
-				 * Destroy our current iterator and replace it
-				 * with a new iterator starting from our newly
-				 * generated key.
-				 *
-				 * TODO: Replace with mtbl_iter_seek() once
-				 * available.
+				 * Seek to the newly generated key.
 				 */
-				mtbl_iter_destroy(&it->m_iter);
-				it->m_iter = mtbl_source_get_range(it->source,
-						ubuf_data(new_key),
-						ubuf_size(new_key),
-						ubuf_data(it->key2),
-						ubuf_size(it->key2));
+				if (mtbl_iter_seek(it->m_iter, ubuf_data(new_key), ubuf_size(new_key)) != mtbl_res_success) {
+					ubuf_destroy(&new_key);
+					return (dnstable_res_failure);
+				}
 				ubuf_destroy(&new_key);
 
 				/*
