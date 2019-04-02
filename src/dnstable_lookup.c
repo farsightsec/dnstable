@@ -146,11 +146,11 @@ main(int argc, char **argv)
 		if (argc >= 4)
 			arg_bailiwick = argv[3];
 	} else if (strcmp(argv[0], "rdata") == 0) {
-		if (strcmp(argv[1], "ip") == 0 && argc == 3) {
+		if (argc == 3 && strcmp(argv[1], "ip") == 0) {
 			d_qtype = DNSTABLE_QUERY_TYPE_RDATA_IP;
-		} else if (strcmp(argv[1], "raw") == 0 && (argc == 3 || argc == 4)) {
+		} else if ((argc == 3 || argc == 4) && strcmp(argv[1], "raw") == 0) {
 			d_qtype = DNSTABLE_QUERY_TYPE_RDATA_RAW;
-		} else if (strcmp(argv[1], "name") == 0 && (argc == 3 || argc == 4)) {
+		} else if ((argc == 3 || argc == 4) && strcmp(argv[1], "name") == 0) {
 			d_qtype = DNSTABLE_QUERY_TYPE_RDATA_NAME;
 		} else {
 			usage();
