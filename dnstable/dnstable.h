@@ -185,6 +185,9 @@ dnstable_entry_to_text(struct dnstable_entry *);
 char *
 dnstable_entry_to_json(struct dnstable_entry *);
 
+char *
+dnstable_entry_to_json_time_form(struct dnstable_entry *, bool);
+
 dnstable_entry_type
 dnstable_entry_get_type(struct dnstable_entry *);
 

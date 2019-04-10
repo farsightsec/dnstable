@@ -35,6 +35,10 @@ dnstable_entry_to_text(struct dnstable_entry *'ent');^
 dnstable_entry_to_json(struct dnstable_entry *'ent');^
 
 [verse]
+^char *
+dnstable_entry_to_json_time_form(struct dnstable_entry *'ent', bool 'epoch_time');^
+
+[verse]
 ^dnstable_entry_type
 dnstable_entry_get_type(struct dnstable_entry *'ent');^
 
@@ -146,8 +150,12 @@ A ^dnstable_entry^ object has a particular type which can be retrieved with the
 
 For presentation or interchange purposes, the ^dnstable_entry_to_text^() and
 ^dnstable_entry_to_json^() functions can be used to generate the text or
-JSON-encoded form of a ^dnstable_entry^ object. These functions return a
-dynamically allocated string which must be ^free^()'d by the caller.
+JSON-encoded form of a ^dnstable_entry^ object.
+^dnstable_entry_to_json_time_form^() is a variation of ^dnstable_entry_to_json^()
+function that accepts a boolean ^epoch_time^ which if true returns timestamps
+in Unix seconds since the epoch (identical behavior to
+^dnstable_entry_to_json^() function) or if false, in RFC3339 string form.
+These functions return a dynamically allocated string which must be ^free^()'d by the caller.
 
 The ^dnstable_entry_set_iszone^() function sets or clears a flag if
 this entry is from a zone file.  This controls how the timestamp

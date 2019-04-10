@@ -86,6 +86,25 @@ fmt_time(ubuf *u, uint64_t v)
 }
 
 static void
+fmt_rfc3339_time(ubuf *u, uint64_t v)
+{
+	struct tm gm;
+	time_t tm = v;
+	char s[sizeof("4294967295-12-31T23:59:59Z")];
+	if (gmtime_r(&tm, &gm) != NULL) {
+		snprintf(s, sizeof(s), "%d-%02d-%02dT%02d:%02d:%02dZ",
+			1900 + gm.tm_year,
+			1 + gm.tm_mon,
+			gm.tm_mday,
+			gm.tm_hour,
+			gm.tm_min,
+			gm.tm_sec
+	       );
+	}
+	ubuf_add_cstr(u, s);
+}
+
+static void
 fmt_rrtype(ubuf *u, uint16_t rrtype)
 {
 	char s[sizeof("TYPE65535")];
@@ -195,6 +214,12 @@ callback_print_yajl_ubuf(void *ctx,
 char *
 dnstable_entry_to_json(struct dnstable_entry *e)
 {
+	return dnstable_entry_to_json_time_form(e, true);
+}
+
+char *
+dnstable_entry_to_json_time_form(struct dnstable_entry *e, bool epoch_time)
+{
 	uint8_t *s = NULL;
 	char name[WDNS_PRESLEN_NAME];
 	size_t len;
@@ -239,10 +264,14 @@ dnstable_entry_to_json(struct dnstable_entry *e)
 		else
 			add_yajl_string(g, "time_first");
 
-		len = fmt_uint64_str(intstr, e->time_first);
-		assert(len > 0);
-		status = yajl_gen_number(g, intstr, len);
-		assert(status == yajl_gen_status_ok);
+		if (epoch_time) {
+			len = fmt_uint64_str(intstr, e->time_first);
+			assert(len > 0);
+			status = yajl_gen_number(g, intstr, len);
+			assert(status == yajl_gen_status_ok);
+		} else {
+			fmt_rfc3339_time(u, e->time_first);
+		}
 
 		/* last seen */
 		if (e->iszone)
@@ -250,10 +279,14 @@ dnstable_entry_to_json(struct dnstable_entry *e)
 		else
 			add_yajl_string(g, "time_last");
 
-		len = fmt_uint64_str(intstr, e->time_last);
-		assert(len > 0);
-		status = yajl_gen_number(g, intstr, len);
-		assert(status == yajl_gen_status_ok);
+		if (epoch_time) {
+			len = fmt_uint64_str(intstr, e->time_last);
+			assert(len > 0);
+			status = yajl_gen_number(g, intstr, len);
+			assert(status == yajl_gen_status_ok);
+		} else {
+			fmt_rfc3339_time(u, e->time_first);
+		}
 
 		/* rrname */
 		add_yajl_string(g, "rrname");
