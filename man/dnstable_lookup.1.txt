@@ -6,13 +6,13 @@ dnstable_lookup - lookup individual records in a dnstable data file or set of da
 
 == SYNOPSIS ==
 
-^dnstable_lookup^ [^-j^] [^-u^] [^-s #^] ^rrset^ <OWNER> [<RRTYPE> [<BAILIWICK>]]
+^dnstable_lookup^ [^-j^] [^-J^] [^-u^] [^-s #^] ^rrset^ <OWNER> [<RRTYPE> [<BAILIWICK>]]
 
-^dnstable_lookup^ [^-j^] [^-u^] [^-s #^] ^rdata ip^ <ADDRESS | RANGE | PREFIX>
+^dnstable_lookup^ [^-j^] [^-J^] [^-u^] [^-s #^] ^rdata ip^ <ADDRESS | RANGE | PREFIX>
 
-^dnstable_lookup^ [^-j^] [^-u^] [^-s #^] ^rdata raw^ <HEX STRING> [<RRTYPE>]
+^dnstable_lookup^ [^-j^] [^-J^] [^-u^] [^-s #^] ^rdata raw^ <HEX STRING> [<RRTYPE>]
 
-^dnstable_lookup^ [^-j^] [^-u^] [^-s #^] ^rdata name^ <RDATA NAME> [<RRTYPE>]
+^dnstable_lookup^ [^-j^] [^-J^] [^-u^] [^-s #^] ^rdata name^ <RDATA NAME> [<RRTYPE>]
 
 == DESCRIPTION ==
 
@@ -35,8 +35,14 @@ the specified domain name.
 == OPTIONS ==
 
 ^-j^::
-    Use JSON format for output. One JSON-formatted entry per line will be
-    printed.
+    Use JSON format for output, with timestamps in epoch time (seconds since epoch).
+    Default is 'dig' presentation format.
+    One JSON-formatted entry per line will be printed.
+
+^-J^::
+    Use JSON format for output, with timestamps in human time (RFC3339 format).
+    Default is 'dig' presentation format.
+    One JSON-formatted entry per line will be printed.
 
 ^-u^::
     Output unaggregated results; default is aggregated results.

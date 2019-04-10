@@ -28,6 +28,7 @@
 #include <mtbl.h>
 
 bool g_json = false;
+bool g_Json = false;
 bool g_aggregate = true;
 uint64_t g_skip = 0;
 
@@ -36,7 +37,9 @@ print_entry(struct dnstable_entry *ent)
 {
 	char *s;
 
-	if (g_json) {
+	if (g_Json) {
+		s = dnstable_entry_to_json_time_form(ent, false);
+	} else if (g_json) {
 		s = dnstable_entry_to_json(ent);
 	} else {
 		s = dnstable_entry_to_text(ent);
@@ -44,7 +47,7 @@ print_entry(struct dnstable_entry *ent)
 	assert(s != NULL);
 	if (strlen(s) > 0) {
 		fputs(s, stdout);
-		if (g_json ||
+		if (g_Json || g_json ||
 		    (dnstable_entry_get_type(ent) == DNSTABLE_ENTRY_TYPE_RRSET))
 			putchar('\n');
 		free(s);
@@ -63,7 +66,7 @@ do_dump(struct dnstable_iter *it)
 		dnstable_entry_destroy(&ent);
 		count++;
 	}
-	if (!g_json)
+	if (!g_json && !g_Json)
 		fprintf(stderr, ";;; Dumped %'" PRIu64 " entries.\n", count);
 }
 
@@ -71,13 +74,14 @@ static void
 usage(void)
 {
 	fprintf(stderr, "Usage:\n");
-	fprintf(stderr, "\tdnstable_lookup [-j] [-u] [-s #] rrset <OWNER NAME> [<RRTYPE> [<BAILIWICK>]]\n");
-	fprintf(stderr, "\tdnstable_lookup [-j] [-u] [-s #] rdata ip <ADDRESS | RANGE | PREFIX>\n");
-	fprintf(stderr, "\tdnstable_lookup [-j] [-u] [-s #] rdata raw <HEX STRING> [<RRTYPE>]\n");
-	fprintf(stderr, "\tdnstable_lookup [-j] [-u] [-s #] rdata name <RDATA NAME> [<RRTYPE>]\n");
+	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-u] [-s #] rrset <OWNER NAME> [<RRTYPE> [<BAILIWICK>]]\n");
+	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-u] [-s #] rdata ip <ADDRESS | RANGE | PREFIX>\n");
+	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-u] [-s #] rdata raw <HEX STRING> [<RRTYPE>]\n");
+	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-u] [-s #] rdata name <RDATA NAME> [<RRTYPE>]\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Flags:\n");
-	fprintf(stderr, "\t-j: output in JSON format; default is 'dig' presentation format\n");
+	fprintf(stderr, "\t-j: output in JSON format with epoch time; default is 'dig' presentation format\n");
+	fprintf(stderr, "\t-J: output in JSON format with human time (RFC3339 format); default is 'dig' presentation format\n");
 	fprintf(stderr, "\t-u: output unaggregated results; default is aggregated results\n");
 	fprintf(stderr, "\t-s #: skip the first # results\n");
 	exit(EXIT_FAILURE);
@@ -105,10 +109,13 @@ main(int argc, char **argv)
 	if (argc < 3)
 		usage();
 
-	while ((ch = getopt(argc, argv, "jus:")) != -1) {
+	while ((ch = getopt(argc, argv, "jJus:")) != -1) {
 	        switch (ch) {
 	        case 'j':
 	                g_json = true;
+	                break;
+	        case 'J':
+	                g_Json = true;
 	                break;
 	        case 'u':
 	                g_aggregate = false;
@@ -160,6 +167,11 @@ main(int argc, char **argv)
 			arg_rrtype = argv[3];
 	} else {
 		usage();
+	}
+
+	if (g_Json && g_json) {
+		fprintf(stderr, "dnstable_lookup: cannot specify both -j and -J\n");
+		exit(EXIT_FAILURE);
 	}
 
 	env_fname = getenv("DNSTABLE_FNAME");

@@ -85,23 +85,21 @@ fmt_time(ubuf *u, uint64_t v)
 	ubuf_add_cstr(u, s);
 }
 
-static void
-fmt_rfc3339_time(ubuf *u, uint64_t v)
+static int
+fmt_rfc3339_time(uint64_t v, char *ts, size_t len_ts)
 {
 	struct tm gm;
 	time_t tm = v;
-	char s[sizeof("4294967295-12-31T23:59:59Z")];
-	if (gmtime_r(&tm, &gm) != NULL) {
-		snprintf(s, sizeof(s), "%d-%02d-%02dT%02d:%02d:%02dZ",
+
+	assert (gmtime_r(&tm, &gm) != NULL);
+	return snprintf(ts, len_ts, "%d-%02d-%02dT%02d:%02d:%02dZ",
 			1900 + gm.tm_year,
 			1 + gm.tm_mon,
 			gm.tm_mday,
 			gm.tm_hour,
 			gm.tm_min,
 			gm.tm_sec
-	       );
-	}
-	ubuf_add_cstr(u, s);
+		);
 }
 
 static void
@@ -270,7 +268,10 @@ dnstable_entry_to_json_time_form(struct dnstable_entry *e, bool epoch_time)
 			status = yajl_gen_number(g, intstr, len);
 			assert(status == yajl_gen_status_ok);
 		} else {
-			fmt_rfc3339_time(u, e->time_first);
+			char ts[sizeof("4294967295-12-31 23:59:59 -0000")];
+			len = fmt_rfc3339_time(e->time_first, ts, sizeof ts);
+			status = yajl_gen_string(g, (uint8_t *) ts, len);
+			assert(status == yajl_gen_status_ok);
 		}
 
 		/* last seen */
@@ -285,7 +286,10 @@ dnstable_entry_to_json_time_form(struct dnstable_entry *e, bool epoch_time)
 			status = yajl_gen_number(g, intstr, len);
 			assert(status == yajl_gen_status_ok);
 		} else {
-			fmt_rfc3339_time(u, e->time_first);
+			char ts[sizeof("4294967295-12-31 23:59:59 -0000")];
+			len = fmt_rfc3339_time(e->time_last, ts, sizeof ts);
+			status = yajl_gen_string(g, (uint8_t *) ts, len);
+			assert(status == yajl_gen_status_ok);
 		}
 
 		/* rrname */
