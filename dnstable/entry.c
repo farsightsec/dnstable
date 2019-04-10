@@ -310,8 +310,15 @@ dnstable_entry_to_json(struct dnstable_entry *e)
 		wdns_rdata_t *rdata = rdata_vec_value(e->rdatas, 0);
 		char *data = wdns_rdata_to_str(rdata->data, rdata->len,
 					       e->rrtype, WDNS_CLASS_IN);
+
+		status = yajl_gen_array_open(g);
+		assert(status == yajl_gen_status_ok);
+
 		add_yajl_string(g, data);
 		my_free(data);
+
+		status = yajl_gen_array_close(g);
+		assert(status == yajl_gen_status_ok);
 	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD) {
 		add_yajl_string(g, "rrset_name");
 		wdns_domain_to_str(e->name.data, e->name.len, name);
