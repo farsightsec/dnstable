@@ -70,68 +70,68 @@ test_lookup rrset _ldap._tcp.example.com SRV << EOF
 EOF
 
 test_lookup rdata ip 198.51.100.3 << EOF
-{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"A","rdata":["198.51.100.3"]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"A","rdata":"198.51.100.3"}
 EOF
 
 test_lookup rdata ip 2001:db8::1 << EOF
-{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"AAAA","rdata":["2001:db8::1"]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"AAAA","rdata":"2001:db8::1"}
 EOF
 
 test_lookup rdata name mail.example.com << EOF
-{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":["10 mail.example.com."]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"10 mail.example.com."}
 EOF
 
 test_lookup rdata name ns1.example.com << EOF
-{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"NS","rdata":["ns1.example.com."]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"NS","rdata":"ns1.example.com."}
 EOF
 
 test_lookup rdata name \*.example.com << EOF
-{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"NS","rdata":["ns1.example.com."]}
-{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"NS","rdata":["ns2.example.com."]}
-{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"_ldap._tcp.example.com.","rrtype":"SRV","rdata":["10 1 389 ldap.example.com."]}
-{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":["10 mail.example.com."]}
-{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":["20 mail2.example.com."]}
-{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"SOA","rdata":["hidden-master.example.com. hostmaster.example.com. 2018032701 30 30 86400 300"]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"NS","rdata":"ns1.example.com."}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"NS","rdata":"ns2.example.com."}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"_ldap._tcp.example.com.","rrtype":"SRV","rdata":"10 1 389 ldap.example.com."}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"10 mail.example.com."}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"20 mail2.example.com."}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"SOA","rdata":"hidden-master.example.com. hostmaster.example.com. 2018032701 30 30 86400 300"}
 EOF
 
 test_lookup rdata name hidden-master.example.com SOA << EOF
-{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"SOA","rdata":["hidden-master.example.com. hostmaster.example.com. 2018032701 30 30 86400 300"]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"SOA","rdata":"hidden-master.example.com. hostmaster.example.com. 2018032701 30 30 86400 300"}
 EOF
 
 test_lookup rdata name \*.example.com SOA << EOF
-{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"SOA","rdata":["hidden-master.example.com. hostmaster.example.com. 2018032701 30 30 86400 300"]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"SOA","rdata":"hidden-master.example.com. hostmaster.example.com. 2018032701 30 30 86400 300"}
 EOF
 
 test_lookup rdata name ldap.example.com << EOF
-{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"_ldap._tcp.example.com.","rrtype":"SRV","rdata":["10 1 389 ldap.example.com."]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"_ldap._tcp.example.com.","rrtype":"SRV","rdata":"10 1 389 ldap.example.com."}
 EOF
 
 test_lookup rdata raw 00 SRV << EOF
-{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"_ldap._tcp.example.com.","rrtype":"SRV","rdata":["10 1 389 ldap.example.com."]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"_ldap._tcp.example.com.","rrtype":"SRV","rdata":"10 1 389 ldap.example.com."}
 EOF
 
 test_lookup rdata raw 00 MX << EOF
-{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":["10 mail.example.com."]}
-{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":["20 mail2.example.com."]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"10 mail.example.com."}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"20 mail2.example.com."}
 EOF
 
 test_lookup -s 1 rdata raw 00 MX << EOF
-{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":["20 mail2.example.com."]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"20 mail2.example.com."}
 EOF
 
 export DNSTABLE_SETFILE=@abs_top_srcdir@/tests/test-dns.setfile
 unset DNSTABLE_FNAME
 
 test_lookup -u rdata raw 00 MX << EOF
-{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":["10 mail.example.com."]}
-{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":["10 mail.example.com."]}
-{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":["20 mail2.example.com."]}
-{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":["20 mail2.example.com."]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"10 mail.example.com."}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"10 mail.example.com."}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"20 mail2.example.com."}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"20 mail2.example.com."}
 EOF
 
 test_lookup -s 2 -u rdata raw 00 MX << EOF
-{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":["20 mail2.example.com."]}
-{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":["20 mail2.example.com."]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"20 mail2.example.com."}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"20 mail2.example.com."}
 EOF
 
 exit $code
