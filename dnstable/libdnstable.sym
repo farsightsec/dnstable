@@ -63,5 +63,10 @@ global:
 
 LIBDNSTABLE_0.12.0 {
 global:
-	dnstable_entry_to_json_time_form;
+        dnstable_formatter_init;
+        dnstable_formatter_destroy;
+        dnstable_formatter_set_output_format;
+        dnstable_formatter_set_date_format;
+        dnstable_formatter_set_rdata_array;
+        dnstable_entry_format;
 } LIBDNSTABLE_0.11.0;
