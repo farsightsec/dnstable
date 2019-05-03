@@ -34,9 +34,9 @@ struct dnstable_entry {
 };
 
 struct dnstable_formatter {
-    dnstable_output_format_type output_format;
-    dnstable_date_format_type date_format;
-    bool always_array;
+	dnstable_output_format_type	output_format;
+	dnstable_date_format_type	date_format;
+	bool				always_array;
 };
 
 static char *
@@ -105,13 +105,13 @@ fmt_rfc3339_time_u(ubuf *u, uint64_t v)
 	char s[sizeof("4294967295-12-31T23:59:59Z")];
 
 	assert (gmtime_r(&tm, &gm) != NULL);
-        snprintf(s, sizeof(s), "%d-%02d-%02dT%02d:%02d:%02dZ",
-                 1900 + gm.tm_year,
-                 1 + gm.tm_mon,
-                 gm.tm_mday,
-                 gm.tm_hour,
-                 gm.tm_min,
-                 gm.tm_sec
+	snprintf(s, sizeof(s), "%d-%02d-%02dT%02d:%02d:%02dZ",
+		 1900 + gm.tm_year,
+		 1 + gm.tm_mon,
+		 gm.tm_mday,
+		 gm.tm_hour,
+		 gm.tm_min,
+		 gm.tm_sec
 		);
 	ubuf_add_cstr(u, s);
 }
@@ -169,22 +169,22 @@ dnstable_entry_to_text_fmt(const struct dnstable_entry *e, dnstable_date_format_
 			ubuf_add_cstr(u, "\n;; first seen in zone file: ");
 		else
 			ubuf_add_cstr(u, "\n;; first seen: ");
-                if (date_format == dnstable_date_format_unix)
-                    fmt_time(u, e->time_first);
-                else if (date_format == dnstable_date_format_rfc3339)
-                    fmt_rfc3339_time_u(u, e->time_first);
-                else /* fail */;
+		if (date_format == dnstable_date_format_unix)
+			fmt_time(u, e->time_first);
+		else if (date_format == dnstable_date_format_rfc3339)
+			fmt_rfc3339_time_u(u, e->time_first);
+		else /* fail */;
 
 		/* last seen */
 		if (e->iszone)
 			ubuf_add_cstr(u, "\n;;  last seen in zone file: ");
 		else
 			ubuf_add_cstr(u, "\n;;  last seen: ");
-                if (date_format == dnstable_date_format_unix)
-                    fmt_time(u, e->time_last);
-                else if (date_format == dnstable_date_format_rfc3339)
-                    fmt_rfc3339_time_u(u, e->time_last);
-                else /* fail */;
+		if (date_format == dnstable_date_format_unix)
+			fmt_time(u, e->time_last);
+		else if (date_format == dnstable_date_format_rfc3339)
+			fmt_rfc3339_time_u(u, e->time_last);
+		else /* fail */;
 		ubuf_add(u, '\n');
 
 		/* resource records */
@@ -236,7 +236,7 @@ out:
 char *
 dnstable_entry_to_text(const struct dnstable_entry *e)
 {
-    return dnstable_entry_to_text_fmt(e, dnstable_date_format_unix);
+	return dnstable_entry_to_text_fmt(e, dnstable_date_format_unix);
 }
 
 static void
@@ -303,7 +303,7 @@ dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
 		else
 			add_yajl_string(g, "time_first");
 
-                if (date_format == dnstable_date_format_unix) {
+		if (date_format == dnstable_date_format_unix) {
 			len = fmt_uint64_str(intstr, e->time_first);
 			assert(len > 0);
 			status = yajl_gen_number(g, intstr, len);
@@ -321,7 +321,7 @@ dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
 		else
 			add_yajl_string(g, "time_last");
 
-                if (date_format == dnstable_date_format_unix) {
+		if (date_format == dnstable_date_format_unix) {
 			len = fmt_uint64_str(intstr, e->time_last);
 			assert(len > 0);
 			status = yajl_gen_number(g, intstr, len);
@@ -389,17 +389,17 @@ dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
 		char *data = wdns_rdata_to_str(rdata->data, rdata->len,
 					       e->rrtype, WDNS_CLASS_IN);
 
-                if (always_array) {
-                    status = yajl_gen_array_open(g);
-                    assert(status == yajl_gen_status_ok);
-                }
+		if (always_array) {
+			status = yajl_gen_array_open(g);
+			assert(status == yajl_gen_status_ok);
+		}
 
 		add_yajl_string(g, data);
 		my_free(data);
 
                 if (always_array) {
-                    status = yajl_gen_array_close(g);
-                    assert(status == yajl_gen_status_ok);
+                	status = yajl_gen_array_close(g);
+                	assert(status == yajl_gen_status_ok);
                 }
 	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD) {
 		add_yajl_string(g, "rrset_name");
@@ -426,24 +426,24 @@ out:
 char *
 dnstable_entry_to_json(const struct dnstable_entry *e)
 {
-    return dnstable_entry_to_json_fmt(e, dnstable_date_format_unix, false);
+	return dnstable_entry_to_json_fmt(e, dnstable_date_format_unix, false);
 }
 
 struct dnstable_formatter *
 dnstable_formatter_init(void)
 {
-    struct dnstable_formatter *f = my_calloc(1, sizeof(*f));
-    f->output_format = dnstable_output_format_json;
-    f->date_format = dnstable_date_format_unix;
-    f->always_array = false;
-    return (f);
+	struct dnstable_formatter *f = my_calloc(1, sizeof(*f));
+	f->output_format = dnstable_output_format_json;
+	f->date_format = dnstable_date_format_unix;
+	f->always_array = false;
+	return (f);
 }
 
 void
 dnstable_formatter_destroy(struct dnstable_formatter **fp)
 {
-    if (*fp)
-        my_free(*fp);
+	if (*fp)
+	my_free(*fp);
 }
 
 void
@@ -451,8 +451,8 @@ dnstable_formatter_set_output_format(
     struct dnstable_formatter *f,
     dnstable_output_format_type format)
 {
-    assert(f != NULL);
-    f->output_format = format;
+	assert(f != NULL);
+	f->output_format = format;
 }
 
 void
@@ -460,8 +460,8 @@ dnstable_formatter_set_date_format(
    struct dnstable_formatter *f,
    dnstable_date_format_type format)
 {
-    assert(f != NULL);
-    f->date_format = format;
+	assert(f != NULL);
+	f->date_format = format;
 }
 
 /* If always_array is true, the rdata is always rendered as an array, even if there is only
@@ -472,8 +472,8 @@ dnstable_formatter_set_rdata_array(
     struct dnstable_formatter *f,
     bool always_array)
 {
-    assert(f != NULL);
-    f->always_array = always_array;
+	assert(f != NULL);
+	f->always_array = always_array;
 }
 
 /* Returns dynamically allocated string with the entry rendered in json format */
@@ -482,11 +482,11 @@ dnstable_entry_format(
    const struct dnstable_formatter *f,
    const struct dnstable_entry *ent)
 {
-    assert(f != NULL);
-    if (f->output_format == dnstable_output_format_json)
-        return dnstable_entry_to_json_fmt(ent, f->date_format, f->always_array);
-    else
-        return dnstable_entry_to_text_fmt(ent, f->date_format);
+	assert(f != NULL);
+	if (f->output_format == dnstable_output_format_json)
+		return dnstable_entry_to_json_fmt(ent, f->date_format, f->always_array);
+	else
+		return dnstable_entry_to_text_fmt(ent, f->date_format);
 }
 
 /*------------------------------------------------------------*/
