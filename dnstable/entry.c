@@ -18,10 +18,10 @@
 
 VECTOR_GENERATE(rdata_vec, wdns_rdata_t *);
 
-#define add_yajl_string(g, s) do {                                              \
-	yajl_gen_status g_status;                                               \
-	g_status = yajl_gen_string(g, (const unsigned  char *) s, strlen(s));   \
-	assert(g_status == yajl_gen_status_ok);                                 \
+#define add_yajl_string(g, s) do {						\
+	yajl_gen_status g_status;						\
+	g_status = yajl_gen_string(g, (const unsigned  char *) s, strlen(s));	\
+	assert(g_status == yajl_gen_status_ok);					\
 } while (0)
 
 struct dnstable_entry {
@@ -41,8 +41,8 @@ struct dnstable_formatter {
 
 static char *
 dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
-                           dnstable_date_format_type date_format,
-                           bool always_array);
+			   dnstable_date_format_type date_format,
+			   bool always_array);
 
 
 static void
@@ -161,7 +161,7 @@ dnstable_entry_to_text_fmt(const struct dnstable_entry *e, dnstable_date_format_
 		ubuf_add_cstr(u, name);
 
 		/* count */
-		ubuf_add_cstr(u, "\n;;      count: ");
+		ubuf_add_cstr(u, "\n;;	    count: ");
 		fmt_uint64(u, e->count);
 
 		/* first seen */
@@ -177,9 +177,9 @@ dnstable_entry_to_text_fmt(const struct dnstable_entry *e, dnstable_date_format_
 
 		/* last seen */
 		if (e->iszone)
-			ubuf_add_cstr(u, "\n;;  last seen in zone file: ");
+			ubuf_add_cstr(u, "\n;;	last seen in zone file: ");
 		else
-			ubuf_add_cstr(u, "\n;;  last seen: ");
+			ubuf_add_cstr(u, "\n;;	last seen: ");
 		if (date_format == dnstable_date_format_unix)
 			fmt_time(u, e->time_last);
 		else if (date_format == dnstable_date_format_rfc3339)
@@ -256,8 +256,8 @@ callback_print_yajl_ubuf(void *ctx,
 
 static char *
 dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
-                           dnstable_date_format_type date_format,
-                           bool always_array)
+			   dnstable_date_format_type date_format,
+			   bool always_array)
 {
 	uint8_t *s = NULL;
 	char name[WDNS_PRESLEN_NAME];
@@ -443,7 +443,7 @@ void
 dnstable_formatter_destroy(struct dnstable_formatter **fp)
 {
 	if (*fp)
-	my_free(*fp);
+            my_free(*fp);
 }
 
 void
