@@ -98,7 +98,7 @@ fmt_time(ubuf *u, uint64_t v)
 }
 
 static void
-fmt_rfc3339_time_u(ubuf *u, uint64_t v)
+fmt_rfc3339_time(ubuf *u, uint64_t v)
 {
 	struct tm gm;
 	time_t tm = v;
@@ -117,7 +117,7 @@ fmt_rfc3339_time_u(ubuf *u, uint64_t v)
 }
 
 static int
-fmt_rfc3339_time(uint64_t v, char *ts, size_t len_ts)
+fmt_rfc3339_time_str(uint64_t v, char *ts, size_t len_ts)
 {
 	struct tm gm;
 	time_t tm = v;
@@ -172,7 +172,7 @@ dnstable_entry_to_text_fmt(const struct dnstable_entry *e, dnstable_date_format_
 		if (date_format == dnstable_date_format_unix)
 			fmt_time(u, e->time_first);
 		else if (date_format == dnstable_date_format_rfc3339)
-			fmt_rfc3339_time_u(u, e->time_first);
+			fmt_rfc3339_time(u, e->time_first);
 		else /* fail */;
 
 		/* last seen */
@@ -183,7 +183,7 @@ dnstable_entry_to_text_fmt(const struct dnstable_entry *e, dnstable_date_format_
 		if (date_format == dnstable_date_format_unix)
 			fmt_time(u, e->time_last);
 		else if (date_format == dnstable_date_format_rfc3339)
-			fmt_rfc3339_time_u(u, e->time_last);
+			fmt_rfc3339_time(u, e->time_last);
 		else /* fail */;
 		ubuf_add(u, '\n');
 
@@ -310,7 +310,7 @@ dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
 			assert(status == yajl_gen_status_ok);
 		} else {
 			char ts[sizeof("4294967295-12-31 23:59:59 -0000")];
-			len = fmt_rfc3339_time(e->time_first, ts, sizeof ts);
+			len = fmt_rfc3339_time_str(e->time_first, ts, sizeof ts);
 			status = yajl_gen_string(g, (uint8_t *) ts, len);
 			assert(status == yajl_gen_status_ok);
 		}
@@ -328,7 +328,7 @@ dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
 			assert(status == yajl_gen_status_ok);
 		} else {
 			char ts[sizeof("4294967295-12-31 23:59:59 -0000")];
-			len = fmt_rfc3339_time(e->time_last, ts, sizeof ts);
+			len = fmt_rfc3339_time_str(e->time_last, ts, sizeof ts);
 			status = yajl_gen_string(g, (uint8_t *) ts, len);
 			assert(status == yajl_gen_status_ok);
 		}
