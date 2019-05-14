@@ -69,9 +69,18 @@ test_lookup rrset _ldap._tcp.example.com SRV << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"_ldap._tcp.example.com.","rrtype":"SRV","bailiwick":"example.com.","rdata":["10 1 389 ldap.example.com."]}
 EOF
 
-# skip first five entries
+# skip first five entries, left wildcard rrset lookup
 test_lookup -s 5 rrset \*. << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"_ldap._tcp.example.com.","rrtype":"SRV","bailiwick":"example.com.","rdata":["10 1 389 ldap.example.com."]}
+EOF
+
+# skip first entry, right wildcard rrset lookup
+test_lookup -s 1 rrset www.example.\* << EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"AAAA","bailiwick":"example.com.","rdata":["2001:db8::1","2001:db8::2"]}
+EOF
+
+# skip 1000 entries should have no result
+test_lookup -s 1000 rrset www.example.\* << EOF
 EOF
 
 test_lookup rdata ip 198.51.100.3 << EOF
@@ -82,8 +91,9 @@ test_lookup rdata ip 2001:db8::1 << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"AAAA","rdata":"2001:db8::1"}
 EOF
 
-test_lookup rdata name mail.example.com << EOF
-{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"10 mail.example.com."}
+# skip first entry, rdata ip subnet lookup
+test_lookup -s 1 rdata ip 2001:db8::/0 << EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"AAAA","rdata":"2001:db8::2"}
 EOF
 
 test_lookup rdata name ns1.example.com << EOF
