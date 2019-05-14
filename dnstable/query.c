@@ -1002,6 +1002,14 @@ query_init_rdata_raw(struct query_iter *it)
 	/* key: rdata */
 	ubuf_append(it->key, it->query->rdata, it->query->len_rdata);
 
+        /*
+         * Note: even though this function does not use
+         * it->query->do_rrtype nor call add_rrtype_to_key(), in the
+         * post-query filter processing in dnstable_query_filter(), if
+         * do_rrtype is set then the results will be filtered by
+         * rrtype.
+         */
+
 	it->m_iter = mtbl_source_get_prefix(it->source, ubuf_data(it->key), ubuf_size(it->key));
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }

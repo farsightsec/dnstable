@@ -30,7 +30,7 @@
 bool g_json = false;
 bool g_Json = false;
 bool g_aggregate = true;
-uint64_t g_skip = 0;
+int64_t g_skip = 0;
 
 static void
 print_entry(struct dnstable_entry *ent)
@@ -87,7 +87,7 @@ usage(void)
 	fprintf(stderr, "\t-j: output in JSON format with epoch time; default is 'dig' presentation format\n");
 	fprintf(stderr, "\t-J: output in JSON format with human time (RFC3339 format); default is 'dig' presentation format\n");
 	fprintf(stderr, "\t-u: output unaggregated results; default is aggregated results\n");
-	fprintf(stderr, "\t-s #: skip the first # results\n");
+	fprintf(stderr, "\t-s #: skip the first # results (must be a positive number)\n");
 	exit(EXIT_FAILURE);
 }
 
