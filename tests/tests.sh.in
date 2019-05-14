@@ -69,6 +69,11 @@ test_lookup rrset _ldap._tcp.example.com SRV << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"_ldap._tcp.example.com.","rrtype":"SRV","bailiwick":"example.com.","rdata":["10 1 389 ldap.example.com."]}
 EOF
 
+# skip first five entries
+test_lookup -s 5 rrset \*. << EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"_ldap._tcp.example.com.","rrtype":"SRV","bailiwick":"example.com.","rdata":["10 1 389 ldap.example.com."]}
+EOF
+
 test_lookup rdata ip 198.51.100.3 << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"A","rdata":"198.51.100.3"}
 EOF
