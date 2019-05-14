@@ -41,8 +41,8 @@ struct dnstable_formatter {
 
 static char *
 dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
-                           dnstable_date_format_type date_format,
-                           bool always_array);
+			   dnstable_date_format_type date_format,
+			   bool always_array);
 
 
 static void
@@ -256,8 +256,8 @@ callback_print_yajl_ubuf(void *ctx,
 
 static char *
 dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
-                           dnstable_date_format_type date_format,
-                           bool always_array)
+			   dnstable_date_format_type date_format,
+			   bool always_array)
 {
 	uint8_t *s = NULL;
 	char name[WDNS_PRESLEN_NAME];
@@ -443,7 +443,7 @@ void
 dnstable_formatter_destroy(struct dnstable_formatter **fp)
 {
 	if (*fp)
-	my_free(*fp);
+		my_free(*fp);
 }
 
 void
