@@ -310,6 +310,7 @@ dnstable_query_set_rrtype(struct dnstable_query *q, const char *s_rrtype)
 	}
 
 	if (strcasecmp(s_rrtype, "ANY") == 0 ||
+	    strcasecmp(s_rrtype, "TYPE255") == 0 || /* ANY == TYPE255 */
 	    strcasecmp(s_rrtype, "ANY-DNSSEC") == 0)
 	{
 		q->do_rrtype = false;
