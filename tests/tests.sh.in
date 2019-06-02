@@ -33,6 +33,16 @@ test_lookup() {
 	fi
 }
 
+test_lookup_fails() {
+	$DNSTQ $*
+	if [ $? -ne 0 ]; then
+		echo PASS: $*
+	else
+		echo FAIL: $*
+		code=1
+	fi
+}
+
 test_lookup -j rrset www.example.com << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"A","bailiwick":"example.com.","rdata":["198.51.100.3","198.51.100.4"]}
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"AAAA","bailiwick":"example.com.","rdata":["2001:db8::1","2001:db8::2"]}
@@ -152,5 +162,14 @@ test_lookup -J -s 2 -u rdata raw 00 MX << EOF
 {"count":1,"time_first":"2018-03-27T10:43:28Z","time_last":"2018-03-27T10:43:28Z","rrname":"example.com.","rrtype":"MX","rdata":"20 mail2.example.com."}
 {"count":1,"time_first":"2018-03-27T10:43:28Z","time_last":"2018-03-27T10:43:28Z","rrname":"example.com.","rrtype":"MX","rdata":"20 mail2.example.com."}
 EOF
+
+# test negative skip
+test_lookup_fails -J -s -1 -u rdata raw 00 MX
+
+# test no search query
+test_lookup_fails -J -s 2
+
+# test both -j and -J
+test_lookup_fails -J -j -s 2 -u rdata raw 00 MX
 
 exit $code

@@ -110,9 +110,6 @@ main(int argc, char **argv)
 	dnstable_res res;
 	int ch;
 
-	if (argc < 3)
-		usage();
-
 	while ((ch = getopt(argc, argv, "jJus:")) != -1) {
 	        switch (ch) {
 	        case 'j':
@@ -139,6 +136,9 @@ main(int argc, char **argv)
 
 	argc -= optind;
 	argv += optind;
+
+	if (argc < 2)
+		usage();
 
 	if (strcmp(argv[0], "rrset") == 0) {
 		if (argc < 2 || argc > 4)
