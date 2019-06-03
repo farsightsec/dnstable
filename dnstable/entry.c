@@ -398,9 +398,9 @@ dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
 		my_free(data);
 
                 if (always_array) {
-                	status = yajl_gen_array_close(g);
-                	assert(status == yajl_gen_status_ok);
-                }
+			status = yajl_gen_array_close(g);
+			assert(status == yajl_gen_status_ok);
+		}
 	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD) {
 		add_yajl_string(g, "rrset_name");
 		wdns_domain_to_str(e->name.data, e->name.len, name);
