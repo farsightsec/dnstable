@@ -112,6 +112,13 @@ dnstable_query_set_rrtype(struct dnstable_query *,
 			  const char *);
 
 dnstable_res
+dnstable_query_set_skip(struct dnstable_query *,
+			uint64_t);
+
+dnstable_res
+dnstable_query_set_aggregated(struct dnstable_query *, bool);
+
+dnstable_res
 dnstable_query_set_bailiwick(struct dnstable_query *,
 			     const char *);
 
@@ -173,10 +180,53 @@ void
 dnstable_entry_destroy(struct dnstable_entry **);
 
 char *
-dnstable_entry_to_text(struct dnstable_entry *);
+dnstable_entry_to_text(const struct dnstable_entry *);
 
 char *
-dnstable_entry_to_json(struct dnstable_entry *);
+dnstable_entry_to_json(const struct dnstable_entry *);
+
+/* more advanced formatting */
+
+typedef enum {
+   dnstable_output_format_json,
+   dnstable_output_format_text
+} dnstable_output_format_type;
+
+typedef enum {
+   dnstable_date_format_unix, /* timestamps in Unix seconds since the epoch */
+   dnstable_date_format_rfc3339 /* timestamps in RFC3339 string form */
+} dnstable_date_format_type;
+
+struct dnstable_formatter *
+dnstable_formatter_init(void);
+
+void
+dnstable_formatter_destroy(struct dnstable_formatter **fp);
+
+void
+dnstable_formatter_set_output_format(
+    struct dnstable_formatter *f,
+    dnstable_output_format_type format);
+
+void
+dnstable_formatter_set_date_format(
+    struct dnstable_formatter *f,
+    dnstable_date_format_type format);
+
+/* If always_array is true, the rdata is always rendered as an array, even if there is only
+  one rdata value. Default is false, in which case an rrset with only one rdata value
+  will have the rdata rendered as a single string. */
+void
+dnstable_formatter_set_rdata_array(
+   struct dnstable_formatter *f, bool always_array);
+
+/* Returns dynamically allocated string with the entry rendered in json format */
+char *
+dnstable_entry_format(
+   const struct dnstable_formatter *f,
+   const struct dnstable_entry *ent);
+
+/* accessors for dnstable_entry */
 
 dnstable_entry_type
 dnstable_entry_get_type(struct dnstable_entry *);

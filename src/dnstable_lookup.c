@@ -27,14 +27,23 @@
 #include <dnstable.h>
 #include <mtbl.h>
 
-bool g_json;
+bool g_json = false;
+bool g_Json = false;
+bool g_aggregate = true;
+int64_t g_skip = 0;
 
 static void
 print_entry(struct dnstable_entry *ent)
 {
 	char *s;
+	struct dnstable_formatter *fmt = dnstable_formatter_init();
 
-	if (g_json) {
+	if (g_Json) {
+		dnstable_formatter_set_output_format(fmt, dnstable_output_format_json);
+		dnstable_formatter_set_date_format(fmt, dnstable_date_format_rfc3339);
+		s = dnstable_entry_format(fmt, ent);
+		dnstable_formatter_destroy(&fmt);
+	} else if (g_json) {
 		s = dnstable_entry_to_json(ent);
 	} else {
 		s = dnstable_entry_to_text(ent);
@@ -42,7 +51,7 @@ print_entry(struct dnstable_entry *ent)
 	assert(s != NULL);
 	if (strlen(s) > 0) {
 		fputs(s, stdout);
-		if (g_json ||
+		if (g_Json || g_json ||
 		    (dnstable_entry_get_type(ent) == DNSTABLE_ENTRY_TYPE_RRSET))
 			putchar('\n');
 		free(s);
@@ -61,17 +70,24 @@ do_dump(struct dnstable_iter *it)
 		dnstable_entry_destroy(&ent);
 		count++;
 	}
-	if (!g_json)
+	if (!g_json && !g_Json)
 		fprintf(stderr, ";;; Dumped %'" PRIu64 " entries.\n", count);
 }
 
 static void
 usage(void)
 {
-	fprintf(stderr, "Usage: dnstable_lookup [-j] rrset <OWNER NAME> [<RRTYPE> [<BAILIWICK>]]\n");
-	fprintf(stderr, "Usage: dnstable_lookup [-j] rdata ip <ADDRESS | RANGE | PREFIX>\n");
-	fprintf(stderr, "Usage: dnstable_lookup [-j] rdata raw <HEX STRING> [<RRTYPE>]\n");
-	fprintf(stderr, "Usage: dnstable_lookup [-j] rdata name <RDATA NAME> [<RRTYPE>]\n");
+	fprintf(stderr, "Usage:\n");
+	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-u] [-s #] rrset <OWNER NAME> [<RRTYPE> [<BAILIWICK>]]\n");
+	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-u] [-s #] rdata ip <ADDRESS | RANGE | PREFIX>\n");
+	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-u] [-s #] rdata raw <HEX STRING> [<RRTYPE>]\n");
+	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-u] [-s #] rdata name <RDATA NAME> [<RRTYPE>]\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Flags:\n");
+	fprintf(stderr, "\t-j: output in JSON format with epoch time; default is 'dig' presentation format\n");
+	fprintf(stderr, "\t-J: output in JSON format with human time (RFC3339 format); default is 'dig' presentation format\n");
+	fprintf(stderr, "\t-u: output unaggregated results; default is aggregated results\n");
+	fprintf(stderr, "\t-s #: skip the first # results (must be a positive number)\n");
 	exit(EXIT_FAILURE);
 }
 
@@ -92,38 +108,60 @@ main(int argc, char **argv)
 	struct dnstable_query *d_query;
 	dnstable_query_type d_qtype;
 	dnstable_res res;
+	int ch;
 
-	if (argc < 3)
-		usage();
-
-	switch (getopt(argc, argv, "j")) {
-	case 'j':
-		g_json = true;
-		break;
-	case -1:
-		break;
-	default:
-		usage();
+	while ((ch = getopt(argc, argv, "jJus:")) != -1) {
+	        switch (ch) {
+	        case 'j':
+	                g_json = true;
+	                break;
+	        case 'J':
+	                g_Json = true;
+	                break;
+	        case 'u':
+	                g_aggregate = false;
+	                break;
+		case 's':
+			g_skip = atoi(optarg);
+			if (g_skip <= 0)
+				usage();
+			break;
+	        case -1:
+	                break;
+	        case '?':
+	        default:
+	                usage();
+	        }
 	}
-	argv += optind;
+
 	argc -= optind;
+	argv += optind;
+
+	if (argc < 2)
+		usage();
 
 	if (strcmp(argv[0], "rrset") == 0) {
+		if (argc < 2 || argc > 4)
+			usage();
 		d_qtype = DNSTABLE_QUERY_TYPE_RRSET;
-		if (argc >= 2)
-			arg_owner_name = argv[1];
+
+	        arg_owner_name = argv[1];
+
+	        if (strchr(arg_owner_name, '/') > 0) {
+	                fprintf(stderr, "/ is not allowed in OWNER NAME\n\n");
+	                usage();
+	        }
+
 		if (argc >= 3)
 			arg_rrtype = argv[2];
 		if (argc >= 4)
 			arg_bailiwick = argv[3];
-		if (argc > 5)
-			usage();
 	} else if (strcmp(argv[0], "rdata") == 0) {
-		if (strcmp(argv[1], "ip") == 0 && argc == 3) {
+		if (argc == 3 && strcmp(argv[1], "ip") == 0) {
 			d_qtype = DNSTABLE_QUERY_TYPE_RDATA_IP;
-		} else if (strcmp(argv[1], "raw") == 0 && (argc == 3 || argc == 4)) {
+		} else if ((argc == 3 || argc == 4) && strcmp(argv[1], "raw") == 0) {
 			d_qtype = DNSTABLE_QUERY_TYPE_RDATA_RAW;
-		} else if (strcmp(argv[1], "name") == 0 && (argc == 3 || argc == 4)) {
+		} else if ((argc == 3 || argc == 4) && strcmp(argv[1], "name") == 0) {
 			d_qtype = DNSTABLE_QUERY_TYPE_RDATA_NAME;
 		} else {
 			usage();
@@ -133,6 +171,11 @@ main(int argc, char **argv)
 			arg_rrtype = argv[3];
 	} else {
 		usage();
+	}
+
+	if (g_Json && g_json) {
+		fprintf(stderr, "dnstable_lookup: cannot specify both -j and -J\n");
+		exit(EXIT_FAILURE);
 	}
 
 	env_fname = getenv("DNSTABLE_FNAME");
@@ -146,6 +189,10 @@ main(int argc, char **argv)
 	if (env_setfile) {
 		d_reader = dnstable_reader_init_setfile(env_setfile);
 	} else {
+		if (g_aggregate == false) {
+			fprintf(stderr, "-u flag not valid with a single input mtbl file; it is only valid with a setfile\n");
+			exit(EXIT_FAILURE);
+		}
 		m_reader = mtbl_reader_init(env_fname, NULL);
 		if (m_reader == NULL) {
 			fprintf(stderr, "dnstable_lookup: unable to open file %s\n", env_fname);
@@ -192,7 +239,26 @@ main(int argc, char **argv)
 		}
 	}
 
+	if (g_skip != 0) {
+		res = dnstable_query_set_skip(d_query, g_skip);
+		if (res != dnstable_res_success) {
+			fprintf(stderr, "dnstable_lookup: dnstable_query_set_skip() failed\n");
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	res = dnstable_query_set_aggregated(d_query, g_aggregate);
+	if (res != dnstable_res_success) {
+		fprintf(stderr, "dnstable_lookup: dnstable_query_set_aggregated() failed\n");
+		exit(EXIT_FAILURE);
+	}
+
 	d_iter = dnstable_reader_query(d_reader, d_query);
+	if (d_iter == NULL) {
+		fprintf(stderr, "dnstable_lookup: dnstable_reader_query() failed\n");
+		exit(EXIT_FAILURE);
+	}
+
 	do_dump(d_iter);
 	dnstable_iter_destroy(&d_iter);
 	dnstable_query_destroy(&d_query);

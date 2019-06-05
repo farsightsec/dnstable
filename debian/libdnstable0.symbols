@@ -1,10 +1,12 @@
 libdnstable.so.0 libdnstable0 #MINVER#
+ LIBDNSTABLE_0.11.0@LIBDNSTABLE_0.11.0 0.11.0
  LIBDNSTABLE_0.6.0@LIBDNSTABLE_0.6.0 0.6.0
  LIBDNSTABLE_0.7.0@LIBDNSTABLE_0.7.0 0.7.0
  LIBDNSTABLE_0.8.0@LIBDNSTABLE_0.8.0 0.8.0
  LIBDNSTABLE_0.9.0@LIBDNSTABLE_0.9.0 0.9.0
  dnstable_entry_decode@LIBDNSTABLE_0.6.0 0.6.0
  dnstable_entry_destroy@LIBDNSTABLE_0.6.0 0.6.0
+ dnstable_entry_format@LIBDNSTABLE_0.11.0 0.11.0
  dnstable_entry_get_bailiwick@LIBDNSTABLE_0.6.0 0.6.0
  dnstable_entry_get_count@LIBDNSTABLE_0.6.0 0.6.0
  dnstable_entry_get_num_rdata@LIBDNSTABLE_0.6.0 0.6.0
@@ -18,6 +20,11 @@ libdnstable.so.0 libdnstable0 #MINVER#
  dnstable_entry_set_iszone@LIBDNSTABLE_0.7.0 0.7.0
  dnstable_entry_to_json@LIBDNSTABLE_0.6.0 0.7.0
  dnstable_entry_to_text@LIBDNSTABLE_0.6.0 0.7.0
+ dnstable_formatter_destroy@LIBDNSTABLE_0.11.0 0.11.0
+ dnstable_formatter_init@LIBDNSTABLE_0.11.0 0.11.0
+ dnstable_formatter_set_date_format@LIBDNSTABLE_0.11.0 0.11.0
+ dnstable_formatter_set_output_format@LIBDNSTABLE_0.11.0 0.11.0
+ dnstable_formatter_set_rdata_array@LIBDNSTABLE_0.11.0 0.11.0
  dnstable_iter_destroy@LIBDNSTABLE_0.6.0 0.6.0
  dnstable_iter_init@LIBDNSTABLE_0.6.0 0.6.0
  dnstable_iter_next@LIBDNSTABLE_0.6.0 0.6.0
@@ -27,10 +34,12 @@ libdnstable.so.0 libdnstable0 #MINVER#
  dnstable_query_get_error@LIBDNSTABLE_0.6.0 0.6.0
  dnstable_query_init@LIBDNSTABLE_0.6.0 0.6.0
  dnstable_query_iter@LIBDNSTABLE_0.6.0 0.6.0
+ dnstable_query_set_aggregated@LIBDNSTABLE_0.11.0 0.11.0
  dnstable_query_set_bailiwick@LIBDNSTABLE_0.6.0 0.6.0
  dnstable_query_set_data@LIBDNSTABLE_0.6.0 0.6.0
  dnstable_query_set_filter_parameter@LIBDNSTABLE_0.9.0 0.9.0
  dnstable_query_set_rrtype@LIBDNSTABLE_0.6.0 0.6.0
+ dnstable_query_set_skip@LIBDNSTABLE_0.11.0 0.11.0
  dnstable_query_set_timeout@LIBDNSTABLE_0.9.0 0.9.0
  dnstable_reader_destroy@LIBDNSTABLE_0.6.0 0.6.0
  dnstable_reader_init@LIBDNSTABLE_0.6.0 0.6.0

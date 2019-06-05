@@ -13,8 +13,20 @@ dnstable_entry - dnstable entry objects
     _DNSTABLE_ENTRY_TYPE_RRSET_,
     _DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD_,
     _DNSTABLE_ENTRY_TYPE_RDATA_,
-    _DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV_,
+    _DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV_
 } dnstable_entry_type;^
+
+[verse]
+^typedef enum {
+    _dnstable_output_format_json_,
+    _dnstable_output_format_text_
+} dnstable_output_format_type;^
+
+[verse]
+^typedef enum {
+    _dnstable_date_format_unix, /* timestamps in Unix seconds since the epoch */_
+    _dnstable_date_format_rfc3339 /* timestamps in RFC3339 string form */_
+} dnstable_date_format_type;^
 
 [verse]
 ^struct dnstable_entry *
@@ -33,6 +45,41 @@ dnstable_entry_to_text(struct dnstable_entry *'ent');^
 [verse]
 ^char *
 dnstable_entry_to_json(struct dnstable_entry *'ent');^
+
+[verse]
+^struct dnstable_formatter *
+dnstable_formatter_init();^
+
+[verse]
+^void
+dnstable_formatter_destroy(struct dnstable_formatter **'fp');^
+
+[verse]
+^void
+dnstable_formatter_set_output_format(
+    struct dnstable_formatter *'f',
+    dnstable_output_format_type 'format');^
+
+[verse]
+^void
+dnstable_formatter_set_date_format(
+    struct dnstable_formatter *'f',
+    dnstable_date_format_type 'format');^
+
+[verse]
+/* If always_array is true, the rdata is always rendered as an array, even if there is only
+   one rdata value. Default is false, in which case an rrset with only one rdata value
+   will have the rdata rendered as a single string. */
+^void
+dnstable_formatter_set_rdata_array(
+    struct dnstable_formatter *'f',
+    bool 'always_array');^
+
+[verse]
+^char *
+dnstable_entry_format(
+    const struct dnstable_formatter *'f',
+    const struct dnstable_entry *'ent');^
 
 [verse]
 ^dnstable_entry_type
@@ -144,15 +191,33 @@ A ^dnstable_entry^ object has a particular type which can be retrieved with the
 ^dnstable_entry_type^. For details about how each type is encoded, see
 ^dnstable-encoding^(5).
 
-For presentation or interchange purposes, the ^dnstable_entry_to_text^() and
-^dnstable_entry_to_json^() functions can be used to generate the text or
-JSON-encoded form of a ^dnstable_entry^ object. These functions return a
-dynamically allocated string which must be ^free^()'d by the caller.
+For presentation or interchange purposes, the
+^dnstable_entry_to_text^(), ^dnstable_entry_to_json^(), or more
+general ^dnstable_entry_format()^ functions can be used to generate
+the text or JSON-encoded form of a ^dnstable_entry^ object.  These
+functions return a dynamically allocated string which must be
+^free^()'d by the caller.
+
+To use the ^dnstable_entry_format()^ function, first create a formatter
+with ^dnstable_formatter_init()^.  The formatter must be destroyed,
+eventually, with ^dnstable_formatter_destroy()^.
+
+Use ^dnstable_formatter_set_output_format()^ to select an available
+output format.
+
+Use ^dnstable_formatter_set_date_format()^ to select a
+date format.
+
+Use ^dnstable_formatter_set_rdata_array()^ to control if
+the JSON output format has rdata always as an array.
+
+The default formatter settings are: JSON format, always_array = False,
+UNIX date format -- this is identical behavior to
+^dnstable_entry_to_json^() function.
 
 The ^dnstable_entry_set_iszone^() function sets or clears a flag if
 this entry is from a zone file.  This controls how the timestamp
-fields are named in the formatted output produced by
-^dnstable_entry_to_text^() and ^dnstable_entry_to_json^().
+fields are named in the formatted output.
 
 The remaining ^dnstable_entry_get_*^() accessor functions return particular
 fields of the ^dnstable_entry^ object, if present. ^dnstable_res_success^ will

@@ -33,6 +33,18 @@ struct dnstable_entry {
 	bool			iszone;
 };
 
+struct dnstable_formatter {
+	dnstable_output_format_type	output_format;
+	dnstable_date_format_type	date_format;
+	bool				always_array;
+};
+
+static char *
+dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
+			   dnstable_date_format_type date_format,
+			   bool always_array);
+
+
 static void
 fmt_uint64(ubuf *u, uint64_t v)
 {
@@ -86,6 +98,42 @@ fmt_time(ubuf *u, uint64_t v)
 }
 
 static void
+fmt_rfc3339_time(ubuf *u, uint64_t v)
+{
+	struct tm gm;
+	time_t tm = v;
+	char s[sizeof("4294967295-12-31T23:59:59Z")];
+
+	assert (gmtime_r(&tm, &gm) != NULL);
+	snprintf(s, sizeof(s), "%d-%02d-%02dT%02d:%02d:%02dZ",
+		 1900 + gm.tm_year,
+		 1 + gm.tm_mon,
+		 gm.tm_mday,
+		 gm.tm_hour,
+		 gm.tm_min,
+		 gm.tm_sec
+		);
+	ubuf_add_cstr(u, s);
+}
+
+static int
+fmt_rfc3339_time_str(uint64_t v, char *ts, size_t len_ts)
+{
+	struct tm gm;
+	time_t tm = v;
+
+	assert (gmtime_r(&tm, &gm) != NULL);
+	return snprintf(ts, len_ts, "%d-%02d-%02dT%02d:%02d:%02dZ",
+			1900 + gm.tm_year,
+			1 + gm.tm_mon,
+			gm.tm_mday,
+			gm.tm_hour,
+			gm.tm_min,
+			gm.tm_sec
+		);
+}
+
+static void
 fmt_rrtype(ubuf *u, uint16_t rrtype)
 {
 	char s[sizeof("TYPE65535")];
@@ -98,8 +146,8 @@ fmt_rrtype(ubuf *u, uint16_t rrtype)
 	}
 }
 
-char *
-dnstable_entry_to_text(struct dnstable_entry *e)
+static char *
+dnstable_entry_to_text_fmt(const struct dnstable_entry *e, dnstable_date_format_type date_format)
 {
 	uint8_t *s = NULL;
 	size_t len_s;
@@ -121,14 +169,22 @@ dnstable_entry_to_text(struct dnstable_entry *e)
 			ubuf_add_cstr(u, "\n;; first seen in zone file: ");
 		else
 			ubuf_add_cstr(u, "\n;; first seen: ");
-		fmt_time(u, e->time_first);
+		if (date_format == dnstable_date_format_unix)
+			fmt_time(u, e->time_first);
+		else if (date_format == dnstable_date_format_rfc3339)
+			fmt_rfc3339_time(u, e->time_first);
+		else /* fail */;
 
 		/* last seen */
 		if (e->iszone)
 			ubuf_add_cstr(u, "\n;;  last seen in zone file: ");
 		else
 			ubuf_add_cstr(u, "\n;;  last seen: ");
-		fmt_time(u, e->time_last);
+		if (date_format == dnstable_date_format_unix)
+			fmt_time(u, e->time_last);
+		else if (date_format == dnstable_date_format_rfc3339)
+			fmt_rfc3339_time(u, e->time_last);
+		else /* fail */;
 		ubuf_add(u, '\n');
 
 		/* resource records */
@@ -177,6 +233,12 @@ out:
 	return ((char *) (s));
 }
 
+char *
+dnstable_entry_to_text(const struct dnstable_entry *e)
+{
+	return dnstable_entry_to_text_fmt(e, dnstable_date_format_unix);
+}
+
 static void
 callback_print_yajl_ubuf(void *ctx,
 			 const char *str,
@@ -192,8 +254,10 @@ callback_print_yajl_ubuf(void *ctx,
 	ubuf_append(u, (const uint8_t *) str, len);
 }
 
-char *
-dnstable_entry_to_json(struct dnstable_entry *e)
+static char *
+dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
+			   dnstable_date_format_type date_format,
+			   bool always_array)
 {
 	uint8_t *s = NULL;
 	char name[WDNS_PRESLEN_NAME];
@@ -239,10 +303,17 @@ dnstable_entry_to_json(struct dnstable_entry *e)
 		else
 			add_yajl_string(g, "time_first");
 
-		len = fmt_uint64_str(intstr, e->time_first);
-		assert(len > 0);
-		status = yajl_gen_number(g, intstr, len);
-		assert(status == yajl_gen_status_ok);
+		if (date_format == dnstable_date_format_unix) {
+			len = fmt_uint64_str(intstr, e->time_first);
+			assert(len > 0);
+			status = yajl_gen_number(g, intstr, len);
+			assert(status == yajl_gen_status_ok);
+		} else {
+			char ts[sizeof("4294967295-12-31 23:59:59 -0000")];
+			len = fmt_rfc3339_time_str(e->time_first, ts, sizeof ts);
+			status = yajl_gen_string(g, (uint8_t *) ts, len);
+			assert(status == yajl_gen_status_ok);
+		}
 
 		/* last seen */
 		if (e->iszone)
@@ -250,10 +321,17 @@ dnstable_entry_to_json(struct dnstable_entry *e)
 		else
 			add_yajl_string(g, "time_last");
 
-		len = fmt_uint64_str(intstr, e->time_last);
-		assert(len > 0);
-		status = yajl_gen_number(g, intstr, len);
-		assert(status == yajl_gen_status_ok);
+		if (date_format == dnstable_date_format_unix) {
+			len = fmt_uint64_str(intstr, e->time_last);
+			assert(len > 0);
+			status = yajl_gen_number(g, intstr, len);
+			assert(status == yajl_gen_status_ok);
+		} else {
+			char ts[sizeof("4294967295-12-31 23:59:59 -0000")];
+			len = fmt_rfc3339_time_str(e->time_last, ts, sizeof ts);
+			status = yajl_gen_string(g, (uint8_t *) ts, len);
+			assert(status == yajl_gen_status_ok);
+		}
 
 		/* rrname */
 		add_yajl_string(g, "rrname");
@@ -310,8 +388,19 @@ dnstable_entry_to_json(struct dnstable_entry *e)
 		wdns_rdata_t *rdata = rdata_vec_value(e->rdatas, 0);
 		char *data = wdns_rdata_to_str(rdata->data, rdata->len,
 					       e->rrtype, WDNS_CLASS_IN);
+
+		if (always_array) {
+			status = yajl_gen_array_open(g);
+			assert(status == yajl_gen_status_ok);
+		}
+
 		add_yajl_string(g, data);
 		my_free(data);
+
+                if (always_array) {
+			status = yajl_gen_array_close(g);
+			assert(status == yajl_gen_status_ok);
+		}
 	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD) {
 		add_yajl_string(g, "rrset_name");
 		wdns_domain_to_str(e->name.data, e->name.len, name);
@@ -332,6 +421,76 @@ out:
 	yajl_gen_free(g);
 	return ((char *) s);
 }
+
+
+char *
+dnstable_entry_to_json(const struct dnstable_entry *e)
+{
+	return dnstable_entry_to_json_fmt(e, dnstable_date_format_unix, false);
+}
+
+struct dnstable_formatter *
+dnstable_formatter_init(void)
+{
+	struct dnstable_formatter *f = my_calloc(1, sizeof(*f));
+	f->output_format = dnstable_output_format_json;
+	f->date_format = dnstable_date_format_unix;
+	f->always_array = false;
+	return (f);
+}
+
+void
+dnstable_formatter_destroy(struct dnstable_formatter **fp)
+{
+	if (*fp)
+		my_free(*fp);
+}
+
+void
+dnstable_formatter_set_output_format(
+    struct dnstable_formatter *f,
+    dnstable_output_format_type format)
+{
+	assert(f != NULL);
+	f->output_format = format;
+}
+
+void
+dnstable_formatter_set_date_format(
+   struct dnstable_formatter *f,
+   dnstable_date_format_type format)
+{
+	assert(f != NULL);
+	f->date_format = format;
+}
+
+/* If always_array is true, the rdata is always rendered as an array, even if there is only
+  one rdata value. Default is false, in which case an rrset with only one rdata value
+  will have the rdata rendered as a single string. */
+void
+dnstable_formatter_set_rdata_array(
+    struct dnstable_formatter *f,
+    bool always_array)
+{
+	assert(f != NULL);
+	f->always_array = always_array;
+}
+
+/* Returns dynamically allocated string with the entry rendered in json format */
+char *
+dnstable_entry_format(
+   const struct dnstable_formatter *f,
+   const struct dnstable_entry *ent)
+{
+	assert(f != NULL);
+	if (f->output_format == dnstable_output_format_json)
+		return dnstable_entry_to_json_fmt(ent, f->date_format, f->always_array);
+	else
+		return dnstable_entry_to_text_fmt(ent, f->date_format);
+}
+
+/*------------------------------------------------------------*/
+
 
 static dnstable_res
 decode_val_triplet(struct dnstable_entry *e, const uint8_t *val, size_t len_val)
@@ -376,7 +535,7 @@ decode_rrset(struct dnstable_entry *e, const uint8_t *buf, size_t len_buf)
 	p += mtbl_varint_decode32(p, &e->rrtype);
 	if (p > end)
 		return (dnstable_res_failure);
-	
+
 	/* bailiwick */
 	if (wdns_len_uname(p, end, &len_name) != wdns_res_success)
 		return (dnstable_res_failure);
@@ -400,7 +559,7 @@ decode_rrset(struct dnstable_entry *e, const uint8_t *buf, size_t len_buf)
 
 		if (p + len_rdata > end)
 			return (dnstable_res_failure);
-		
+
 		rdata = my_malloc(sizeof(wdns_rdata_t) + len_rdata);
 		rdata->len = len_rdata;
 		memcpy(rdata->data, p, len_rdata);

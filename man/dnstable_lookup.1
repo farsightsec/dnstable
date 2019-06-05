@@ -2,12 +2,12 @@
 .\"     Title: dnstable_lookup
 .\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
 .\" Generator: DocBook XSL Stylesheets v1.79.1 <http://docbook.sf.net/>
-.\"      Date: 05/31/2018
+.\"      Date: 04/10/2019
 .\"    Manual: \ \&
 .\"    Source: \ \&
 .\"  Language: English
 .\"
-.TH "DNSTABLE_LOOKUP" "1" "05/31/2018" "\ \&" "\ \&"
+.TH "DNSTABLE_LOOKUP" "1" "04/10/2019" "\ \&" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -31,13 +31,13 @@
 dnstable_lookup \- lookup individual records in a dnstable data file or set of data files
 .SH "SYNOPSIS"
 .sp
-\fBdnstable_lookup\fR [\fB\-j\fR] \fBrrset\fR <OWNER> [<RRTYPE> [<BAILIWICK>]]
+\fBdnstable_lookup\fR [\fB\-j\fR] [\fB\-J\fR] [\fB\-u\fR] [\fB\-s #\fR] \fBrrset\fR <OWNER> [<RRTYPE> [<BAILIWICK>]]
 .sp
-\fBdnstable_lookup\fR [\fB\-j\fR] \fBrdata ip\fR <ADDRESS | RANGE | PREFIX>
+\fBdnstable_lookup\fR [\fB\-j\fR] [\fB\-J\fR] [\fB\-u\fR] [\fB\-s #\fR] \fBrdata ip\fR <ADDRESS | RANGE | PREFIX>
 .sp
-\fBdnstable_lookup\fR [\fB\-j\fR] \fBrdata raw\fR <HEX STRING> [<RRTYPE>]
+\fBdnstable_lookup\fR [\fB\-j\fR] [\fB\-J\fR] [\fB\-u\fR] [\fB\-s #\fR] \fBrdata raw\fR <HEX STRING> [<RRTYPE>]
 .sp
-\fBdnstable_lookup\fR [\fB\-j\fR] \fBrdata name\fR <RDATA NAME> [<RRTYPE>]
+\fBdnstable_lookup\fR [\fB\-j\fR] [\fB\-J\fR] [\fB\-u\fR] [\fB\-s #\fR] \fBrdata name\fR <RDATA NAME> [<RRTYPE>]
 .SH "DESCRIPTION"
 .sp
 Looks up records in a dnstable data file\&. Results are printed to stdout in an ad\-hoc text format\&.
@@ -53,7 +53,26 @@ Looks up records in a dnstable data file\&. Results are printed to stdout in an 
 .PP
 \fB\-j\fR
 .RS 4
-Use JSON format for output\&. One JSON\-formatted entry per line will be printed\&.
+Use JSON format for output, with timestamps in epoch time (seconds since epoch)\&. Default is
+\fIdig\fR
+presentation format\&. One JSON\-formatted entry per line will be printed\&.
+.RE
+.PP
+\fB\-J\fR
+.RS 4
+Use JSON format for output, with timestamps in human time (RFC3339 format)\&. Default is
+\fIdig\fR
+presentation format\&. One JSON\-formatted entry per line will be printed\&.
+.RE
+.PP
+\fB\-u\fR
+.RS 4
+Output unaggregated results; default is aggregated results\&.
+.RE
+.PP
+\fB\-s #\fR
+.RS 4
+Skip the first # results\&.
 .RE
 .SH "ENVIRONMENT VARIABLES"
 .sp
@@ -82,7 +101,11 @@ $ dnstable_lookup rdata ip 198\&.51\&.100\&.0/24
 .sp
 $ dnstable_lookup rdata ip 203\&.0\&.113\&.1\-203\&.0\&.113\&.100
 .sp
-$ dnstable_lookup rdata ip 2001:db8::/32
+$ dnstable_lookup \-j rdata ip 2001:db8::/32
+.sp
+$ dnstable_lookup \-u rdata ip 2001:db8::/32
+.sp
+$ dnstable_lookup \-s 10 rdata ip 2001:db8::/32
 .sp
 $ dnstable_lookup rdata raw c00505f1
 .sp
