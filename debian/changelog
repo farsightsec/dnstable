@@ -1,4 +1,4 @@
-dnstable (0.11.0-1) UNRELEASED; urgency=medium
+dnstable (0.11.0-1) debian-farsightsec; urgency=medium
 
   * Fix bug in raw rdata queries with rrtype specified.
 
