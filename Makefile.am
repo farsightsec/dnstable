@@ -86,6 +86,7 @@ src_dnstable_lookup_LDADD = \
 
 TESTS = tests/tests.sh
 EXTRA_DIST += tests/test-dns.mtbl
+EXTRA_DIST += tests/test-dns.setfile
 
 check_PROGRAMS =
 
