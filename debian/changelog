@@ -1,3 +1,17 @@
+dnstable (0.11.0-1) debian-farsightsec; urgency=medium
+
+  * Fix bug in raw rdata queries with rrtype specified.
+
+  * Add functionality for unaggregated query results.
+
+  * Add ability to skip query results.
+
+  * Add options for date and rdata presentation in JSON formatted entries.
+
+  * Treat RRTYPE "TYPE255" as an alias for "ANY", since 255 is the code for "ANY".
+
+ -- Farsight Security, Inc. <software@farsightsecurity.com>  Tue, 28 May 2019 10:49:39 -0400
+
 dnstable (0.10.2-1) wheezy-farsightsec; urgency=medium
 
   * New upstream release.

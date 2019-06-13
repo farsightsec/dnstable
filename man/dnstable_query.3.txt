@@ -40,6 +40,16 @@ dnstable_query_set_rrtype(struct dnstable_query *'q',
 
 [verse]
 ^dnstable_res
+dnstable_query_set_skip(struct dnstable_query *'q',
+    uint64_t 'skip');^
+
+[verse]
+^dnstable_res
+dnstable_query_set_aggregated(struct dnstable_query *'q',
+    bool 'aggregated');^
+
+[verse]
+^dnstable_res
 dnstable_query_set_bailiwick(struct dnstable_query *'q',
     const char *'bailiwick');^
 
@@ -91,6 +101,12 @@ filtered against the value provided.
 
 ^dnstable_query_set_rrtype^() and ^dnstable_query_set_bailiwick^() are optional.
 If not called, no RRtype or bailiwick filtering will be performed.
+
+^dnstable_query_set_skip()^ sets the number of initial rows to skip
+from the results.  The default is 0, which means to not skip any rows.
+
+^dnstable_query_set_aggregated^() sets if the results from queries should be
+aggregated. The default is _true_ for aggregated results.
 
 ^dnstable_query_set_data^() specifies the main search parameter and is required.
 Its meaning depends on the query type.

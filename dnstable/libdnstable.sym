@@ -54,3 +54,15 @@ global:
         dnstable_query_set_filter_parameter;
         dnstable_query_set_timeout;
 } LIBDNSTABLE_0.8.0;
+
+LIBDNSTABLE_0.11.0 {
+global:
+        dnstable_entry_format;
+        dnstable_formatter_destroy;
+        dnstable_formatter_init;
+        dnstable_formatter_set_date_format;
+        dnstable_formatter_set_output_format;
+        dnstable_formatter_set_rdata_array;
+        dnstable_query_set_aggregated;
+        dnstable_query_set_skip;
+} LIBDNSTABLE_0.9.0;

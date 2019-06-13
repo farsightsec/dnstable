@@ -96,4 +96,7 @@ bytes_compare(const uint8_t *a, size_t len_a,
 	return (ret);
 }
 
+bool
+dnstable_query_is_aggregated(const struct dnstable_query *);
+
 #endif /* DNSTABLE_PRIVATE_H */

@@ -72,6 +72,11 @@ dnstable_reader_iter_rdata(struct dnstable_reader *\fR\fB\fIr\fR\fR\fB);\fR
 \fBstruct dnstable_iter *
 dnstable_reader_query(struct dnstable_reader *\fR\fB\fIr\fR\fR\fB, struct dnstable_query *\fR\fB\fIq\fR\fR\fB);\fR
 .fi
+.sp
+.nf
+\fBstruct dnstable_iter *
+dnstable_reader_query_no_aggregate(struct dnstable_reader *\fR\fB\fIr\fR\fR\fB, struct dnstable_query *\fR\fB\fIq\fR\fR\fB);\fR
+.fi
 .SH "DESCRIPTION"
 .sp
 \fBdnstable_reader\fR is the high\-level interface for reading dnstable entries from a dnstable data source\&. Results are returned through the \fBdnstable_iter\fR interface\&.
@@ -85,6 +90,8 @@ dnstable_reader_query(struct dnstable_reader *\fR\fB\fIr\fR\fR\fB, struct dnstab
 \fBdnstable_reader_iter_rrset\fR() iterates over just the entries of type \fIDNSTABLE_ENTRY_TYPE_RRSET\fR\&. Likewise, \fBdnstable_reader_iter_rdata\fR() iterates over just the entries of type \fIDNSTABLE_ENTRY_TYPE_RDATA\fR\&.
 .sp
 \fBdnstable_reader_query\fR() iterates over all the entry objects that match the specified query object\&.
+.sp
+\fBdnstable_reader_query_no_aggregate\fR() iterates over all the entry objects that match the specified query object, but does not call a merge function to aggregate values\&.
 .SH "SEE ALSO"
 .sp
 \fBdnstable_iter\fR(3), \fBdnstable_query\fR(3), \fBmtbl_source\fR(3)

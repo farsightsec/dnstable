@@ -7,7 +7,7 @@ Build-Depends:
  debhelper (>= 9~),
  dh-autoreconf (>= 5~),
  dpkg-dev (>= 1.16.0~),
- libmtbl-dev (>= 1.2.1),
+ libmtbl-dev (>= 1.3.0),
  libwdns-dev (>= 0.6.0),
  libyajl-dev (>= 1.0.8),
  pkg-config,

@@ -32,11 +32,13 @@ struct dnstable_query {
 	char			*err;
 	wdns_name_t		name, bailiwick;
 	uint32_t		rrtype;
+	bool			aggregated;
 	size_t			len_rdata, len_rdata2;
 	uint8_t			*rdata, *rdata2;
 	struct timespec		timeout;
 	uint64_t		time_first_before, time_first_after;
 	uint64_t		time_last_before, time_last_after;
+	uint64_t		skip;
 };
 
 struct query_iter {
@@ -97,6 +99,7 @@ dnstable_query_init(dnstable_query_type q_type)
 	       q_type == DNSTABLE_QUERY_TYPE_RDATA_RAW);
 	struct dnstable_query *q = my_calloc(1, sizeof(*q));
 	q->q_type = q_type;
+	q->aggregated = true;
 	return (q);
 }
 
@@ -307,6 +310,7 @@ dnstable_query_set_rrtype(struct dnstable_query *q, const char *s_rrtype)
 	}
 
 	if (strcasecmp(s_rrtype, "ANY") == 0 ||
+	    strcasecmp(s_rrtype, "TYPE255") == 0 || /* ANY == TYPE255 */
 	    strcasecmp(s_rrtype, "ANY-DNSSEC") == 0)
 	{
 		q->do_rrtype = false;
@@ -321,6 +325,25 @@ dnstable_query_set_rrtype(struct dnstable_query *q, const char *s_rrtype)
 	q->rrtype = rrtype;
 	q->do_rrtype = true;
 	return (dnstable_res_success);
+}
+
+dnstable_res
+dnstable_query_set_skip(struct dnstable_query *q, uint64_t skip)
+{
+	q->skip = skip;
+	return (dnstable_res_success);
+}
+
+dnstable_res
+dnstable_query_set_aggregated(struct dnstable_query *q, bool aggregated)
+{
+	q->aggregated = aggregated;
+	return (dnstable_res_success);
+}
+
+bool dnstable_query_is_aggregated(const struct dnstable_query *q)
+{
+	return q->aggregated;
 }
 
 dnstable_res
@@ -486,14 +509,18 @@ query_iter_next(void *clos, struct dnstable_entry **ent)
 			if (my_timespec_cmp(&now, &expiry) >= 0)
 				return (dnstable_res_timeout);
 		}
-
 		if (mtbl_iter_next(it->m_iter, &key, &len_key, &val, &len_val) != mtbl_res_success)
 			return (dnstable_res_failure);
+
 		*ent = dnstable_entry_decode(key, len_key, val, len_val);
 		assert(*ent != NULL);
 		res = dnstable_query_filter(it->query, *ent, &pass);
 		assert(res == dnstable_res_success);
 		if (pass) {
+			/* skip initial rows */
+			if (it->query->skip > 0 && it->query->skip-- > 0)
+				continue;
+
 			return (dnstable_res_success);
 		} else {
 			dnstable_entry_destroy(ent);
@@ -528,6 +555,7 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 
 		if (mtbl_iter_next(it->m_iter, &key, &len_key, &val, &len_val) != mtbl_res_success)
 			return (dnstable_res_failure);
+
 		*ent = dnstable_entry_decode(key, len_key, val, len_val);
 		assert(*ent != NULL);
 
@@ -632,19 +660,12 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 				assert(ubuf_size(new_key) == ubuf_size(it->key));
 
 				/*
-				 * Destroy our current iterator and replace it
-				 * with a new iterator starting from our newly
-				 * generated key.
-				 *
-				 * TODO: Replace with mtbl_iter_seek() once
-				 * available.
+				 * Seek to the newly generated key.
 				 */
-				mtbl_iter_destroy(&it->m_iter);
-				it->m_iter = mtbl_source_get_range(it->source,
-						ubuf_data(new_key),
-						ubuf_size(new_key),
-						ubuf_data(it->key2),
-						ubuf_size(it->key2));
+				if (mtbl_iter_seek(it->m_iter, ubuf_data(new_key), ubuf_size(new_key)) != mtbl_res_success) {
+					ubuf_destroy(&new_key);
+					return (dnstable_res_failure);
+				}
 				ubuf_destroy(&new_key);
 
 				/*
@@ -657,6 +678,10 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 		res = dnstable_query_filter(it->query, *ent, &pass);
 		assert(res == dnstable_res_success);
 		if (pass) {
+			/* skip initial rows */
+			if (it->query->skip > 0 && it->query->skip-- > 0)
+				continue;
+
 			return (dnstable_res_success);
 		} else {
 			dnstable_entry_destroy(ent);
@@ -731,11 +756,16 @@ query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t t
 			mtbl_iter_destroy(&it->m_iter);
 			continue;
 		}
+
 		*ent = dnstable_entry_decode(key, len_key, val, len_val);
 		assert(*ent != NULL);
 		res = dnstable_query_filter(it->query, *ent, &pass);
 		assert(res == dnstable_res_success);
 		if (pass) {
+			/* skip initial rows */
+			if (it->query->skip > 0 && it->query->skip-- > 0)
+				continue;
+
 			return (dnstable_res_success);
 		} else {
 			dnstable_entry_destroy(ent);
@@ -820,7 +850,6 @@ query_init_rrset(struct query_iter *it)
 {
 	uint8_t name[WDNS_MAXLEN_NAME];
 	it->key = ubuf_init(64);
-
 	if (is_left_wildcard(&it->query->name))
 		return query_init_rrset_left_wildcard(it);
 	if (is_right_wildcard(&it->query->name))
@@ -957,8 +986,8 @@ query_init_rdata_ip(struct query_iter *it)
 						    ubuf_data(it->key), ubuf_size(it->key));
 	} else {
 		it->m_iter = mtbl_source_get_range(it->source,
-						    ubuf_data(it->key), ubuf_size(it->key),
-						    ubuf_data(it->key2), ubuf_size(it->key2));
+						   ubuf_data(it->key), ubuf_size(it->key),
+						   ubuf_data(it->key2), ubuf_size(it->key2));
 	}
 	return dnstable_iter_init(query_iter_next_ip, query_iter_free, it);
 }
@@ -974,9 +1003,13 @@ query_init_rdata_raw(struct query_iter *it)
 	/* key: rdata */
 	ubuf_append(it->key, it->query->rdata, it->query->len_rdata);
 
-	/* key: rrtype */
-	if (it->query->do_rrtype)
-		add_rrtype_to_key(it->key, it->query->rrtype);
+        /*
+         * Note: even though this function does not use
+         * it->query->do_rrtype nor call add_rrtype_to_key(), in the
+         * post-query filter processing in dnstable_query_filter(), if
+         * do_rrtype is set then the results will be filtered by
+         * rrtype.
+         */
 
 	it->m_iter = mtbl_source_get_prefix(it->source, ubuf_data(it->key), ubuf_size(it->key));
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);

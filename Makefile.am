@@ -14,9 +14,9 @@ AM_CFLAGS = \
 
 AM_LDFLAGS =
 
-LIBDNSTABLE_CURRENT=0
-LIBDNSTABLE_REVISION=1
-LIBDNSTABLE_AGE=0
+LIBDNSTABLE_CURRENT=1
+LIBDNSTABLE_REVISION=0
+LIBDNSTABLE_AGE=1
 
 include_HEADERS = dnstable/dnstable.h
 lib_LTLIBRARIES = dnstable/libdnstable.la
@@ -58,7 +58,8 @@ EXTRA_DIST += src/dnstable_merge.sh.in
 bin_SCRIPTS = src/dnstable_merge
 CLEANFILES += $(bin_SCRIPTS)
 src/dnstable_merge:
-	sed -e "s/@LIBDNSTABLE_CURRENT@/$(LIBDNSTABLE_CURRENT)/" ${srcdir}/src/dnstable_merge.sh.in >$@
+	dlname=`sed -n "s/^dlname='\(.*\)'/\1/p" dnstable/libdnstable.la` ; \
+	sed -e "s/@LIBDNSTABLE_DLNAME@/$$dlname/" ${srcdir}/src/dnstable_merge.sh.in >$@
 	chmod +x $@
 
 pkgconfig_DATA = dnstable/libdnstable.pc
@@ -85,6 +86,7 @@ src_dnstable_lookup_LDADD = \
 
 TESTS = tests/tests.sh
 EXTRA_DIST += tests/test-dns.mtbl
+EXTRA_DIST += tests/test-dns.setfile
 
 check_PROGRAMS =
 
