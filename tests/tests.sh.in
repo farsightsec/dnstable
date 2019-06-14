@@ -78,18 +78,18 @@ test_lookup -j rrset _ldap._tcp.example.com SRV << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"_ldap._tcp.example.com.","rrtype":"SRV","bailiwick":"example.com.","rdata":["10 1 389 ldap.example.com."]}
 EOF
 
-# skip first five entries, left wildcard rrset lookup
-test_lookup -j -s 5 rrset \*. << EOF
+# offset first five entries, left wildcard rrset lookup
+test_lookup -j -O 5 rrset \*. << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"_ldap._tcp.example.com.","rrtype":"SRV","bailiwick":"example.com.","rdata":["10 1 389 ldap.example.com."]}
 EOF
 
-# skip first entry, right wildcard rrset lookup
-test_lookup -j -s 1 rrset www.example.\* << EOF
+# offset first entry, right wildcard rrset lookup
+test_lookup -j -O 1 rrset www.example.\* << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"AAAA","bailiwick":"example.com.","rdata":["2001:db8::1","2001:db8::2"]}
 EOF
 
-# skip 1000 entries should have no result
-test_lookup -j -s 1000 rrset www.example.\* << EOF
+# offset 1000 entries should have no result
+test_lookup -j -O 1000 rrset www.example.\* << EOF
 EOF
 
 test_lookup -j rdata ip 198.51.100.3 << EOF
@@ -100,8 +100,8 @@ test_lookup -j rdata ip 2001:db8::1 << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"AAAA","rdata":"2001:db8::1"}
 EOF
 
-# skip first entry, rdata ip subnet lookup
-test_lookup -j -s 1 rdata ip 2001:db8::/0 << EOF
+# offset first entry, rdata ip subnet lookup
+test_lookup -j -O 1 rdata ip 2001:db8::/0 << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"AAAA","rdata":"2001:db8::2"}
 EOF
 
@@ -139,7 +139,7 @@ test_lookup -j rdata raw 00 MX << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"20 mail2.example.com."}
 EOF
 
-test_lookup -j -s 1 rdata raw 00 MX << EOF
+test_lookup -j -O 1 rdata raw 00 MX << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"20 mail2.example.com."}
 EOF
 
@@ -153,23 +153,23 @@ test_lookup -j -u rdata raw 00 MX << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"20 mail2.example.com."}
 EOF
 
-test_lookup -j -s 2 -u rdata raw 00 MX << EOF
+test_lookup -j -O 2 -u rdata raw 00 MX << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"20 mail2.example.com."}
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"20 mail2.example.com."}
 EOF
 
-test_lookup -J -s 2 -u rdata raw 00 MX << EOF
+test_lookup -J -O 2 -u rdata raw 00 MX << EOF
 {"count":1,"time_first":"2018-03-27T10:43:28Z","time_last":"2018-03-27T10:43:28Z","rrname":"example.com.","rrtype":"MX","rdata":"20 mail2.example.com."}
 {"count":1,"time_first":"2018-03-27T10:43:28Z","time_last":"2018-03-27T10:43:28Z","rrname":"example.com.","rrtype":"MX","rdata":"20 mail2.example.com."}
 EOF
 
-# test negative skip
-test_lookup_fails -J -s -1 -u rdata raw 00 MX
+# test negative offset
+test_lookup_fails -J -O -1 -u rdata raw 00 MX
 
 # test no search query
-test_lookup_fails -J -s 2
+test_lookup_fails -J -O 2
 
 # test both -j and -J
-test_lookup_fails -J -j -s 2 -u rdata raw 00 MX
+test_lookup_fails -J -j -O 2 -u rdata raw 00 MX
 
 exit $code

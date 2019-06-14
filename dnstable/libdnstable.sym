@@ -64,5 +64,5 @@ global:
         dnstable_formatter_set_output_format;
         dnstable_formatter_set_rdata_array;
         dnstable_query_set_aggregated;
-        dnstable_query_set_skip;
+        dnstable_query_set_offset;
 } LIBDNSTABLE_0.9.0;

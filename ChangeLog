@@ -1,3 +1,9 @@
+dnstable (0.11.1)
+
+  * Change dnstable_query_set_skip to ..._offset.  Change dnstable_lookup parameter from -s to -O
+
+ -- Farsight Security, Inc. <software@farsightsecurity.com>  Fri, 14 Jun 2019 15:55:00 -0500
+
 dnstable (0.11.0)
 
   * Fix bug in raw rdata queries with rrtype specified.

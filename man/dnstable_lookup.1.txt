@@ -6,13 +6,13 @@ dnstable_lookup - lookup individual records in a dnstable data file or set of da
 
 == SYNOPSIS ==
 
-^dnstable_lookup^ [^-j^] [^-J^] [^-u^] [^-s #^] ^rrset^ <OWNER> [<RRTYPE> [<BAILIWICK>]]
+^dnstable_lookup^ [^-j^] [^-J^] [^-u^] [^-O #^] ^rrset^ <OWNER> [<RRTYPE> [<BAILIWICK>]]
 
-^dnstable_lookup^ [^-j^] [^-J^] [^-u^] [^-s #^] ^rdata ip^ <ADDRESS | RANGE | PREFIX>
+^dnstable_lookup^ [^-j^] [^-J^] [^-u^] [^-O #^] ^rdata ip^ <ADDRESS | RANGE | PREFIX>
 
-^dnstable_lookup^ [^-j^] [^-J^] [^-u^] [^-s #^] ^rdata raw^ <HEX STRING> [<RRTYPE>]
+^dnstable_lookup^ [^-j^] [^-J^] [^-u^] [^-O #^] ^rdata raw^ <HEX STRING> [<RRTYPE>]
 
-^dnstable_lookup^ [^-j^] [^-J^] [^-u^] [^-s #^] ^rdata name^ <RDATA NAME> [<RRTYPE>]
+^dnstable_lookup^ [^-j^] [^-J^] [^-u^] [^-O #^] ^rdata name^ <RDATA NAME> [<RRTYPE>]
 
 == DESCRIPTION ==
 
@@ -47,8 +47,8 @@ the specified domain name.
 ^-u^::
     Output unaggregated results; default is aggregated results.
 
-^-s #^::
-    Skip the first # results.
+^-O #^::
+    Offset (e.g. skip) the first # results.
 
 
 == ENVIRONMENT VARIABLES ==
@@ -82,7 +82,7 @@ $ dnstable_lookup -j rdata ip 2001:db8::/32
 
 $ dnstable_lookup -u rdata ip 2001:db8::/32
 
-$ dnstable_lookup -s 10 rdata ip 2001:db8::/32
+$ dnstable_lookup -O 10 rdata ip 2001:db8::/32
 
 $ dnstable_lookup rdata raw c00505f1
 
