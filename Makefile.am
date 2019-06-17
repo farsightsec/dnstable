@@ -97,6 +97,7 @@ check_PROGRAMS =
 
 TESTS += tests/test-dnstable
 check_PROGRAMS += tests/test-dnstable
+tests_test_dnstable_CPPFLAGS = -DSRCDIR="\"$(abs_srcdir)\"" $(AM_CPPFLAGS)
 tests_test_dnstable_LDADD = \
 	dnstable/libdnstable.la \
 	$(libmtbl_LIBS)
