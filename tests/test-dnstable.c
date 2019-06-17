@@ -518,7 +518,7 @@ int
 main(void)
 {
 	check_explicit2_display_only(test_basic() == 0, "test-dnstable/ test_basic");
-	check_explicit2_display_only(test_query() == 0, "test-dnstabl/ test_query");
+	check_explicit2_display_only(test_query() == 0, "test-dnstable/ test_query");
 	check_explicit2_display_only(test_cust_iter() == 0, "test-dnstable/ test_cust_iter");
 	check_explicit2_display_only(test_merger() == 0, "test-dnstable/ test_merger");
 
