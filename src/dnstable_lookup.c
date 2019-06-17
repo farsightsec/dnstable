@@ -30,7 +30,7 @@
 bool g_json = false;
 bool g_Json = false;
 bool g_aggregate = true;
-int64_t g_skip = 0;
+int64_t g_offset = 0;
 
 static void
 print_entry(struct dnstable_entry *ent)
@@ -87,7 +87,7 @@ usage(void)
 	fprintf(stderr, "\t-j: output in JSON format with epoch time; default is 'dig' presentation format\n");
 	fprintf(stderr, "\t-J: output in JSON format with human time (RFC3339 format); default is 'dig' presentation format\n");
 	fprintf(stderr, "\t-u: output unaggregated results; default is aggregated results\n");
-	fprintf(stderr, "\t-s #: skip the first # results (must be a positive number)\n");
+	fprintf(stderr, "\t-O #: offset the first # results (must be a positive number)\n");
 	exit(EXIT_FAILURE);
 }
 
@@ -110,7 +110,7 @@ main(int argc, char **argv)
 	dnstable_res res;
 	int ch;
 
-	while ((ch = getopt(argc, argv, "jJus:")) != -1) {
+	while ((ch = getopt(argc, argv, "jJuO:")) != -1) {
 	        switch (ch) {
 	        case 'j':
 	                g_json = true;
@@ -121,9 +121,9 @@ main(int argc, char **argv)
 	        case 'u':
 	                g_aggregate = false;
 	                break;
-		case 's':
-			g_skip = atoi(optarg);
-			if (g_skip <= 0)
+		case 'O':
+			g_offset = atoi(optarg);
+			if (g_offset <= 0)
 				usage();
 			break;
 	        case -1:
@@ -239,10 +239,10 @@ main(int argc, char **argv)
 		}
 	}
 
-	if (g_skip != 0) {
-		res = dnstable_query_set_skip(d_query, g_skip);
+	if (g_offset != 0) {
+		res = dnstable_query_set_offset(d_query, g_offset);
 		if (res != dnstable_res_success) {
-			fprintf(stderr, "dnstable_lookup: dnstable_query_set_skip() failed\n");
+			fprintf(stderr, "dnstable_lookup: dnstable_query_set_offset() failed\n");
 			exit(EXIT_FAILURE);
 		}
 	}

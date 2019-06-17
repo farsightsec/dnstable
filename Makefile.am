@@ -85,9 +85,23 @@ src_dnstable_lookup_LDADD = \
 	$(libwdns_LIBS)
 
 TESTS = tests/tests.sh
-EXTRA_DIST += tests/test-dns.mtbl
+EXTRA_DIST += \
+	tests/test-dns.mtbl \
+	tests/test-dns.setfile \
+	tests/generic-tests/m1.mtbl \
+	tests/generic-tests/m2.mtbl \
+	tests/generic-tests/m12.mtbl \
+	tests/generic-tests/test.mtbl
 
 check_PROGRAMS =
+
+TESTS += tests/test-dnstable
+check_PROGRAMS += tests/test-dnstable
+tests_test_dnstable_CPPFLAGS = -DSRCDIR="\"$(abs_srcdir)\"" $(AM_CPPFLAGS)
+tests_test_dnstable_LDADD = \
+	dnstable/libdnstable.la \
+	$(libmtbl_LIBS)
+tests_test_dnstable_SOURCES = tests/test-dnstable.c tests/errors.h
 
 if BUILD_MAN
 SUFFIXES = .1.txt .3.txt .5.txt .7.txt .1 .3 .5 .7
