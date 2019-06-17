@@ -36,7 +36,7 @@ test_basic(void)
 	dnstable_res res, res2, res3, res4, res5;
 	size_t n;
 
-	mreader = mtbl_reader_init("./tests/generic-tests/test.mtbl", NULL);
+	mreader = mtbl_reader_init(SRCDIR "/tests/generic-tests/test.mtbl", NULL);
 	check_return(mreader != NULL);
 	reader = dnstable_reader_init(mtbl_reader_source(mreader));
 	check_return(reader != NULL);
@@ -206,7 +206,7 @@ test_query(void)
 	uint16_t rrtype;
 	size_t lrrname, lbailiwick;
 
-	mreader = mtbl_reader_init("./tests/generic-tests/test.mtbl", NULL);
+	mreader = mtbl_reader_init(SRCDIR "/tests/generic-tests/test.mtbl", NULL);
 	check_return(mreader != NULL);
 	reader = dnstable_reader_init(mtbl_reader_source(mreader));
 	check_return(reader != NULL);
@@ -344,7 +344,7 @@ test_cust_iter(void)
 	size_t lowner;
 	unsigned long ival = 0x12345678;
 
-	mreader = mtbl_reader_init("./tests/generic-tests/test.mtbl", NULL);
+	mreader = mtbl_reader_init(SRCDIR "/tests/generic-tests/test.mtbl", NULL);
 	check_return(mreader != NULL);
 	reader = dnstable_reader_init(mtbl_reader_source(mreader));
 	check_return(reader != NULL);
@@ -409,7 +409,7 @@ size_t lrdata_name;
 
 
 	/* A special test for dnstable_entry_get_rdata_name(). */
-	mreader = mtbl_reader_init("./tests/generic-tests/test.mtbl", NULL);
+	mreader = mtbl_reader_init(SRCDIR "/tests/generic-tests/test.mtbl", NULL);
 	check_return(mreader != NULL);
 	reader = dnstable_reader_init(mtbl_reader_source(mreader));
 	check_return(reader != NULL);
@@ -491,11 +491,11 @@ test_merger(void)
 	merger = mtbl_merger_init(moptions);
 	check_return(merger != NULL);
 
-	reader = mtbl_reader_init("./tests/generic-tests/m1.mtbl", NULL);
+	reader = mtbl_reader_init(SRCDIR "/tests/generic-tests/m1.mtbl", NULL);
 	check_return(reader != NULL);
 	mtbl_merger_add_source(merger, mtbl_reader_source(reader));
 
-	reader = mtbl_reader_init("./tests/generic-tests/m2.mtbl", NULL);
+	reader = mtbl_reader_init(SRCDIR "/tests/generic-tests/m2.mtbl", NULL);
 	check_return(reader != NULL);
 	mtbl_merger_add_source(merger, mtbl_reader_source(reader));
 
@@ -505,7 +505,7 @@ test_merger(void)
 	iter = mtbl_source_iter(msource);
 	check_return(iter != NULL);
 
-	return_if_error(compare_merger_to_file(iter, "./tests/generic-tests/m12.mtbl"));
+	return_if_error(compare_merger_to_file(iter, SRCDIR "/tests/generic-tests/m12.mtbl"));
 
 	mtbl_iter_destroy(&iter);
 	mtbl_merger_options_destroy(&moptions);
