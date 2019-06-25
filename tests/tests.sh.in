@@ -5,7 +5,8 @@ unset DNSTABLE_SETFILE
 export DNSTABLE_FNAME=@abs_top_srcdir@/tests/test-dns.mtbl
 
 #
-# If test script is run with dnstable_lookup arguments, perform the lookup.
+# If test script is run with dnstable_lookup arguments, perform the lookup
+# using JSON format for output.
 # Otherwise, run all tests.
 #
 if [ -n "$*" ]; then
@@ -34,7 +35,7 @@ test_lookup() {
 }
 
 test_lookup_fails() {
-	$DNSTQ $*
+	$DNSTQ $* 2>/dev/null 1>/dev/null
 	if [ $? -ne 0 ]; then
 		echo PASS: $*
 	else
@@ -50,6 +51,25 @@ EOF
 
 test_lookup -j rrset www.example.com A << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"A","bailiwick":"example.com.","rdata":["198.51.100.3","198.51.100.4"]}
+EOF
+
+# same test again but with default dig presentation output
+test_lookup rrset www.example.com A << EOF
+;;  bailiwick: example.com.
+;;      count: 1
+;; first seen: 2018-03-27 10:43:28 -0000
+;;  last seen: 2018-03-27 10:43:28 -0000
+www.example.com. IN A 198.51.100.3
+www.example.com. IN A 198.51.100.4
+EOF
+
+# test with bailiwick argument too
+test_lookup -j rrset www.example.com A example.com << EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"A","bailiwick":"example.com.","rdata":["198.51.100.3","198.51.100.4"]}
+EOF
+
+# wrong bailiwick has no results
+test_lookup -j rrset www.example.com A example.ORG << EOF
 EOF
 
 test_lookup -j rrset www.example.com AAAA << EOF
@@ -143,6 +163,12 @@ test_lookup -j -O 1 rdata raw 00 MX << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"20 mail2.example.com."}
 EOF
 
+# -u unaggregated results mode requires DNSTABLE_SETFILE set
+test_lookup_fails -j -u rdata raw 00 MX
+
+#####################
+
+# tests using set file pointing to mtbl files
 export DNSTABLE_SETFILE=@abs_top_srcdir@/tests/test-dns.setfile
 unset DNSTABLE_FNAME
 
@@ -171,5 +197,41 @@ test_lookup_fails -J -O 2
 
 # test both -j and -J
 test_lookup_fails -J -j -O 2 -u rdata raw 00 MX
+
+# missing rrset arguments
+test_lookup_fails rrset
+
+# too many rrset arguments
+test_lookup_fails rrset www.example.org A example.org thisisextra
+
+# for rrset, slash / is not allowed in owner name
+test_lookup_fails rrset www/example.org
+
+# using unknown rdata subtype will fail
+test_lookup_fails rdata junk foo
+
+# using unknown query type will fail
+test_lookup_fails junk foo bar
+
+# rrset test using unknown RRTYPE mnemonic will fail
+test_lookup_fails rrset www.example.org BOGUSTYPE example.org
+
+# rdata raw test using unknown RRTYPE mnemonic will fail
+test_lookup_fails rdata raw 00 BOGUSTYPE
+
+#####################
+
+# environment variable must be set
+unset DNSTABLE_SETFILE
+unset DNSTABLE_FNAME
+test_lookup_fails rrset www.example.org A
+
+#####################
+
+# test for DNSTABLE_FNAME set to bogus filename
+export DNSTABLE_FNAME=@abs_top_srcdir@/tests/this-does-not-exist
+test_lookup_fails rrset www.example.org A
+
+#####################
 
 exit $code
