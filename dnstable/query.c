@@ -519,7 +519,10 @@ query_iter_next(void *clos, struct dnstable_entry **ent)
 		if (pass) {
 			/* offset (e.g. skip) initial rows */
 			if (it->query->offset > 0 && it->query->offset-- > 0)
+			{
+				dnstable_entry_destroy(ent);
 				continue;
+			}
 
 			return (dnstable_res_success);
 		} else {
@@ -680,7 +683,10 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 		if (pass) {
 			/* offset (e.g. skip) initial rows */
 			if (it->query->offset > 0 && it->query->offset-- > 0)
+			{
+				dnstable_entry_destroy(ent);
 				continue;
+			}
 
 			return (dnstable_res_success);
 		} else {
@@ -764,7 +770,10 @@ query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t t
 		if (pass) {
 			/* offset (e.g. skip) initial rows */
 			if (it->query->offset > 0 && it->query->offset-- > 0)
+			{
+				dnstable_entry_destroy(ent);
 				continue;
+			}
 
 			return (dnstable_res_success);
 		} else {
