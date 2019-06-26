@@ -36,9 +36,9 @@ static void
 print_entry(struct dnstable_entry *ent)
 {
 	char *s;
-	struct dnstable_formatter *fmt = dnstable_formatter_init();
 
 	if (g_Json) {
+		struct dnstable_formatter *fmt = dnstable_formatter_init();
 		dnstable_formatter_set_output_format(fmt, dnstable_output_format_json);
 		dnstable_formatter_set_date_format(fmt, dnstable_date_format_rfc3339);
 		s = dnstable_entry_format(fmt, ent);
