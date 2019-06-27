@@ -1,6 +1,10 @@
 dnstable (0.11.2)
 
-  * Fix memory leaks.
+  * Fix memory leaks while skipping rows of data during offset processing.
+
+  * Fix minor leak in dnstable_lookup printing.
+
+  * Add more dnstable_lookup tests.
 
  -- Farsight Security, Inc. <software@farsightsecurity.com>  Wed, 26 Jun 2019 22:00:00 +0000
 
