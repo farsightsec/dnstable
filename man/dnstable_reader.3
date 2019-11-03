@@ -2,12 +2,12 @@
 .\"     Title: dnstable_reader
 .\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
 .\" Generator: DocBook XSL Stylesheets v1.79.1 <http://docbook.sf.net/>
-.\"      Date: 05/31/2018
+.\"      Date: 11/03/2019
 .\"    Manual: \ \&
 .\"    Source: \ \&
 .\"  Language: English
 .\"
-.TH "DNSTABLE_READER" "3" "05/31/2018" "\ \&" "\ \&"
+.TH "DNSTABLE_READER" "3" "11/03/2019" "\ \&" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -72,11 +72,6 @@ dnstable_reader_iter_rdata(struct dnstable_reader *\fR\fB\fIr\fR\fR\fB);\fR
 \fBstruct dnstable_iter *
 dnstable_reader_query(struct dnstable_reader *\fR\fB\fIr\fR\fR\fB, struct dnstable_query *\fR\fB\fIq\fR\fR\fB);\fR
 .fi
-.sp
-.nf
-\fBstruct dnstable_iter *
-dnstable_reader_query_no_aggregate(struct dnstable_reader *\fR\fB\fIr\fR\fR\fB, struct dnstable_query *\fR\fB\fIq\fR\fR\fB);\fR
-.fi
 .SH "DESCRIPTION"
 .sp
 \fBdnstable_reader\fR is the high\-level interface for reading dnstable entries from a dnstable data source\&. Results are returned through the \fBdnstable_iter\fR interface\&.
@@ -89,9 +84,7 @@ dnstable_reader_query_no_aggregate(struct dnstable_reader *\fR\fB\fIr\fR\fR\fB, 
 .sp
 \fBdnstable_reader_iter_rrset\fR() iterates over just the entries of type \fIDNSTABLE_ENTRY_TYPE_RRSET\fR\&. Likewise, \fBdnstable_reader_iter_rdata\fR() iterates over just the entries of type \fIDNSTABLE_ENTRY_TYPE_RDATA\fR\&.
 .sp
-\fBdnstable_reader_query\fR() iterates over all the entry objects that match the specified query object\&.
-.sp
-\fBdnstable_reader_query_no_aggregate\fR() iterates over all the entry objects that match the specified query object, but does not call a merge function to aggregate values\&.
+\fBdnstable_reader_query\fR() iterates over all the entry objects that match the specified query object\&. The query object is used during the operation of the returned iterator, and must not be destroyed until after the iterator is destroyed\&.
 .SH "SEE ALSO"
 .sp
 \fBdnstable_iter\fR(3), \fBdnstable_query\fR(3), \fBmtbl_source\fR(3)

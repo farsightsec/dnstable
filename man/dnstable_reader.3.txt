@@ -66,7 +66,8 @@ _DNSTABLE_ENTRY_TYPE_RRSET_. Likewise, ^dnstable_reader_iter_rdata^() iterates
 over just the entries of type _DNSTABLE_ENTRY_TYPE_RDATA_.
 
 ^dnstable_reader_query^() iterates over all the entry objects that match the
-specified query object.
+specified query object. The query object is used during the operation of the
+returned iterator, and must not be destroyed until after the iterator is destroyed.
 
 == SEE ALSO ==
 
