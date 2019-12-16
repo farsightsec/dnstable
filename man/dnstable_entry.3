@@ -2,12 +2,12 @@
 .\"     Title: dnstable_entry
 .\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
 .\" Generator: DocBook XSL Stylesheets v1.79.1 <http://docbook.sf.net/>
-.\"      Date: 04/30/2019
+.\"      Date: 12/05/2019
 .\"    Manual: \ \&
 .\"    Source: \ \&
 .\"  Language: English
 .\"
-.TH "DNSTABLE_ENTRY" "3" "04/30/2019" "\ \&" "\ \&"
+.TH "DNSTABLE_ENTRY" "3" "12/05/2019" "\ \&" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -180,7 +180,7 @@ dnstable_entry_get_num_rdata(
  */
 \fBdnstable_res
 dnstable_entry_get_rdata(
-    struct dnstable_entry *\fR\fB\fIent\fR\fR\fB,
+    struct dnstable_entry *\fR\fB\fIent\fR\fR\fB, size_t idx,
     const uint8_t **\fR\fB\fIrdata\fR\fR\fB, size_t *\fR\fB\fIlen_rdata\fR\fR\fB);\fR
 .fi
 .sp
