@@ -136,7 +136,7 @@ dnstable_entry_get_num_rdata(
  */
 ^dnstable_res
 dnstable_entry_get_rdata(
-    struct dnstable_entry *'ent',
+    struct dnstable_entry *'ent', size_t idx,
     const uint8_t **'rdata', size_t *'len_rdata');^
 
 [verse]
