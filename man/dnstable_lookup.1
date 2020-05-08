@@ -2,12 +2,12 @@
 .\"     Title: dnstable_lookup
 .\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
 .\" Generator: DocBook XSL Stylesheets v1.79.1 <http://docbook.sf.net/>
-.\"      Date: 06/14/2019
+.\"      Date: 05/08/2020
 .\"    Manual: \ \&
 .\"    Source: \ \&
 .\"  Language: English
 .\"
-.TH "DNSTABLE_LOOKUP" "1" "06/14/2019" "\ \&" "\ \&"
+.TH "DNSTABLE_LOOKUP" "1" "05/08/2020" "\ \&" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -31,13 +31,13 @@
 dnstable_lookup \- lookup individual records in a dnstable data file or set of data files
 .SH "SYNOPSIS"
 .sp
-\fBdnstable_lookup\fR [\fB\-j\fR] [\fB\-J\fR] [\fB\-u\fR] [\fB\-O #\fR] \fBrrset\fR <OWNER> [<RRTYPE> [<BAILIWICK>]]
+\fBdnstable_lookup\fR [\fB\-R\fR] [\fB\-j\fR] [\fB\-J\fR] [\fB\-u\fR] [\fB\-O #\fR] \fBrrset\fR <OWNER> [<RRTYPE> [<BAILIWICK>]]
 .sp
-\fBdnstable_lookup\fR [\fB\-j\fR] [\fB\-J\fR] [\fB\-u\fR] [\fB\-O #\fR] \fBrdata ip\fR <ADDRESS | RANGE | PREFIX>
+\fBdnstable_lookup\fR [\fB\-R\fR] [\fB\-j\fR] [\fB\-J\fR] [\fB\-u\fR] [\fB\-O #\fR] \fBrdata ip\fR <ADDRESS | RANGE | PREFIX>
 .sp
-\fBdnstable_lookup\fR [\fB\-j\fR] [\fB\-J\fR] [\fB\-u\fR] [\fB\-O #\fR] \fBrdata raw\fR <HEX STRING> [<RRTYPE>]
+\fBdnstable_lookup\fR [\fB\-R\fR] [\fB\-j\fR] [\fB\-J\fR] [\fB\-u\fR] [\fB\-O #\fR] \fBrdata raw\fR <HEX STRING> [<RRTYPE>]
 .sp
-\fBdnstable_lookup\fR [\fB\-j\fR] [\fB\-J\fR] [\fB\-u\fR] [\fB\-O #\fR] \fBrdata name\fR <RDATA NAME> [<RRTYPE>]
+\fBdnstable_lookup\fR [\fB\-R\fR] [\fB\-j\fR] [\fB\-J\fR] [\fB\-u\fR] [\fB\-O #\fR] \fBrdata name\fR <RDATA NAME> [<RRTYPE>]
 .SH "DESCRIPTION"
 .sp
 Looks up records in a dnstable data file\&. Results are printed to stdout in an ad\-hoc text format\&.
@@ -50,6 +50,11 @@ Looks up records in a dnstable data file\&. Results are printed to stdout in an 
 .sp
 \fBdnstable_lookup rdata name\fR returns Resource Records whose record data matches the specified domain name\&.
 .SH "OPTIONS"
+.PP
+\fB\-R\fR, \fB\-\-raw\fR
+.RS 4
+When using JSON format for output, add a hex representation of the raw rdata\&.
+.RE
 .PP
 \fB\-j\fR
 .RS 4
@@ -102,6 +107,8 @@ $ dnstable_lookup rdata ip 198\&.51\&.100\&.0/24
 $ dnstable_lookup rdata ip 203\&.0\&.113\&.1\-203\&.0\&.113\&.100
 .sp
 $ dnstable_lookup \-j rdata ip 2001:db8::/32
+.sp
+$ dnstable_lookup \-R \-j rdata ip 2001:db8::/32
 .sp
 $ dnstable_lookup \-u rdata ip 2001:db8::/32
 .sp
