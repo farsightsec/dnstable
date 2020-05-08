@@ -6,13 +6,13 @@ dnstable_lookup - lookup individual records in a dnstable data file or set of da
 
 == SYNOPSIS ==
 
-^dnstable_lookup^ [^-j^] [^-J^] [^-u^] [^-O #^] ^rrset^ <OWNER> [<RRTYPE> [<BAILIWICK>]]
+^dnstable_lookup^ [^-R^] [^-j^] [^-J^] [^-u^] [^-O #^] ^rrset^ <OWNER> [<RRTYPE> [<BAILIWICK>]]
 
-^dnstable_lookup^ [^-j^] [^-J^] [^-u^] [^-O #^] ^rdata ip^ <ADDRESS | RANGE | PREFIX>
+^dnstable_lookup^ [^-R^] [^-j^] [^-J^] [^-u^] [^-O #^] ^rdata ip^ <ADDRESS | RANGE | PREFIX>
 
-^dnstable_lookup^ [^-j^] [^-J^] [^-u^] [^-O #^] ^rdata raw^ <HEX STRING> [<RRTYPE>]
+^dnstable_lookup^ [^-R^] [^-j^] [^-J^] [^-u^] [^-O #^] ^rdata raw^ <HEX STRING> [<RRTYPE>]
 
-^dnstable_lookup^ [^-j^] [^-J^] [^-u^] [^-O #^] ^rdata name^ <RDATA NAME> [<RRTYPE>]
+^dnstable_lookup^ [^-R^] [^-j^] [^-J^] [^-u^] [^-O #^] ^rdata name^ <RDATA NAME> [<RRTYPE>]
 
 == DESCRIPTION ==
 
@@ -33,6 +33,10 @@ the specified data value, expressed as a hexademical string.
 the specified domain name.
 
 == OPTIONS ==
+
+^-R^, ^--raw^::
+    When using JSON format for output, add a hex representation of the
+    raw rdata.
 
 ^-j^::
     Use JSON format for output, with timestamps in epoch time (seconds since epoch).
@@ -79,6 +83,8 @@ $ dnstable_lookup rdata ip 198.51.100.0/24
 $ dnstable_lookup rdata ip 203.0.113.1-203.0.113.100
 
 $ dnstable_lookup -j rdata ip 2001:db8::/32
+
+$ dnstable_lookup -R -j rdata ip 2001:db8::/32
 
 $ dnstable_lookup -u rdata ip 2001:db8::/32
 
