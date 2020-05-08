@@ -444,8 +444,10 @@ dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
 		if (add_raw_rdata) {
 			add_yajl_string(g, "rdata_raw");
 
-			status = yajl_gen_array_open(g);
-			assert(status == yajl_gen_status_ok);
+                        if (always_array) {
+                                status = yajl_gen_array_open(g);
+                                assert(status == yajl_gen_status_ok);
+                        }
 
 			ubuf *rbuf = ubuf_init(2 * rdata->len + 1);
 			uint8_t *rbuf_as_str = NULL;
@@ -457,8 +459,10 @@ dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
 			add_yajl_string(g, (char*)rbuf_as_str);
 			my_free(rbuf_as_str);
 
-			status = yajl_gen_array_close(g);
-			assert(status == yajl_gen_status_ok);
+                        if (always_array) {
+                                status = yajl_gen_array_close(g);
+                                assert(status == yajl_gen_status_ok);
+                        }
 		}
 	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD) {
 		add_yajl_string(g, "rrset_name");
