@@ -495,7 +495,7 @@ dnstable_formatter_init(void)
 	f->output_format = dnstable_output_format_json;
 	f->date_format = dnstable_date_format_unix;
 	f->always_array = false;
-        f->add_raw_rdata = false;
+	f->add_raw_rdata = false;
 	return (f);
 }
 

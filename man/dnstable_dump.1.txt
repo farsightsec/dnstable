@@ -37,6 +37,3 @@ required in order to select which section of the data file to dump.
 $ dnstable_dump -R -j -d /path/to/dns.mtbl
 
 $ dnstable_dump -r /path/to/dns.mtbl
-
-
-

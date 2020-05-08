@@ -102,8 +102,8 @@ print_entry(struct dnstable_entry *ent)
 	case DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV: {
 		char *s;
 		if (g_json)
-                        s = dnstable_entry_format(fmt, ent);
-                else
+			s = dnstable_entry_format(fmt, ent);
+		else
 			s = dnstable_entry_to_text(ent);
 		if (s != NULL) {
 			fputs(s, stdout);
@@ -141,10 +141,10 @@ main(int argc, char **argv)
 
 	argv_process(args, argc, argv);
 
-        if (!g_json && g_add_raw) {
-                fprintf(stderr, "dnstable_dump: adding raw rdata only supported with json output format\n");
+	if (!g_json && g_add_raw) {
+		fprintf(stderr, "dnstable_dump: adding raw rdata only supported with json output format\n");
 		exit(EXIT_FAILURE);
-        }
+	}
 
 	m_reader = mtbl_reader_init(g_fname, NULL);
 	if (m_reader == NULL) {
@@ -166,15 +166,15 @@ main(int argc, char **argv)
 		d_it = dnstable_reader_iter_rdata_names(d_reader);
 	}
 
-        fmt = dnstable_formatter_init();
-        dnstable_formatter_set_output_format(fmt, dnstable_output_format_json);
-        dnstable_formatter_set_date_format(fmt, dnstable_date_format_unix);
-        dnstable_formatter_set_add_raw_rdata(fmt, g_add_raw);
+	fmt = dnstable_formatter_init();
+	dnstable_formatter_set_output_format(fmt, dnstable_output_format_json);
+	dnstable_formatter_set_date_format(fmt, dnstable_date_format_unix);
+	dnstable_formatter_set_add_raw_rdata(fmt, g_add_raw);
 
 	assert(d_it != NULL);
 	do_dump(d_it);
 
-        dnstable_formatter_destroy(&fmt);
+	dnstable_formatter_destroy(&fmt);
 
 	dnstable_iter_destroy(&d_it);
 	dnstable_reader_destroy(&d_reader);

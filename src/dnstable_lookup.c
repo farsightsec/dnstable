@@ -41,10 +41,10 @@ print_entry(struct dnstable_entry *ent)
 	if (g_Json || g_json) {
 		struct dnstable_formatter *fmt = dnstable_formatter_init();
 		dnstable_formatter_set_output_format(fmt, dnstable_output_format_json);
-                if (g_json)
-                        dnstable_formatter_set_date_format(fmt, dnstable_date_format_unix);
-                else
-                        dnstable_formatter_set_date_format(fmt, dnstable_date_format_rfc3339);
+		if (g_json)
+			dnstable_formatter_set_date_format(fmt, dnstable_date_format_unix);
+		else
+			dnstable_formatter_set_date_format(fmt, dnstable_date_format_rfc3339);
 		dnstable_formatter_set_add_raw_rdata(fmt, g_add_raw);
 		s = dnstable_entry_format(fmt, ent);
 		dnstable_formatter_destroy(&fmt);
@@ -115,30 +115,30 @@ main(int argc, char **argv)
 	int ch;
 
 	while ((ch = getopt(argc, argv, "jJRuO:")) != -1) {
-	        switch (ch) {
-	        case 'j':
-	                g_json = true;
-	                break;
-	        case 'J':
-	                g_Json = true;
-	                break;
-	        case 'R':
-	                g_add_raw = true;
-	                break;
-	        case 'u':
-	                g_aggregate = false;
-	                break;
+		switch (ch) {
+		case 'j':
+			g_json = true;
+			break;
+		case 'J':
+			g_Json = true;
+			break;
+		case 'R':
+			g_add_raw = true;
+			break;
+		case 'u':
+			g_aggregate = false;
+			break;
 		case 'O':
 			g_offset = atoi(optarg);
 			if (g_offset <= 0)
 				usage();
 			break;
-	        case -1:
-	                break;
-	        case '?':
-	        default:
-	                usage();
-	        }
+		case -1:
+			break;
+		case '?':
+		default:
+			usage();
+		}
 	}
 
 	argc -= optind;
@@ -152,12 +152,12 @@ main(int argc, char **argv)
 			usage();
 		d_qtype = DNSTABLE_QUERY_TYPE_RRSET;
 
-	        arg_owner_name = argv[1];
+		arg_owner_name = argv[1];
 
-	        if (strchr(arg_owner_name, '/') > 0) {
-	                fprintf(stderr, "/ is not allowed in OWNER NAME\n\n");
-	                usage();
-	        }
+		if (strchr(arg_owner_name, '/') > 0) {
+			fprintf(stderr, "/ is not allowed in OWNER NAME\n\n");
+			usage();
+		}
 
 		if (argc >= 3)
 			arg_rrtype = argv[2];
@@ -185,10 +185,10 @@ main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-        if (!g_json && g_add_raw) {
-                fprintf(stderr, "dnstable_lookup: adding raw rdata only supported with -j json output format\n");
+	if (!g_json && g_add_raw) {
+		fprintf(stderr, "dnstable_lookup: adding raw rdata only supported with -j json output format\n");
 		exit(EXIT_FAILURE);
-        }
+	}
 	env_fname = getenv("DNSTABLE_FNAME");
 	env_setfile = getenv("DNSTABLE_SETFILE");
 	if ((!env_fname && !env_setfile) || (env_fname && env_setfile)) {
