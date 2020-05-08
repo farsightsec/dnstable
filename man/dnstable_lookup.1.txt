@@ -36,7 +36,7 @@ the specified domain name.
 
 ^-R^, ^--raw^::
     When using JSON format for output, add a hex representation of the
-    raw rdata.
+    raw rdata and the rrtype.
 
 ^-j^::
     Use JSON format for output, with timestamps in epoch time (seconds since epoch).

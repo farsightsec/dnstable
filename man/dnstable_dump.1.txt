@@ -20,7 +20,7 @@ required in order to select which section of the data file to dump.
 
 ^-R^, ^--raw^::
     When using JSON format for output, add a hex representation of the
-    raw rdata.
+    raw rdata and the rrtype.
 
 ^-j^, ^--json^::
     Use JSON format for output. One JSON-formatted entry per line will be

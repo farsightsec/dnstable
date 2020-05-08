@@ -408,6 +408,12 @@ dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
 				size_t rbuf_as_str_len = 0;
 
 				fmt_hex_str(rbuf, (char*)rdata->data, rdata->len);
+
+				/* append the rrtype - 16 bit rrtype will be at most 3 bytes of varint */
+				uint8_t rrtype[3];
+				size_t rrtype_str_len = mtbl_varint_encode32(rrtype, e->rrtype);
+
+				fmt_hex_str(rbuf, (char*)rrtype, rrtype_str_len);
 				ubuf_cterm(rbuf);
 				ubuf_detach(rbuf, &rbuf_as_str, &rbuf_as_str_len);
 				add_yajl_string(g, (char*)rbuf_as_str);
