@@ -6,9 +6,9 @@ dnstable_dump - dump dnstable data file to text or JSON
 
 == SYNOPSIS ==
 
-^dnstable_dump^ [^--json^] ^--rrset^ 'filename'
+^dnstable_dump^ [^--raw^] [^--json^] ^--rrset^ 'filename'
 
-^dnstable_dump^ [^--json^] ^--rdata^ 'filename'
+^dnstable_dump^ [^--raw^] [^--json^] ^--rdata^ 'filename'
 
 == DESCRIPTION ==
 
@@ -17,6 +17,10 @@ default), or in JSON format. Specifying one of ^--rrset^ or ^--rdata^ is
 required in order to select which section of the data file to dump.
 
 == OPTIONS ==
+
+^-R^, ^--raw^::
+    When using JSON format for output, add a hex representation of the
+    raw rdata.
 
 ^-j^, ^--json^::
     Use JSON format for output. One JSON-formatted entry per line will be
@@ -27,3 +31,9 @@ required in order to select which section of the data file to dump.
 
 ^-d^, ^--rdata^::
     Dump the ^Rdata^ section of the data file.
+
+== EXAMPLES ==
+
+$ dnstable_dump -R -j -d /path/to/dns.mtbl
+
+$ dnstable_dump -r /path/to/dns.mtbl

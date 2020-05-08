@@ -2,12 +2,12 @@
 .\"     Title: dnstable_dump
 .\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
 .\" Generator: DocBook XSL Stylesheets v1.79.1 <http://docbook.sf.net/>
-.\"      Date: 05/31/2018
+.\"      Date: 05/08/2020
 .\"    Manual: \ \&
 .\"    Source: \ \&
 .\"  Language: English
 .\"
-.TH "DNSTABLE_DUMP" "1" "05/31/2018" "\ \&" "\ \&"
+.TH "DNSTABLE_DUMP" "1" "05/08/2020" "\ \&" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -31,13 +31,18 @@
 dnstable_dump \- dump dnstable data file to text or JSON
 .SH "SYNOPSIS"
 .sp
-\fBdnstable_dump\fR [\fB\-\-json\fR] \fB\-\-rrset\fR \fIfilename\fR
+\fBdnstable_dump\fR [\fB\-\-raw\fR] [\fB\-\-json\fR] \fB\-\-rrset\fR \fIfilename\fR
 .sp
-\fBdnstable_dump\fR [\fB\-\-json\fR] \fB\-\-rdata\fR \fIfilename\fR
+\fBdnstable_dump\fR [\fB\-\-raw\fR] [\fB\-\-json\fR] \fB\-\-rdata\fR \fIfilename\fR
 .SH "DESCRIPTION"
 .sp
 Dumps a dnstable data file to stdout, either in an ad\-hoc text format (the default), or in JSON format\&. Specifying one of \fB\-\-rrset\fR or \fB\-\-rdata\fR is required in order to select which section of the data file to dump\&.
 .SH "OPTIONS"
+.PP
+\fB\-R\fR, \fB\-\-raw\fR
+.RS 4
+When using JSON format for output, add a hex representation of the raw rdata\&.
+.RE
 .PP
 \fB\-j\fR, \fB\-\-json\fR
 .RS 4
@@ -57,3 +62,8 @@ Dump the
 \fBRdata\fR
 section of the data file\&.
 .RE
+.SH "EXAMPLES"
+.sp
+$ dnstable_dump \-R \-j \-d /path/to/dns\&.mtbl
+.sp
+$ dnstable_dump \-r /path/to/dns\&.mtbl
