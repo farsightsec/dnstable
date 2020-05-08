@@ -18,10 +18,10 @@
 
 VECTOR_GENERATE(rdata_vec, wdns_rdata_t *);
 
-#define add_yajl_string(g, s) do {                                              \
-	yajl_gen_status g_status;                                               \
-	g_status = yajl_gen_string(g, (const unsigned  char *) s, strlen(s));   \
-	assert(g_status == yajl_gen_status_ok);                                 \
+#define add_yajl_string(g, s) do {						\
+	yajl_gen_status g_status;						\
+	g_status = yajl_gen_string(g, (const unsigned  char *) s, strlen(s));	\
+	assert(g_status == yajl_gen_status_ok);					\
 } while (0)
 
 struct dnstable_entry {
@@ -37,13 +37,13 @@ struct dnstable_formatter {
 	dnstable_output_format_type	output_format;
 	dnstable_date_format_type	date_format;
 	bool				always_array;
+	bool				add_raw_rdata;
 };
 
 static char *
 dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
 			   dnstable_date_format_type date_format,
-			   bool always_array);
-
+			   bool always_array, bool add_raw_rdata);
 
 static void
 fmt_uint64(ubuf *u, uint64_t v)
@@ -54,7 +54,7 @@ fmt_uint64(ubuf *u, uint64_t v)
 }
 
 
-/**
+/*
  * fmt_uint64_str() requires that the caller allocate enough space in 's' for
  * the decimal-formatted string representation of the uint64_t in 'u'.
  * This is up to 20 bytes, to represent UINT64_MAX.
@@ -145,6 +145,23 @@ fmt_rrtype(ubuf *u, uint16_t rrtype)
 		ubuf_add_cstr(u, s);
 	}
 }
+
+/*
+ * fill u with the two-digit hex representation of each character in
+ * string s of len len_s.
+ * Caller is responsible to initialize the ubuf and terminate the ubuf
+ * with ubuf_cterm(rbuf).
+ */
+static void fmt_hex_str(ubuf *u, char *s, size_t len_s)
+{
+	for (size_t c = 0; c < len_s; c++) {
+		char hexbuf[3];
+		snprintf(hexbuf, sizeof(hexbuf), "%02x", s[c]);
+		ubuf_add_cstr(u, hexbuf);
+	}
+}
+
+
 
 static char *
 dnstable_entry_to_text_fmt(const struct dnstable_entry *e, dnstable_date_format_type date_format)
@@ -257,7 +274,7 @@ callback_print_yajl_ubuf(void *ctx,
 static char *
 dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
 			   dnstable_date_format_type date_format,
-			   bool always_array)
+			   bool always_array, bool add_raw_rdata)
 {
 	uint8_t *s = NULL;
 	char name[WDNS_PRESLEN_NAME];
@@ -378,6 +395,29 @@ dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
 
 		status = yajl_gen_array_close(g);
 		assert(status == yajl_gen_status_ok);
+
+		if (add_raw_rdata) {
+			add_yajl_string(g, "rdata_raw");
+
+			status = yajl_gen_array_open(g);
+			assert(status == yajl_gen_status_ok);
+
+			for (size_t i = 0; i < n_rdatas; i++) {
+				wdns_rdata_t *rdata = rdata_vec_value(e->rdatas, i);
+				ubuf *rbuf = ubuf_init(2 * rdata->len + 1);
+				uint8_t *rbuf_as_str = NULL;
+				size_t rbuf_as_str_len = 0;
+
+				fmt_hex_str(rbuf, (char*)rdata->data, rdata->len);
+				ubuf_cterm(rbuf);
+				ubuf_detach(rbuf, &rbuf_as_str, &rbuf_as_str_len);
+				add_yajl_string(g, (char*)rbuf_as_str);
+				my_free(rbuf_as_str);
+			}
+
+			status = yajl_gen_array_close(g);
+			assert(status == yajl_gen_status_ok);
+		}
 	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_RDATA) {
 		if (rdata_vec_size(e->rdatas) != 1)
 			goto out;
@@ -397,7 +437,27 @@ dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
 		add_yajl_string(g, data);
 		my_free(data);
 
-                if (always_array) {
+		if (always_array) {
+			status = yajl_gen_array_close(g);
+			assert(status == yajl_gen_status_ok);
+		}
+
+		if (add_raw_rdata) {
+			add_yajl_string(g, "rdata_raw");
+
+			status = yajl_gen_array_open(g);
+			assert(status == yajl_gen_status_ok);
+
+			ubuf *rbuf = ubuf_init(2 * rdata->len + 1);
+			uint8_t *rbuf_as_str = NULL;
+			size_t rbuf_as_str_len = 0;
+
+			fmt_hex_str(rbuf, (char*)rdata->data, rdata->len);
+			ubuf_cterm(rbuf);
+			ubuf_detach(rbuf, &rbuf_as_str, &rbuf_as_str_len);
+			add_yajl_string(g, (char*)rbuf_as_str);
+			my_free(rbuf_as_str);
+
 			status = yajl_gen_array_close(g);
 			assert(status == yajl_gen_status_ok);
 		}
@@ -426,7 +486,7 @@ out:
 char *
 dnstable_entry_to_json(const struct dnstable_entry *e)
 {
-	return dnstable_entry_to_json_fmt(e, dnstable_date_format_unix, false);
+	return dnstable_entry_to_json_fmt(e, dnstable_date_format_unix, false, false);
 }
 
 struct dnstable_formatter *
@@ -436,6 +496,7 @@ dnstable_formatter_init(void)
 	f->output_format = dnstable_output_format_json;
 	f->date_format = dnstable_date_format_unix;
 	f->always_array = false;
+        f->add_raw_rdata = false;
 	return (f);
 }
 
@@ -464,9 +525,11 @@ dnstable_formatter_set_date_format(
 	f->date_format = format;
 }
 
-/* If always_array is true, the rdata is always rendered as an array, even if there is only
-  one rdata value. Default is false, in which case an rrset with only one rdata value
-  will have the rdata rendered as a single string. */
+/*
+ * If always_array is true, the rdata is always rendered as an array, even if there is only
+ * one rdata value. Default is false, in which case an rrset with only one rdata value
+ * will have the rdata rendered as a single string.
+ */
 void
 dnstable_formatter_set_rdata_array(
     struct dnstable_formatter *f,
@@ -476,7 +539,22 @@ dnstable_formatter_set_rdata_array(
 	f->always_array = always_array;
 }
 
-/* Returns dynamically allocated string with the entry rendered in json format */
+/*
+ * If add_raw_rdata is true, the returned JSON objects will contain an
+ * additional raw_rdata field.  Default is false.
+ */
+void
+dnstable_formatter_set_add_raw_rdata(
+    struct dnstable_formatter *f,
+    bool add_raw_rdata)
+{
+	assert(f != NULL);
+	f->add_raw_rdata = add_raw_rdata;
+}
+
+/*
+ * Returns dynamically allocated string with the entry rendered in json format.
+ */
 char *
 dnstable_entry_format(
    const struct dnstable_formatter *f,
@@ -484,7 +562,7 @@ dnstable_entry_format(
 {
 	assert(f != NULL);
 	if (f->output_format == dnstable_output_format_json)
-		return dnstable_entry_to_json_fmt(ent, f->date_format, f->always_array);
+		return dnstable_entry_to_json_fmt(ent, f->date_format, f->always_array, f->add_raw_rdata);
 	else
 		return dnstable_entry_to_text_fmt(ent, f->date_format);
 }
