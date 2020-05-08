@@ -66,3 +66,8 @@ global:
         dnstable_query_set_aggregated;
         dnstable_query_set_offset;
 } LIBDNSTABLE_0.9.0;
+
+LIBDNSTABLE_0.12.0 {
+global:
+        dnstable_formatter_set_add_raw_rdata;
+} LIBDNSTABLE_0.11.0;

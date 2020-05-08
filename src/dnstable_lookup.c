@@ -27,24 +27,27 @@
 #include <dnstable.h>
 #include <mtbl.h>
 
-bool g_json = false;
-bool g_Json = false;
-bool g_aggregate = true;
-int64_t g_offset = 0;
+static bool g_json = false;
+static bool g_Json = false;
+static bool g_add_raw;
+static bool g_aggregate = true;
+static int64_t g_offset = 0;
 
 static void
 print_entry(struct dnstable_entry *ent)
 {
 	char *s;
 
-	if (g_Json) {
+	if (g_Json || g_json) {
 		struct dnstable_formatter *fmt = dnstable_formatter_init();
 		dnstable_formatter_set_output_format(fmt, dnstable_output_format_json);
-		dnstable_formatter_set_date_format(fmt, dnstable_date_format_rfc3339);
+		if (g_json)
+			dnstable_formatter_set_date_format(fmt, dnstable_date_format_unix);
+		else
+			dnstable_formatter_set_date_format(fmt, dnstable_date_format_rfc3339);
+		dnstable_formatter_set_add_raw_rdata(fmt, g_add_raw);
 		s = dnstable_entry_format(fmt, ent);
 		dnstable_formatter_destroy(&fmt);
-	} else if (g_json) {
-		s = dnstable_entry_to_json(ent);
 	} else {
 		s = dnstable_entry_to_text(ent);
 	}
@@ -78,14 +81,15 @@ static void
 usage(void)
 {
 	fprintf(stderr, "Usage:\n");
-	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-u] [-s #] rrset <OWNER NAME> [<RRTYPE> [<BAILIWICK>]]\n");
-	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-u] [-s #] rdata ip <ADDRESS | RANGE | PREFIX>\n");
-	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-u] [-s #] rdata raw <HEX STRING> [<RRTYPE>]\n");
-	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-u] [-s #] rdata name <RDATA NAME> [<RRTYPE>]\n");
+	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-R] [-u] [-s #] rrset <OWNER NAME> [<RRTYPE> [<BAILIWICK>]]\n");
+	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-R] [-u] [-s #] rdata ip <ADDRESS | RANGE | PREFIX>\n");
+	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-R] [-u] [-s #] rdata raw <HEX STRING> [<RRTYPE>]\n");
+	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-R] [-u] [-s #] rdata name <RDATA NAME> [<RRTYPE>]\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Flags:\n");
 	fprintf(stderr, "\t-j: output in JSON format with epoch time; default is 'dig' presentation format\n");
 	fprintf(stderr, "\t-J: output in JSON format with human time (RFC3339 format); default is 'dig' presentation format\n");
+	fprintf(stderr, "\t-R: add raw rdata representation\n");
 	fprintf(stderr, "\t-u: output unaggregated results; default is aggregated results\n");
 	fprintf(stderr, "\t-O #: offset the first # results (must be a positive number)\n");
 	exit(EXIT_FAILURE);
@@ -110,28 +114,31 @@ main(int argc, char **argv)
 	dnstable_res res;
 	int ch;
 
-	while ((ch = getopt(argc, argv, "jJuO:")) != -1) {
-	        switch (ch) {
-	        case 'j':
-	                g_json = true;
-	                break;
-	        case 'J':
-	                g_Json = true;
-	                break;
-	        case 'u':
-	                g_aggregate = false;
-	                break;
+	while ((ch = getopt(argc, argv, "jJRuO:")) != -1) {
+		switch (ch) {
+		case 'j':
+			g_json = true;
+			break;
+		case 'J':
+			g_Json = true;
+			break;
+		case 'R':
+			g_add_raw = true;
+			break;
+		case 'u':
+			g_aggregate = false;
+			break;
 		case 'O':
 			g_offset = atoi(optarg);
 			if (g_offset <= 0)
 				usage();
 			break;
-	        case -1:
-	                break;
-	        case '?':
-	        default:
-	                usage();
-	        }
+		case -1:
+			break;
+		case '?':
+		default:
+			usage();
+		}
 	}
 
 	argc -= optind;
@@ -145,12 +152,12 @@ main(int argc, char **argv)
 			usage();
 		d_qtype = DNSTABLE_QUERY_TYPE_RRSET;
 
-	        arg_owner_name = argv[1];
+		arg_owner_name = argv[1];
 
-	        if (strchr(arg_owner_name, '/') > 0) {
-	                fprintf(stderr, "/ is not allowed in OWNER NAME\n\n");
-	                usage();
-	        }
+		if (strchr(arg_owner_name, '/') > 0) {
+			fprintf(stderr, "/ is not allowed in OWNER NAME\n\n");
+			usage();
+		}
 
 		if (argc >= 3)
 			arg_rrtype = argv[2];
@@ -178,6 +185,10 @@ main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
+	if (!g_json && g_add_raw) {
+		fprintf(stderr, "dnstable_lookup: adding raw rdata only supported with -j json output format\n");
+		exit(EXIT_FAILURE);
+	}
 	env_fname = getenv("DNSTABLE_FNAME");
 	env_setfile = getenv("DNSTABLE_SETFILE");
 	if ((!env_fname && !env_setfile) || (env_fname && env_setfile)) {
