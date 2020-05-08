@@ -522,6 +522,6 @@ main(void)
 	check_explicit2_display_only(test_cust_iter() == 0, "test-dnstable/ test_cust_iter");
 	check_explicit2_display_only(test_merger() == 0, "test-dnstable/ test_merger");
 
-        g_check_test_status(0);
+	g_check_test_status(0);
 
 }

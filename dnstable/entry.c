@@ -442,7 +442,7 @@ dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
 		add_yajl_string(g, data);
 		my_free(data);
 
-                if (always_array) {
+		if (always_array) {
 			status = yajl_gen_array_close(g);
 			assert(status == yajl_gen_status_ok);
 		}
