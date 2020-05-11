@@ -2,12 +2,12 @@
 .\"     Title: dnstable_entry
 .\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
 .\" Generator: DocBook XSL Stylesheets v1.79.1 <http://docbook.sf.net/>
-.\"      Date: 12/05/2019
+.\"      Date: 05/11/2020
 .\"    Manual: \ \&
 .\"    Source: \ \&
 .\"  Language: English
 .\"
-.TH "DNSTABLE_ENTRY" "3" "12/05/2019" "\ \&" "\ \&"
+.TH "DNSTABLE_ENTRY" "3" "05/11/2020" "\ \&" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -103,13 +103,17 @@ dnstable_formatter_set_date_format(
 .fi
 .sp
 .nf
-/* If always_array is true, the rdata is always rendered as an array, even if there is only
-   one rdata value\&. Default is false, in which case an rrset with only one rdata value
-   will have the rdata rendered as a single string\&. */
 \fBvoid
 dnstable_formatter_set_rdata_array(
     struct dnstable_formatter *\fR\fB\fIf\fR\fR\fB,
     bool \fR\fB\fIalways_array\fR\fR\fB);\fR
+.fi
+.sp
+.nf
+\fBvoid
+dnstable_formatter_set_raw_rdata(
+   struct dnstable_formatter *\fR\fB\fIf\fR\fR\fB,
+   bool add_raw_rdata);\fR
 .fi
 .sp
 .nf
@@ -240,7 +244,9 @@ Use \fBdnstable_formatter_set_output_format()\fR to select an available output f
 .sp
 Use \fBdnstable_formatter_set_date_format()\fR to select a date format\&.
 .sp
-Use \fBdnstable_formatter_set_rdata_array()\fR to control if the JSON output format has rdata always as an array\&.
+Use \fBdnstable_formatter_set_rdata_array()\fR to control if the JSON output format has rdata always as an array\&. If always_array is true, the rdata is always rendered as an array, even if there is only one rdata value\&. Default is false, in which case an rrset with only one rdata value will have the rdata rendered as a single string\&.
+.sp
+Use \fBdnstable_formatter_set_raw_rdata()\fR to control if the JSON output format will contain an additional raw_rdata field\&. If add_raw_rdata is true, the returned JSON objects will contain an additional raw_rdata field\&. Default is false\&.
 .sp
 The default formatter settings are: JSON format, always_array = False, UNIX date format \(em this is identical behavior to \fBdnstable_entry_to_json\fR() function\&.
 .sp
