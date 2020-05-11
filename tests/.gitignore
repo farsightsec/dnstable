@@ -1,3 +1,4 @@
 tests.sh
+test-dnstable
 *.trs
 *.log
