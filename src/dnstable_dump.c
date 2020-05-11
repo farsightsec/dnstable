@@ -169,7 +169,7 @@ main(int argc, char **argv)
 	fmt = dnstable_formatter_init();
 	dnstable_formatter_set_output_format(fmt, dnstable_output_format_json);
 	dnstable_formatter_set_date_format(fmt, dnstable_date_format_unix);
-	dnstable_formatter_set_add_raw_rdata(fmt, g_add_raw);
+	dnstable_formatter_set_raw_rdata(fmt, g_add_raw);
 
 	assert(d_it != NULL);
 	do_dump(d_it);

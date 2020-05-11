@@ -67,13 +67,16 @@ dnstable_formatter_set_date_format(
     dnstable_date_format_type 'format');^
 
 [verse]
-/* If always_array is true, the rdata is always rendered as an array, even if there is only
-   one rdata value. Default is false, in which case an rrset with only one rdata value
-   will have the rdata rendered as a single string. */
 ^void
 dnstable_formatter_set_rdata_array(
     struct dnstable_formatter *'f',
     bool 'always_array');^
+
+[verse]
+^void
+dnstable_formatter_set_raw_rdata(
+   struct dnstable_formatter *'f',
+   bool add_raw_rdata);^
 
 [verse]
 ^char *
@@ -210,6 +213,15 @@ date format.
 
 Use ^dnstable_formatter_set_rdata_array()^ to control if
 the JSON output format has rdata always as an array.
+If always_array is true, the rdata is always rendered as an array,
+even if there is only one rdata value. Default is false, in which case
+an rrset with only one rdata value will have the rdata rendered as a
+single string.
+
+Use ^dnstable_formatter_set_raw_rdata()^ to control if the JSON
+output format will contain an additional raw_rdata field.
+If add_raw_rdata is true, the returned JSON objects will contain an
+additional raw_rdata field.  Default is false.
 
 The default formatter settings are: JSON format, always_array = False,
 UNIX date format -- this is identical behavior to

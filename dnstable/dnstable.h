@@ -223,7 +223,7 @@ dnstable_formatter_set_rdata_array(
 /* If add_raw_rdata is true, the returned JSON objects will contain an
    additional raw_rdata field.  Default is false. */
 void
-dnstable_formatter_set_add_raw_rdata(
+dnstable_formatter_set_raw_rdata(
    struct dnstable_formatter *f, bool add_raw_rdata);
 
 /* Returns dynamically allocated string with the entry rendered in json format */
