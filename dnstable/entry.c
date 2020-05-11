@@ -551,7 +551,7 @@ dnstable_formatter_set_rdata_array(
  * additional raw_rdata field.  Default is false.
  */
 void
-dnstable_formatter_set_add_raw_rdata(
+dnstable_formatter_set_raw_rdata(
     struct dnstable_formatter *f,
     bool add_raw_rdata)
 {

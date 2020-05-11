@@ -45,7 +45,7 @@ print_entry(struct dnstable_entry *ent)
 			dnstable_formatter_set_date_format(fmt, dnstable_date_format_unix);
 		else
 			dnstable_formatter_set_date_format(fmt, dnstable_date_format_rfc3339);
-		dnstable_formatter_set_add_raw_rdata(fmt, g_add_raw);
+		dnstable_formatter_set_raw_rdata(fmt, g_add_raw);
 		s = dnstable_entry_format(fmt, ent);
 		dnstable_formatter_destroy(&fmt);
 	} else {
