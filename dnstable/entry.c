@@ -82,56 +82,37 @@ fmt_uint64_str(char *s, uint64_t u)
 static void
 fmt_time(ubuf *u, uint64_t v)
 {
-	struct tm gm;
+	struct tm gm, *r;
 	time_t tm = v;
 	char s[sizeof("4294967295-12-31 23:59:59 -0000")];
-	if (gmtime_r(&tm, &gm) != NULL) {
-		snprintf(s, sizeof(s), "%d-%02d-%02d %02d:%02d:%02d -0000",
-			1900 + gm.tm_year,
-			1 + gm.tm_mon,
-			gm.tm_mday,
-			gm.tm_hour,
-			gm.tm_min,
-			gm.tm_sec
-	       );
-	}
-	ubuf_add_cstr(u, s);
+	r = gmtime_r(&tm, &gm);
+	if ((r != NULL) && (strftime(s, sizeof(s), "%Y-%m-%d %H:%M:%S -0000", r) > 0))
+		ubuf_add_cstr(u, s);
 }
 
 static void
 fmt_rfc3339_time(ubuf *u, uint64_t v)
 {
-	struct tm gm;
+	struct tm gm, *r;
 	time_t tm = v;
 	char s[sizeof("4294967295-12-31T23:59:59Z")];
 
-	assert (gmtime_r(&tm, &gm) != NULL);
-	snprintf(s, sizeof(s), "%d-%02d-%02dT%02d:%02d:%02dZ",
-		 1900 + gm.tm_year,
-		 1 + gm.tm_mon,
-		 gm.tm_mday,
-		 gm.tm_hour,
-		 gm.tm_min,
-		 gm.tm_sec
-		);
-	ubuf_add_cstr(u, s);
+	r = gmtime_r(&tm, &gm);
+	if ((r != NULL) && (strftime(s, sizeof(s), "%Y-%m-%dT%H:%M:%SZ", r) > 0))
+		ubuf_add_cstr(u, s);
 }
 
 static int
 fmt_rfc3339_time_str(uint64_t v, char *ts, size_t len_ts)
 {
-	struct tm gm;
+	struct tm gm, *r;
 	time_t tm = v;
 
-	assert (gmtime_r(&tm, &gm) != NULL);
-	return snprintf(ts, len_ts, "%d-%02d-%02dT%02d:%02d:%02dZ",
-			1900 + gm.tm_year,
-			1 + gm.tm_mon,
-			gm.tm_mday,
-			gm.tm_hour,
-			gm.tm_min,
-			gm.tm_sec
-		);
+	r = gmtime_r(&tm, &gm);
+	if (r == NULL)
+		return 0;
+
+	return strftime(ts, len_ts, "%Y-%m-%dT%H:%M:%SZ", r);
 }
 
 static void
