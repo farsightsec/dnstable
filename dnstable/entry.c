@@ -55,28 +55,13 @@ fmt_uint64(ubuf *u, uint64_t v)
 }
 
 
-/**
- * fmt_uint64_str() requires that the caller allocate enough space in 's' for
- * the decimal-formatted string representation of the uint64_t in 'u'.
- * This is up to 20 bytes, to represent UINT64_MAX.
- */
-static size_t
-fmt_uint64_str(char *s, uint64_t u)
+static yajl_gen_status
+fmt_uint64_json(yajl_gen g, uint64_t u)
 {
-	size_t len = 1;
-	uint64_t q = u;
-
-	while (q > 9) {
-		len++;
-		q /= 10;
-	}
-	s += len;
-	do {
-		*--s = '0' + (u % 10);
-		u /= 10;
-	} while (u);
-
-	return (len);
+	char s[sizeof("18446744073709551615")];
+	int ret = snprintf(s, sizeof(s), "%"PRIu64, u);
+	assert(ret > 0);
+	return yajl_gen_number(g, s, ret);
 }
 
 static void
@@ -102,17 +87,20 @@ fmt_rfc3339_time(ubuf *u, uint64_t v)
 		ubuf_add_cstr(u, s);
 }
 
-static int
-fmt_rfc3339_time_str(uint64_t v, char *ts, size_t len_ts)
+static yajl_gen_status
+fmt_rfc3339_time_json(yajl_gen g, uint64_t v)
 {
 	struct tm gm, *r;
 	time_t tm = v;
+	int ret;
+	char ts[sizeof("4294967295-12-31T23:59:59Z")];
 
 	r = gmtime_r(&tm, &gm);
-	if (r == NULL)
-		return 0;
+	assert(r != NULL);
 
-	return strftime(ts, len_ts, "%Y-%m-%dT%H:%M:%SZ", r);
+	ret = strftime(ts, sizeof(ts), "%Y-%m-%dT%H:%M:%SZ", r);
+	assert(ret > 0);
+	return yajl_gen_string(g, (const unsigned char *)ts, ret);
 }
 
 static void
@@ -150,6 +138,16 @@ dnstable_entry_to_text_fmt(const struct dnstable_entry *e, dnstable_date_format_
 	size_t len_s;
 	ubuf *u = ubuf_init(256);
 	char name[WDNS_PRESLEN_NAME];
+	void (*time_formatter)(ubuf *, uint64_t) = NULL;
+
+	switch (date_format) {
+	case dnstable_date_format_unix:
+		time_formatter = fmt_time;
+		break;
+	case dnstable_date_format_rfc3339:
+		time_formatter = fmt_rfc3339_time;
+		break;
+	}
 
 	if (e->e_type == DNSTABLE_ENTRY_TYPE_RRSET) {
 		/* bailiwick */
@@ -166,22 +164,14 @@ dnstable_entry_to_text_fmt(const struct dnstable_entry *e, dnstable_date_format_
 			ubuf_add_cstr(u, "\n;; first seen in zone file: ");
 		else
 			ubuf_add_cstr(u, "\n;; first seen: ");
-		if (date_format == dnstable_date_format_unix)
-			fmt_time(u, e->time_first);
-		else if (date_format == dnstable_date_format_rfc3339)
-			fmt_rfc3339_time(u, e->time_first);
-		else /* fail */;
+		time_formatter(u, e->time_first);
 
 		/* last seen */
 		if (e->iszone)
 			ubuf_add_cstr(u, "\n;;  last seen in zone file: ");
 		else
 			ubuf_add_cstr(u, "\n;;  last seen: ");
-		if (date_format == dnstable_date_format_unix)
-			fmt_time(u, e->time_last);
-		else if (date_format == dnstable_date_format_rfc3339)
-			fmt_rfc3339_time(u, e->time_last);
-		else /* fail */;
+		time_formatter(u, e->time_last);
 		ubuf_add(u, '\n');
 
 		/* resource records */
@@ -262,9 +252,17 @@ dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
 	ubuf *u;
 	yajl_gen g;
 	yajl_gen_status status;
+	yajl_gen_status (*time_formatter)(yajl_gen, uint64_t) = NULL;
 
-	/* Big enough to hold a decimal-formatted UINT64_MAX. */
-	char intstr[sizeof("18446744073709551615")];
+	switch (date_format) {
+	case dnstable_date_format_unix:
+		time_formatter = fmt_uint64_json;
+		break;
+	case dnstable_date_format_rfc3339:
+		time_formatter = fmt_rfc3339_time_json;
+		break;
+	}
+
 
 	u = ubuf_init(256);
 
@@ -289,9 +287,7 @@ dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
 		/* count */
 		add_yajl_string(g, "count");
 
-		len = fmt_uint64_str(intstr, e->count);
-		assert(len > 0);
-		status = yajl_gen_number(g, intstr, len);
+		status = fmt_uint64_json(g, e->count);
 		assert(status == yajl_gen_status_ok);
 
 		/* first seen */
@@ -300,17 +296,8 @@ dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
 		else
 			add_yajl_string(g, "time_first");
 
-		if (date_format == dnstable_date_format_unix) {
-			len = fmt_uint64_str(intstr, e->time_first);
-			assert(len > 0);
-			status = yajl_gen_number(g, intstr, len);
-			assert(status == yajl_gen_status_ok);
-		} else {
-			char ts[sizeof("4294967295-12-31 23:59:59 -0000")];
-			len = fmt_rfc3339_time_str(e->time_first, ts, sizeof ts);
-			status = yajl_gen_string(g, (uint8_t *) ts, len);
-			assert(status == yajl_gen_status_ok);
-		}
+		status = time_formatter(g, e->time_first);
+		assert(status == yajl_gen_status_ok);
 
 		/* last seen */
 		if (e->iszone)
@@ -318,17 +305,8 @@ dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
 		else
 			add_yajl_string(g, "time_last");
 
-		if (date_format == dnstable_date_format_unix) {
-			len = fmt_uint64_str(intstr, e->time_last);
-			assert(len > 0);
-			status = yajl_gen_number(g, intstr, len);
-			assert(status == yajl_gen_status_ok);
-		} else {
-			char ts[sizeof("4294967295-12-31 23:59:59 -0000")];
-			len = fmt_rfc3339_time_str(e->time_last, ts, sizeof ts);
-			status = yajl_gen_string(g, (uint8_t *) ts, len);
-			assert(status == yajl_gen_status_ok);
-		}
+		status = time_formatter(g, e->time_last);
+		assert(status == yajl_gen_status_ok);
 
 		/* rrname */
 		add_yajl_string(g, "rrname");
