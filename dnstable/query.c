@@ -513,7 +513,9 @@ query_iter_next(void *clos, struct dnstable_entry **ent)
 			return (dnstable_res_failure);
 
 		*ent = dnstable_entry_decode(key, len_key, val, len_val);
-		assert(*ent != NULL);
+		if (*ent == NULL)
+			continue;
+
 		res = dnstable_query_filter(it->query, *ent, &pass);
 		assert(res == dnstable_res_success);
 		if (pass) {
@@ -530,6 +532,7 @@ query_iter_next(void *clos, struct dnstable_entry **ent)
 			continue;
 		}
 	}
+	return (dnstable_res_failure);
 }
 
 static dnstable_res
@@ -560,7 +563,8 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 			return (dnstable_res_failure);
 
 		*ent = dnstable_entry_decode(key, len_key, val, len_val);
-		assert(*ent != NULL);
+		if (*ent ==  NULL)
+			continue;
 
 		/*
 		 * it->key2 != NULL implies an IP prefix/range search, for which
@@ -694,6 +698,7 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 			continue;
 		}
 	}
+	return (dnstable_res_failure);
 }
 
 static dnstable_res
@@ -764,7 +769,9 @@ query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t t
 		}
 
 		*ent = dnstable_entry_decode(key, len_key, val, len_val);
-		assert(*ent != NULL);
+		if (*ent == NULL)
+			continue;
+
 		res = dnstable_query_filter(it->query, *ent, &pass);
 		assert(res == dnstable_res_success);
 		if (pass) {
@@ -781,6 +788,7 @@ query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t t
 			continue;
 		}
 	}
+	return (dnstable_res_failure);
 }
 
 static dnstable_res

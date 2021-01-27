@@ -214,7 +214,9 @@ reader_iter_next(void *clos, struct dnstable_entry **ent)
 		if (mtbl_iter_next(it->m_it, &key, &len_key, &val, &len_val) != mtbl_res_success)
 			return (dnstable_res_failure);
 		*ent = dnstable_entry_decode(key, len_key, val, len_val);
-		assert(*ent != NULL);
+		if (*ent == NULL)
+			continue;
+
 		if (it->q != NULL) {
 			bool pass = false;
 			dnstable_res res;
