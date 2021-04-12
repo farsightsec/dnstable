@@ -22,6 +22,12 @@ code=0
 test_lookup() {
 	local line result expected
 	result="$($DNSTQ $*)"
+	if [ $? -ne 0 ]; then
+		echo FAIL: $*
+		code=1
+		return
+	fi
+
 	while read line; do
 		expected="${expected}${expected:+$NL}${line}"
 	done
@@ -163,6 +169,21 @@ test_lookup -j -O 1 rdata raw 00 MX << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"20 mail2.example.com."}
 EOF
 
+test_lookup -j version << EOF
+{"entry_type":"rrset","version":0}
+{"entry_type":"rrset_name","version":0}
+{"entry_type":"rdata","version":1}
+{"entry_type":"rdata_name","version":1}
+EOF
+
+test_lookup -j version rdata << EOF
+{"entry_type":"rdata","version":1}
+EOF
+
+test_lookup -j time_range << EOF
+{"time_first":1522147408,"time_last":1522147408}
+EOF
+
 # -u unaggregated results mode requires DNSTABLE_SETFILE set
 test_lookup_fails -j -u rdata raw 00 MX
 
@@ -233,5 +254,23 @@ export DNSTABLE_FNAME=@abs_top_srcdir@/tests/this-does-not-exist
 test_lookup_fails rrset www.example.org A
 
 #####################
+
+# test suppression of version entries with empty values
+export DNSTABLE_FNAME=@abs_top_srcdir@/tests/empty-version.mtbl
+test_lookup -j version << EOF
+EOF
+
+test_lookup -j time_range << EOF
+EOF
+
+# test suppression of version entries merged with empty-valued
+# entries.
+export DNSTABLE_SETFILE=@abs_top_srcdir@/tests/empty-version.setfile
+unset DNSTABLE_FNAME
+test_lookup -j version << EOF
+EOF
+
+test_lookup -j time_range << EOF
+EOF
 
 exit $code
