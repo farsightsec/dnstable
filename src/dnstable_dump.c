@@ -36,6 +36,8 @@ static bool g_rrset;
 static bool g_rdata;
 static bool g_rrset_names;
 static bool g_rdata_names;
+static bool g_time_range;
+static bool g_version;
 static char *g_fname;
 
 static struct dnstable_formatter *fmt = NULL;
@@ -83,6 +85,22 @@ static argv_t args[] = {
 		NULL,
 		"output rdata names" },
 
+	{ ARGV_ONE_OF },
+
+	{ 't', "time_range",
+		ARGV_BOOL,
+		&g_time_range,
+		NULL,
+		"output time range metadata" },
+
+	{ARGV_ONE_OF },
+
+	{ 'v', "version",
+		ARGV_BOOL,
+		&g_version,
+		NULL,
+		"output version metadata" },
+
 	{ ARGV_MAND, NULL,
 		ARGV_CHAR_P,
 		&g_fname,
@@ -99,7 +117,9 @@ print_entry(struct dnstable_entry *ent)
 	case DNSTABLE_ENTRY_TYPE_RRSET:
 	case DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD:
 	case DNSTABLE_ENTRY_TYPE_RDATA:
-	case DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV: {
+	case DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV:
+	case DNSTABLE_ENTRY_TYPE_TIME_RANGE:
+	case DNSTABLE_ENTRY_TYPE_VERSION: {
 		char *s;
 		if (g_json)
 			s = dnstable_entry_format(fmt, ent);
@@ -164,6 +184,10 @@ main(int argc, char **argv)
 		d_it = dnstable_reader_iter_rrset_names(d_reader);
 	} else if (g_rdata_names) {
 		d_it = dnstable_reader_iter_rdata_names(d_reader);
+	} else if (g_time_range) {
+		d_it = dnstable_reader_iter_time_range(d_reader);
+	} else if (g_version) {
+		d_it = dnstable_reader_iter_version(d_reader);
 	}
 
 	fmt = dnstable_formatter_init();

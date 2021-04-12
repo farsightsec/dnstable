@@ -44,6 +44,8 @@ typedef enum {
 	DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD = 1,
 	DNSTABLE_ENTRY_TYPE_RDATA = 2,
 	DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV = 3,
+	DNSTABLE_ENTRY_TYPE_TIME_RANGE = 254,
+	DNSTABLE_ENTRY_TYPE_VERSION = 255,
 } dnstable_entry_type;
 
 typedef enum {
@@ -58,6 +60,8 @@ typedef enum {
 	DNSTABLE_QUERY_TYPE_RDATA_NAME = 1,
 	DNSTABLE_QUERY_TYPE_RDATA_IP = 2,
 	DNSTABLE_QUERY_TYPE_RDATA_RAW = 3,
+	DNSTABLE_QUERY_TYPE_TIME_RANGE = 254,
+	DNSTABLE_QUERY_TYPE_VERSION = 255,
 } dnstable_query_type;
 
 /* merge func */
@@ -165,6 +169,12 @@ dnstable_reader_iter_rdata(struct dnstable_reader *);
 
 struct dnstable_iter *
 dnstable_reader_iter_rdata_names(struct dnstable_reader *);
+
+struct dnstable_iter *
+dnstable_reader_iter_time_range(struct dnstable_reader *);
+
+struct dnstable_iter *
+dnstable_reader_iter_version(struct dnstable_reader *);
 
 struct dnstable_iter *
 dnstable_reader_query(struct dnstable_reader *, struct dnstable_query *);
@@ -303,6 +313,7 @@ dnstable_entry_get_rdata_name(
  * valid for:
  *	entry_type_rrset
  *	entry_type_rdata
+ *	entry_type_time_range
  */
 dnstable_res
 dnstable_entry_get_time_first(
@@ -313,6 +324,7 @@ dnstable_entry_get_time_first(
  * valid for:
  *	entry_type_rrset
  *	entry_type_rdata
+ *	entry_type_time_range
  */
 dnstable_res
 dnstable_entry_get_time_last(
@@ -328,6 +340,24 @@ dnstable_res
 dnstable_entry_get_count(
 	struct dnstable_entry *,
 	uint64_t *count);
+
+/**
+ * valid for:
+ *	entry_type_version
+ */
+dnstable_res
+dnstable_entry_get_version(
+	struct dnstable_entry *,
+	uint32_t *version);
+
+/**
+ * valid for:
+ *	entry_type_version
+ */
+dnstable_res
+dnstable_entry_get_version_type(
+	struct dnstable_entry *,
+	dnstable_entry_type *);
 
 #ifdef __cplusplus
 }

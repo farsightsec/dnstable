@@ -30,6 +30,8 @@ struct dnstable_entry {
 	uint32_t		rrtype;
 	rdata_vec		*rdatas;
 	uint64_t		time_first, time_last, count;
+	dnstable_entry_type	v_type;
+	uint32_t		version;
 	bool			iszone;
 };
 
@@ -211,6 +213,21 @@ dnstable_entry_to_text_fmt(const struct dnstable_entry *e, dnstable_date_format_
 		wdns_domain_to_str(e->name.data, e->name.len, name);
 		ubuf_add_cstr(u, name);
 		ubuf_add_cstr(u, " ;; rdata name rev\n");
+	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_TIME_RANGE) {
+		ubuf_add_cstr(u, ";; Earliest time_first: ");
+		time_formatter(u, e->time_first);
+		ubuf_add_cstr(u, "\n;; Latest time_last: ");
+		time_formatter(u, e->time_last);
+		ubuf_add(u, '\n');
+	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_VERSION) {
+		const char *vtype = dnstable_entry_type_to_string(e->v_type);
+		if (vtype == NULL)
+			ubuf_add_fmt(u, ";; Version type %u: %u\n",
+				(unsigned)e->v_type, (unsigned)e->version);
+		else
+			ubuf_add_fmt(u, ";; Version type %s: %u\n",
+				vtype, (unsigned)e->version);
+
 	}
 
 	ubuf_cterm(u);
@@ -437,6 +454,27 @@ dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
 		add_yajl_string(g, "rdata_name");
 		wdns_domain_to_str(e->name.data, e->name.len, name);
 		add_yajl_string(g, name);
+	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_TIME_RANGE) {
+		add_yajl_string(g, "time_first");
+		status = time_formatter(g, e->time_first);
+		assert(status == yajl_gen_status_ok);
+		add_yajl_string(g, "time_last");
+		status = time_formatter(g, e->time_last);
+		assert(status == yajl_gen_status_ok);
+
+	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_VERSION) {
+		const char *vtype = dnstable_entry_type_to_string(e->v_type);
+		char buf[sizeof("unknown-255")];
+
+		if (vtype == NULL) {
+			snprintf(buf, sizeof(buf), "unknown-%d", (uint8_t)e->v_type);
+			vtype = buf;
+		}
+		add_yajl_string(g, "entry_type");
+		add_yajl_string(g, vtype);
+		add_yajl_string(g, "version");
+		status = fmt_uint64_json(g, e->version);
+		assert(status == yajl_gen_status_ok);
 	}
 
 	status = yajl_gen_map_close(g);
@@ -692,6 +730,30 @@ decode_rdata(struct dnstable_entry *e, const uint8_t *buf, size_t len_buf)
 	return (dnstable_res_success);
 }
 
+static dnstable_res
+decode_time_range(struct dnstable_entry *e, const uint8_t *buf, size_t len_buf)
+{
+	return pair_unpack(buf, len_buf, &e->time_first, &e->time_last);
+}
+
+static dnstable_res
+decode_version(struct dnstable_entry *e,
+	       const uint8_t *key, size_t len_key,
+	       const uint8_t *val, size_t len_val)
+{
+	size_t len;
+
+	if (len_key != 1 || len_val == 0)
+		return (dnstable_res_failure);
+
+	e->v_type = key[0];
+	len = mtbl_varint_decode32(val, &e->version);
+	if (len == len_val)
+		return (dnstable_res_success);
+
+	return (dnstable_res_failure);
+}
+
 struct dnstable_entry *
 dnstable_entry_decode(const uint8_t *key, size_t len_key,
 		      const uint8_t *val, size_t len_val)
@@ -720,6 +782,14 @@ dnstable_entry_decode(const uint8_t *key, size_t len_key,
 	case ENTRY_TYPE_RDATA_NAME_REV:
 		e->e_type = DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV;
 		if (decode_rdata_name_rev(e, key+1, len_key-1) != dnstable_res_success) goto err;
+		break;
+	case ENTRY_TYPE_TIME_RANGE:
+		e->e_type = DNSTABLE_ENTRY_TYPE_TIME_RANGE;
+		if (decode_time_range(e, val, len_val) != dnstable_res_success) goto err;
+		break;
+	case ENTRY_TYPE_VERSION:
+		e->e_type = DNSTABLE_ENTRY_TYPE_VERSION;
+		if (decode_version(e, key+1, len_key-1, val, len_val) != dnstable_res_success) goto err;
 		break;
 	}
 
@@ -868,6 +938,32 @@ dnstable_entry_get_count(struct dnstable_entry *e, uint64_t *v)
 	    e->e_type == DNSTABLE_ENTRY_TYPE_RDATA)
 	{
 		*v = e->count;
+		return (dnstable_res_success);
+	}
+	return (dnstable_res_failure);
+}
+
+dnstable_res
+dnstable_entry_get_version(struct dnstable_entry *e, uint32_t *v)
+{
+	if (e->e_type == DNSTABLE_ENTRY_TYPE_VERSION) {
+		*v = e->version;
+		return (dnstable_res_success);
+	}
+	return (dnstable_res_failure);
+}
+
+dnstable_res
+dnstable_entry_get_version_type(struct dnstable_entry *e, dnstable_entry_type *v)
+{
+	if (e->e_type == DNSTABLE_ENTRY_TYPE_VERSION) {
+		/*
+		 * The enum dnstable_entry_type values are the same as the
+		 * corresponding entry encoding's type byte, which allows
+		 * a simple caset to convert from type byte to enum
+		 * dnstable_entry_type
+		 */
+		*v = (dnstable_entry_type)e->v_type;
 		return (dnstable_res_success);
 	}
 	return (dnstable_res_failure);

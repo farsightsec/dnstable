@@ -96,7 +96,9 @@ dnstable_query_init(dnstable_query_type q_type)
 	assert(q_type == DNSTABLE_QUERY_TYPE_RRSET ||
 	       q_type == DNSTABLE_QUERY_TYPE_RDATA_NAME ||
 	       q_type == DNSTABLE_QUERY_TYPE_RDATA_IP ||
-	       q_type == DNSTABLE_QUERY_TYPE_RDATA_RAW);
+	       q_type == DNSTABLE_QUERY_TYPE_RDATA_RAW ||
+	       q_type == DNSTABLE_QUERY_TYPE_TIME_RANGE ||
+	       q_type == DNSTABLE_QUERY_TYPE_VERSION);
 	struct dnstable_query *q = my_calloc(1, sizeof(*q));
 	q->q_type = q_type;
 	q->aggregated = true;
@@ -1032,6 +1034,26 @@ query_init_rdata_raw(struct query_iter *it)
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
 
+static struct dnstable_iter *
+query_init_time_range(struct query_iter *it)
+{
+	it->key = ubuf_init(1);
+	ubuf_add(it->key, ENTRY_TYPE_TIME_RANGE);
+	it->m_iter = mtbl_source_get_prefix(it->source, ubuf_data(it->key), ubuf_size(it->key));
+	return dnstable_iter_init(query_iter_next, query_iter_free, it);
+}
+
+static struct dnstable_iter *
+query_init_version(struct query_iter *it)
+{
+	it->key = ubuf_init(1);
+	ubuf_add(it->key, ENTRY_TYPE_VERSION);
+	if (it->query->has_v_type)
+		ubuf_add(it->key, it->query->v_type);
+	it->m_iter = mtbl_source_get_prefix(it->source, ubuf_data(it->key), ubuf_size(it->key));
+	return dnstable_iter_init(query_iter_next, query_iter_free, it);
+}
+
 struct dnstable_iter *
 dnstable_query_iter(struct dnstable_query *q, const struct mtbl_source *source)
 {
@@ -1047,6 +1069,10 @@ dnstable_query_iter(struct dnstable_query *q, const struct mtbl_source *source)
 		d_it = query_init_rdata_ip(it);
 	} else if (q->q_type == DNSTABLE_QUERY_TYPE_RDATA_RAW) {
 		d_it = query_init_rdata_raw(it);
+	} else if (q->q_type == DNSTABLE_QUERY_TYPE_TIME_RANGE) {
+		d_it = query_init_time_range(it);
+	} else if (q->q_type == DNSTABLE_QUERY_TYPE_VERSION) {
+		d_it = query_init_version(it);
 	} else {
 		assert(0);
 	}

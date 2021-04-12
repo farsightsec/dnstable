@@ -37,3 +37,23 @@ triplet_unpack(const uint8_t *buf, size_t len_buf, uint64_t *val1, uint64_t *val
 		return (dnstable_res_success);
 	return (dnstable_res_failure);
 }
+
+size_t
+pair_pack(uint8_t *orig_buf, uint64_t val1, uint64_t val2)
+{
+	uint8_t *buf = orig_buf;
+	buf += mtbl_varint_encode64(buf, val1);
+	buf += mtbl_varint_encode64(buf, val2);
+	return (buf - orig_buf);
+}
+
+dnstable_res
+pair_unpack(const uint8_t *buf, size_t len_buf, uint64_t *val1, uint64_t *val2)
+{
+	size_t bytes_read = 0;
+	bytes_read += mtbl_varint_decode64(buf + bytes_read, val1);
+	bytes_read += mtbl_varint_decode64(buf + bytes_read, val2);
+	if (bytes_read == len_buf)
+		return (dnstable_res_success);
+	return (dnstable_res_failure);
+}

@@ -168,6 +168,19 @@ dnstable_reader_iter_rdata_names(struct dnstable_reader *r)
 	return (reader_iter_prefix(r, ENTRY_TYPE_RDATA_NAME_REV));
 }
 
+struct dnstable_iter *
+dnstable_reader_iter_time_range(struct dnstable_reader *r)
+{
+	return (reader_iter_prefix(r, ENTRY_TYPE_TIME_RANGE));
+}
+
+struct dnstable_iter *
+dnstable_reader_iter_version(struct dnstable_reader *r)
+{
+	return (reader_iter_prefix(r, ENTRY_TYPE_VERSION));
+}
+
+
 /*
  * dnstable_reader_query returns aggregated (e.g. a dnstable merge
  * function is applied) or unaggregated results depending upon the
