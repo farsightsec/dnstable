@@ -76,6 +76,8 @@ LIBDNSTABLE_0.13.0 {
 global:
 	dnstable_entry_get_version;
 	dnstable_entry_get_version_type;
+	dnstable_entry_type_from_string;
+	dnstable_entry_type_to_string;
 	dnstable_reader_iter_time_range;
 	dnstable_reader_iter_version;
 } LIBDNSTABLE_0.12.0;

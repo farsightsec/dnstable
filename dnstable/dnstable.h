@@ -250,6 +250,12 @@ dnstable_entry_get_type(struct dnstable_entry *);
 void
 dnstable_entry_set_iszone(struct dnstable_entry *, bool);
 
+const char *
+dnstable_entry_type_to_string(dnstable_entry_type);
+
+dnstable_res
+dnstable_entry_type_from_string(dnstable_entry_type *, const char *);
+
 /*
  * valid for:
  *	entry_type_rrset

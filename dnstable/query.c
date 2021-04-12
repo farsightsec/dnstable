@@ -39,6 +39,8 @@ struct dnstable_query {
 	uint64_t		time_first_before, time_first_after;
 	uint64_t		time_last_before, time_last_after;
 	uint64_t		offset;
+	bool			has_v_type;
+	uint8_t			v_type;
 };
 
 struct query_iter {
@@ -285,6 +287,32 @@ query_set_data_rdata_ip(struct dnstable_query *q, const char *data)
 	}
 }
 
+static dnstable_res
+query_set_version_type(struct dnstable_query *q, const char *data)
+{
+	dnstable_res res;
+	dnstable_entry_type type;
+
+	if (data == NULL)
+		return (dnstable_res_success);
+
+	res = dnstable_entry_type_from_string(&type, data);
+	if (res != dnstable_res_success)
+		return res;
+
+	switch(type) {
+	case ENTRY_TYPE_RRSET:
+	case ENTRY_TYPE_RRSET_NAME_FWD:
+	case ENTRY_TYPE_RDATA:
+	case ENTRY_TYPE_RDATA_NAME_REV:
+		q->has_v_type = true;
+		q->v_type = (uint8_t)type;
+		return (dnstable_res_success);
+	default:
+		return (dnstable_res_failure);
+	}
+}
+
 dnstable_res
 dnstable_query_set_data(struct dnstable_query *q, const char *data)
 {
@@ -296,6 +324,8 @@ dnstable_query_set_data(struct dnstable_query *q, const char *data)
 		return query_set_data_rdata_ip(q, data);
 	} else if (q->q_type == DNSTABLE_QUERY_TYPE_RDATA_RAW) {
 		return query_set_data_rdata_raw(q, data);
+	} else if (q->q_type == DNSTABLE_QUERY_TYPE_VERSION) {
+		return query_set_version_type(q, data);
 	} else {
 		return (dnstable_res_failure);
 	}

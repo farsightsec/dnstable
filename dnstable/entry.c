@@ -814,6 +814,53 @@ dnstable_entry_destroy(struct dnstable_entry **e)
 	}
 }
 
+const char *
+dnstable_entry_type_to_string(dnstable_entry_type t)
+{
+	switch(t) {
+	case DNSTABLE_ENTRY_TYPE_RRSET:
+		return "rrset";
+	case DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD:
+		return "rrset_name";
+	case DNSTABLE_ENTRY_TYPE_RDATA:
+		return "rdata";
+	case DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV:
+		return "rdata_name";
+	case DNSTABLE_ENTRY_TYPE_TIME_RANGE:
+		return "time_range";
+	case DNSTABLE_ENTRY_TYPE_VERSION:
+		return "version";
+	}
+	return NULL;
+}
+
+dnstable_res
+dnstable_entry_type_from_string(dnstable_entry_type *t, const char *str)
+{
+	int i;
+
+	struct {
+		const char *string;
+		dnstable_entry_type type;
+	} types[] = {
+		{"rrset", DNSTABLE_ENTRY_TYPE_RRSET},
+		{"rrset_name", DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD},
+		{"rdata", DNSTABLE_ENTRY_TYPE_RDATA},
+		{"rdata_name", DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV},
+		{"time_range", DNSTABLE_ENTRY_TYPE_TIME_RANGE},
+		{"version", DNSTABLE_ENTRY_TYPE_VERSION},
+		{0},
+	};
+
+	for (i = 0; types[i].string; i++) {
+		if (strcmp(str, types[i].string))
+			continue;
+		*t = types[i].type;
+		return (dnstable_res_success);
+	}
+	return (dnstable_res_failure);
+}
+
 dnstable_entry_type
 dnstable_entry_get_type(struct dnstable_entry *e)
 {
