@@ -85,6 +85,8 @@ usage(void)
 	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-R] [-u] [-O #] rdata ip <ADDRESS | RANGE | PREFIX>\n");
 	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-R] [-u] [-O #] rdata raw <HEX STRING> [<RRTYPE>]\n");
 	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-R] [-u] [-O #] rdata name <RDATA NAME> [<RRTYPE>]\n");
+	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-u] [-O #] version [type]\n");
+	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-u] [-O #] time_range\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Flags:\n");
 	fprintf(stderr, "\t-j: output in JSON format with epoch time; default is 'dig' presentation format\n");
@@ -106,6 +108,7 @@ main(int argc, char **argv)
 	const char *arg_rrtype = NULL;
 	const char *arg_bailiwick = NULL;
 	const char *arg_rdata = NULL;
+	const char *arg_version_type = NULL;
 	struct mtbl_reader *m_reader = NULL;
 	struct dnstable_iter *d_iter;
 	struct dnstable_reader *d_reader;
@@ -144,7 +147,7 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (argc < 2)
+	if (argc < 1)
 		usage();
 
 	if (strcmp(argv[0], "rrset") == 0) {
@@ -176,6 +179,16 @@ main(int argc, char **argv)
 		arg_rdata = argv[2];
 		if (argc == 4)
 			arg_rrtype = argv[3];
+	} else if (strcmp(argv[0], "version") == 0) {
+		if (argc > 2)
+			usage();
+		d_qtype = DNSTABLE_QUERY_TYPE_VERSION;
+		if (argc == 2)
+			arg_version_type = argv[1];
+	} else if (strcmp(argv[0], "time_range") == 0) {
+		if (argc > 1)
+			usage();
+		d_qtype = DNSTABLE_QUERY_TYPE_TIME_RANGE;
 	} else {
 		usage();
 	}
@@ -232,7 +245,9 @@ main(int argc, char **argv)
 			fprintf(stderr, "dnstable_lookup: dnstable_query_set_bailiwick() failed\n");
 			exit(EXIT_FAILURE);
 		}
-	} else {
+	} else if ((d_qtype == DNSTABLE_QUERY_TYPE_RDATA_IP) ||
+		   (d_qtype == DNSTABLE_QUERY_TYPE_RDATA_NAME) ||
+		   (d_qtype == DNSTABLE_QUERY_TYPE_RDATA_RAW)) {
 		res = dnstable_query_set_data(d_query, arg_rdata);
 		if (res != dnstable_res_success) {
 			fprintf(stderr, "dnstable_lookup: dnstable_query_set_data() failed: %s\n",
@@ -248,6 +263,14 @@ main(int argc, char **argv)
 				exit(EXIT_FAILURE);
 			}
 		}
+	} else if (d_qtype == DNSTABLE_QUERY_TYPE_VERSION) {
+		res = dnstable_query_set_data(d_query, arg_version_type);
+		if (res != dnstable_res_success) {
+			fprintf(stderr, "dnstable_lookup: Invalid version type '%s'\n",
+				arg_version_type);
+			exit(EXIT_FAILURE);
+		}
+
 	}
 
 	if (g_offset != 0) {
