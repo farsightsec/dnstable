@@ -81,10 +81,10 @@ static void
 usage(void)
 {
 	fprintf(stderr, "Usage:\n");
-	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-R] [-u] [-s #] rrset <OWNER NAME> [<RRTYPE> [<BAILIWICK>]]\n");
-	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-R] [-u] [-s #] rdata ip <ADDRESS | RANGE | PREFIX>\n");
-	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-R] [-u] [-s #] rdata raw <HEX STRING> [<RRTYPE>]\n");
-	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-R] [-u] [-s #] rdata name <RDATA NAME> [<RRTYPE>]\n");
+	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-R] [-u] [-O #] rrset <OWNER NAME> [<RRTYPE> [<BAILIWICK>]]\n");
+	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-R] [-u] [-O #] rdata ip <ADDRESS | RANGE | PREFIX>\n");
+	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-R] [-u] [-O #] rdata raw <HEX STRING> [<RRTYPE>]\n");
+	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-R] [-u] [-O #] rdata name <RDATA NAME> [<RRTYPE>]\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Flags:\n");
 	fprintf(stderr, "\t-j: output in JSON format with epoch time; default is 'dig' presentation format\n");
