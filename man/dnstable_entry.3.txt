@@ -13,7 +13,9 @@ dnstable_entry - dnstable entry objects
     _DNSTABLE_ENTRY_TYPE_RRSET_,
     _DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD_,
     _DNSTABLE_ENTRY_TYPE_RDATA_,
-    _DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV_
+    _DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV_,
+    _DNSTABLE_ENTRY_TYPE_TIME_RANGE_,
+    _DNSTABLE_ENTRY_TYPE_VERSION_
 } dnstable_entry_type;^
 
 [verse]
@@ -89,6 +91,14 @@ dnstable_entry_format(
 dnstable_entry_get_type(struct dnstable_entry *'ent');^
 
 [verse]
+^const char *
+dnstable_entry_type_to_string(dnstable_entry_type 'type');^
+
+[verse]
+^dnstable_res
+dnstable_entry_type_from_string(dnstable_entry_type *'type', const char *'str');^
+
+[verse]
 ^void
 dnstable_entry_set_iszone(struct dnstable_entry *'ent', bool 'iszone');^
 
@@ -155,6 +165,7 @@ dnstable_entry_get_rdata_name(
 /* valid for entry types:
  *      DNSTABLE_ENTRY_TYPE_RRSET
  *      DNSTABLE_ENTRY_TYPE_RDATA
+ *      DNSTABLE_ENTRY_TYPE_TIME_RANGE
  */
 ^dnstable_res
 dnstable_entry_get_time_first(
@@ -165,6 +176,7 @@ dnstable_entry_get_time_first(
 /* valid for entry types:
  *      DNSTABLE_ENTRY_TYPE_RRSET
  *      DNSTABLE_ENTRY_TYPE_RDATA
+ *      DNSTABLE_ENTRY_TYPE_TIME_RANGE
  */
 ^dnstable_res
 dnstable_entry_get_time_last(
@@ -180,6 +192,24 @@ dnstable_entry_get_time_last(
 dnstable_entry_get_count(
     struct dnstable_entry *'ent',
     uint64_t *'count');^
+
+[verse]
+/* valid for entry types:
+ * DNSTABLE_ENTRY_TYPE_VERSION
+ */
+^dnstable_res
+dnstable_entry_get_version(
+    struct dnstable_entry *'ent',
+    uint32_t *'version');^
+
+[verse]
+/* valid for entry types:
+ * DNSTABLE_ENTRY_TYPE_VERSION
+ */
+^dnstable_res
+dnstable_entry_get_version_type(
+    struct dnstable_entry *'ent',
+    dnstable_entry_type *'type');^
 
 == DESCRIPTION ==
 

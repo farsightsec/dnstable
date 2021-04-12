@@ -14,6 +14,8 @@ dnstable_query - dnstable query objects
     _DNSTABLE_QUERY_TYPE_RDATA_NAME_,
     _DNSTABLE_QUERY_TYPE_RDATA_IP_,
     _DNSTABLE_QUERY_TYPE_RDATA_RAW_,
+    _DNSTABLE_QUERY_TYPE_TIME_RANGE_,
+    _DNSTABLE_QUERY_TYPE_VERSION_,
 } dnstable_query_type;^
 
 [verse]

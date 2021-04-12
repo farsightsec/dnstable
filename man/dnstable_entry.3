@@ -2,12 +2,12 @@
 .\"     Title: dnstable_entry
 .\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
 .\" Generator: DocBook XSL Stylesheets v1.79.1 <http://docbook.sf.net/>
-.\"      Date: 05/11/2020
+.\"      Date: 04/12/2021
 .\"    Manual: \ \&
 .\"    Source: \ \&
 .\"  Language: English
 .\"
-.TH "DNSTABLE_ENTRY" "3" "05/11/2020" "\ \&" "\ \&"
+.TH "DNSTABLE_ENTRY" "3" "04/12/2021" "\ \&" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -38,7 +38,9 @@ dnstable_entry \- dnstable entry objects
     \fR\fB\fIDNSTABLE_ENTRY_TYPE_RRSET\fR\fR\fB,
     \fR\fB\fIDNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD\fR\fR\fB,
     \fR\fB\fIDNSTABLE_ENTRY_TYPE_RDATA\fR\fR\fB,
-    \fR\fB\fIDNSTABLE_ENTRY_TYPE_RDATA_NAME_REV\fR\fR\fB
+    \fR\fB\fIDNSTABLE_ENTRY_TYPE_RDATA_NAME_REV\fR\fR\fB,
+    \fR\fB\fIDNSTABLE_ENTRY_TYPE_TIME_RANGE\fR\fR\fB,
+    \fR\fB\fIDNSTABLE_ENTRY_TYPE_VERSION\fR\fR\fB
 } dnstable_entry_type;\fR
 .fi
 .sp
@@ -129,6 +131,16 @@ dnstable_entry_get_type(struct dnstable_entry *\fR\fB\fIent\fR\fR\fB);\fR
 .fi
 .sp
 .nf
+\fBconst char *
+dnstable_entry_type_to_string(dnstable_entry_type \fR\fB\fItype\fR\fR\fB);\fR
+.fi
+.sp
+.nf
+\fBdnstable_res
+dnstable_entry_type_from_string(dnstable_entry_type *\fR\fB\fItype\fR\fR\fB, const char *\fR\fB\fIstr\fR\fR\fB);\fR
+.fi
+.sp
+.nf
 \fBvoid
 dnstable_entry_set_iszone(struct dnstable_entry *\fR\fB\fIent\fR\fR\fB, bool \fR\fB\fIiszone\fR\fR\fB);\fR
 .fi
@@ -202,6 +214,7 @@ dnstable_entry_get_rdata_name(
 /* valid for entry types:
  *      DNSTABLE_ENTRY_TYPE_RRSET
  *      DNSTABLE_ENTRY_TYPE_RDATA
+ *      DNSTABLE_ENTRY_TYPE_TIME_RANGE
  */
 \fBdnstable_res
 dnstable_entry_get_time_first(
@@ -213,6 +226,7 @@ dnstable_entry_get_time_first(
 /* valid for entry types:
  *      DNSTABLE_ENTRY_TYPE_RRSET
  *      DNSTABLE_ENTRY_TYPE_RDATA
+ *      DNSTABLE_ENTRY_TYPE_TIME_RANGE
  */
 \fBdnstable_res
 dnstable_entry_get_time_last(
@@ -229,6 +243,26 @@ dnstable_entry_get_time_last(
 dnstable_entry_get_count(
     struct dnstable_entry *\fR\fB\fIent\fR\fR\fB,
     uint64_t *\fR\fB\fIcount\fR\fR\fB);\fR
+.fi
+.sp
+.nf
+/* valid for entry types:
+ * DNSTABLE_ENTRY_TYPE_VERSION
+ */
+\fBdnstable_res
+dnstable_entry_get_version(
+    struct dnstable_entry *\fR\fB\fIent\fR\fR\fB,
+    uint32_t *\fR\fB\fIversion\fR\fR\fB);\fR
+.fi
+.sp
+.nf
+/* valid for entry types:
+ * DNSTABLE_ENTRY_TYPE_VERSION
+ */
+\fBdnstable_res
+dnstable_entry_get_version_type(
+    struct dnstable_entry *\fR\fB\fIent\fR\fR\fB,
+    dnstable_entry_type *\fR\fB\fItype\fR\fR\fB);\fR
 .fi
 .SH "DESCRIPTION"
 .sp
