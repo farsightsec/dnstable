@@ -38,6 +38,10 @@ dnstable_lookup \- lookup individual records in a dnstable data file or set of d
 \fBdnstable_lookup\fR [\fB\-R\fR] [\fB\-j\fR] [\fB\-J\fR] [\fB\-u\fR] [\fB\-O #\fR] \fBrdata raw\fR <HEX STRING> [<RRTYPE>]
 .sp
 \fBdnstable_lookup\fR [\fB\-R\fR] [\fB\-j\fR] [\fB\-J\fR] [\fB\-u\fR] [\fB\-O #\fR] \fBrdata name\fR <RDATA NAME> [<RRTYPE>]
+.sp
+\fBdnstable_lookup\fR [\fB\-j\fR] [\fB\-J\fR] [\fB\-u\fR] [\fB\-O #\fR] \fBtime_range\fR
+.sp
+\fBdnstable_lookup\fR [\fB\-j\fR] [\fB\-J\fR] [\fB\-u\fR] [\fB\-O #\fR] \fBversion\fR [<ETYPE>]
 .SH "DESCRIPTION"
 .sp
 Looks up records in a dnstable data file or fileset\&. Results are printed to stdout in an ad\-hoc text format or in JSON format if \fB\-j\fR or \fB\-J\fR are given\&.
@@ -49,6 +53,10 @@ Looks up records in a dnstable data file or fileset\&. Results are printed to st
 \fBdnstable_lookup rdata raw\fR returns Resource Records whose record data matches the specified data value, expressed as a hexademical string\&.
 .sp
 \fBdnstable_lookup rdata name\fR returns Resource Records whose record data matches the specified domain name\&.
+.sp
+\fBdnstable_lookup time_range\fR returns an entry containing the time range for data within the data file or fileset\&.
+.sp
+\fBdnstable_lookup version\fR returns version entries\&. The optional \fBETYPE\fR parameter can be used to request a specific type\(cqs version\&. \fBETYPE\fR may be one of \fBrrset\fR, \fBrrset_name\fR, \fBrdata\fR, or \fBrdata_name\fR
 .SH "OPTIONS"
 .PP
 \fB\-R\fR, \fB\-\-raw\fR

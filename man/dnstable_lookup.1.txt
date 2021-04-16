@@ -14,6 +14,10 @@ dnstable_lookup - lookup individual records in a dnstable data file or set of da
 
 ^dnstable_lookup^ [^-R^] [^-j^] [^-J^] [^-u^] [^-O #^] ^rdata name^ <RDATA NAME> [<RRTYPE>]
 
+^dnstable_lookup^ [^-j^] [^-J^] [^-u^] [^-O #^] ^time_range^
+
+^dnstable_lookup^ [^-j^] [^-J^] [^-u^] [^-O #^] ^version^ [<ETYPE>]
+
 == DESCRIPTION ==
 
 Looks up records in a dnstable data file or fileset. Results are printed to stdout
@@ -31,6 +35,13 @@ the specified data value, expressed as a hexademical string.
 
 ^dnstable_lookup rdata name^ returns Resource Records whose record data matches
 the specified domain name.
+
+^dnstable_lookup time_range^ returns an entry containing the time range for
+data within the data file or fileset.
+
+^dnstable_lookup version^ returns version entries. The optional ^ETYPE^ parameter
+can be used to request a specific type's version. ^ETYPE^ may be one of ^rrset^,
+^rrset_name^, ^rdata^, or ^rdata_name^
 
 == OPTIONS ==
 
