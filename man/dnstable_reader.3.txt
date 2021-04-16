@@ -34,7 +34,15 @@ dnstable_reader_iter_rrset(struct dnstable_reader *'r');^
 
 [verse]
 ^struct dnstable_iter *
+dnstable_reader_iter_rrset_names(struct dnstable_reader *'r');^
+
+[verse]
+^struct dnstable_iter *
 dnstable_reader_iter_rdata(struct dnstable_reader *'r');^
+
+[verse]
+^struct dnstable_iter *
+dnstable_reader_iter_rdata_names(struct dnstable_reader *'r');^
 
 [verse]
 ^struct dnstable_iter *
@@ -63,7 +71,11 @@ underlying setfile.
 
 ^dnstable_reader_iter_rrset^() iterates over just the entries of type
 _DNSTABLE_ENTRY_TYPE_RRSET_. Likewise, ^dnstable_reader_iter_rdata^() iterates
-over just the entries of type _DNSTABLE_ENTRY_TYPE_RDATA_.
+over just the entries of type _DNSTABLE_ENTRY_TYPE_RDATA_,
+^dnstable_reader_iter_rrset_names^() iterates over
+entries of type _DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD_, and
+^dnstable_reader_iter_rdata_nmes^() iterates over just the entries of
+type _DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV_.
 
 ^dnstable_reader_query^() iterates over all the entry objects that match the
 specified query object. The query object is used during the operation of the

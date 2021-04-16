@@ -2,12 +2,12 @@
 .\"     Title: dnstable_lookup
 .\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
 .\" Generator: DocBook XSL Stylesheets v1.79.1 <http://docbook.sf.net/>
-.\"      Date: 05/08/2020
+.\"      Date: 04/16/2021
 .\"    Manual: \ \&
 .\"    Source: \ \&
 .\"  Language: English
 .\"
-.TH "DNSTABLE_LOOKUP" "1" "05/08/2020" "\ \&" "\ \&"
+.TH "DNSTABLE_LOOKUP" "1" "04/16/2021" "\ \&" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -40,7 +40,7 @@ dnstable_lookup \- lookup individual records in a dnstable data file or set of d
 \fBdnstable_lookup\fR [\fB\-R\fR] [\fB\-j\fR] [\fB\-J\fR] [\fB\-u\fR] [\fB\-O #\fR] \fBrdata name\fR <RDATA NAME> [<RRTYPE>]
 .SH "DESCRIPTION"
 .sp
-Looks up records in a dnstable data file\&. Results are printed to stdout in an ad\-hoc text format\&.
+Looks up records in a dnstable data file or fileset\&. Results are printed to stdout in an ad\-hoc text format or in JSON format if \fB\-j\fR or \fB\-J\fR are given\&.
 .sp
 \fBdnstable_lookup rrset\fR returns RRsets matching the specified owner name (wildcards permitted)\&. A resource record type and bailiwick domain name can optionally be specified\&.
 .sp

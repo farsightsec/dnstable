@@ -16,8 +16,8 @@ dnstable_lookup - lookup individual records in a dnstable data file or set of da
 
 == DESCRIPTION ==
 
-Looks up records in a dnstable data file. Results are printed to stdout in an
-ad-hoc text format.
+Looks up records in a dnstable data file or fileset. Results are printed to stdout
+in an ad-hoc text format or in JSON format if ^-j^ or ^-J^ are given.
 
 ^dnstable_lookup rrset^ returns RRsets matching the specified owner name
 (wildcards permitted). A resource record type and bailiwick domain name can
