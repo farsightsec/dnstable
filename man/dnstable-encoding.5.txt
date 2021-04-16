@@ -25,9 +25,9 @@ order it is possible to look up entire key-value entries by searching for the
 initial part of a key.
 
 The first byte of each dnstable key is a ``type'' byte, and there are currently
-four different ``types'' of dnstable key-value entries which are described
+six different ``types'' of dnstable key-value entries which are described
 below. These different types are used to encode the full passive DNS payload as
-well as ``indices'' into the payload.
+well as ``indices'' into the payload and metadata.
 
 Each dnstable key is a compound key that packs individual fields together, and
 for the key types that include a value, the value is a compound value that also
@@ -183,6 +183,38 @@ The key consists of the following fields, in order:
 . ^Rdata name^. Label-reversed wire-format DNS domain name.
 
 There is no value associated with this entry type.
+
+==== ^ENTRY_TYPE_TIME_RANGE^ ====
+
+This entry type encodes the overall time range of all ^ENTRY_TYPE_RRSET^
+and ^ENTRY_TYPE_RDATA^ entries in a dnstable data set, i.e. the earliest
+first timestamp and latest last timestamp of all such entries.
+
+The key consists of:
+
+. ^Type byte^. The constant `"\xFE"`.
+
+The value consists of the following fields, in order:
+
+. ^First timestamp^. Variable-width integer. Number of seconds since the epoch.
+
+. ^Last timestamp^. Variable-width integer. Number of seconds since the epoch.
+
+==== ^ENTRY_TYPE_VERSION^ ====
+
+This entry encodes a version number for the format of another entry type. Each
+of the above entry types, with the exception of ^ENTRY_TYPE_TIME_RANGE^ may have
+an associated version number entry.
+
+The key consists of the following fields, in order:
+
+. ^Type byte^. The constant `"0xFF"`.
+
+. ^Versioned Type^. The Type byte to which this entry applies.
+
+The value consists of:
+
+. ^Version number^. Variable-width integer.
 
 == EXAMPLES ==
 

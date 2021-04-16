@@ -2,12 +2,12 @@
 .\"     Title: dnstable-encoding
 .\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
 .\" Generator: DocBook XSL Stylesheets v1.79.1 <http://docbook.sf.net/>
-.\"      Date: 05/31/2018
+.\"      Date: 04/19/2021
 .\"    Manual: \ \&
 .\"    Source: \ \&
 .\"  Language: English
 .\"
-.TH "DNSTABLE\-ENCODING" "5" "05/31/2018" "\ \&" "\ \&"
+.TH "DNSTABLE\-ENCODING" "5" "04/19/2021" "\ \&" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -37,7 +37,7 @@ dnstable makes use of the \fBMTBL\fR Sorted String Table (SSTable) format, which
 .sp
 \fBMTBL\fR keys and values are arbitrary byte arrays, and because \fBMTBL\fR keys are stored in sorted order it is possible to look up entire key\-value entries by searching for the initial part of a key\&.
 .sp
-The first byte of each dnstable key is a \(lqtype\(rq byte, and there are currently four different \(lqtypes\(rq of dnstable key\-value entries which are described below\&. These different types are used to encode the full passive DNS payload as well as \(lqindices\(rq into the payload\&.
+The first byte of each dnstable key is a \(lqtype\(rq byte, and there are currently six different \(lqtypes\(rq of dnstable key\-value entries which are described below\&. These different types are used to encode the full passive DNS payload as well as \(lqindices\(rq into the payload and metadata\&.
 .sp
 Each dnstable key is a compound key that packs individual fields together, and for the key types that include a value, the value is a compound value that also packs individual fields together\&.
 .sp
@@ -478,6 +478,104 @@ The key consists of the following fields, in order:
 .RE
 .sp
 There is no value associated with this entry type\&.
+.RE
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBENTRY_TYPE_TIME_RANGE\fR
+.RS 4
+.sp
+This entry type encodes the overall time range of all \fBENTRY_TYPE_RRSET\fR and \fBENTRY_TYPE_RDATA\fR entries in a dnstable data set, i\&.e\&. the earliest first timestamp and latest last timestamp of all such entries\&.
+.sp
+The key consists of:
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+\fBType byte\fR\&. The constant
+"\exFE"\&.
+.RE
+.sp
+The value consists of the following fields, in order:
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+\fBFirst timestamp\fR\&. Variable\-width integer\&. Number of seconds since the epoch\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+\fBLast timestamp\fR\&. Variable\-width integer\&. Number of seconds since the epoch\&.
+.RE
+.RE
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBENTRY_TYPE_VERSION\fR
+.RS 4
+.sp
+This entry encodes a version number for the format of another entry type\&. Each of the above entry types, with the exception of \fBENTRY_TYPE_TIME_RANGE\fR may have an associated version number entry\&.
+.sp
+The key consists of the following fields, in order:
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+\fBType byte\fR\&. The constant
+"0xFF"\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+\fBVersioned Type\fR\&. The Type byte to which this entry applies\&.
+.RE
+.sp
+The value consists of:
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+\fBVersion number\fR\&. Variable\-width integer\&.
+.RE
 .RE
 .SH "EXAMPLES"
 .sp
