@@ -32,6 +32,13 @@ required in order to select which section of the data file to dump.
 ^-d^, ^--rdata^::
     Dump the ^Rdata^ section of the data file.
 
+^-t^, ^--time_range^::
+    Output time range metadata.
+
+^-v^, ^--version^::
+    Output version metadata.
+
+
 == EXAMPLES ==
 
 $ dnstable_dump -R -j -d /path/to/dns.mtbl
