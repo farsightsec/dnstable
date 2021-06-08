@@ -392,6 +392,7 @@ dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
 				fmt_hex_str(rbuf, (char*)rrtype, rrtype_str_len);
 				ubuf_cterm(rbuf);
 				ubuf_detach(rbuf, &rbuf_as_str, &rbuf_as_str_len);
+				ubuf_destroy(&rbuf);
 				add_yajl_string(g, (char*)rbuf_as_str);
 				my_free(rbuf_as_str);
 			}
@@ -438,6 +439,7 @@ dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
 			fmt_hex_str(rbuf, (char*)rdata->data, rdata->len);
 			ubuf_cterm(rbuf);
 			ubuf_detach(rbuf, &rbuf_as_str, &rbuf_as_str_len);
+			ubuf_destroy(&rbuf);
 			add_yajl_string(g, (char*)rbuf_as_str);
 			my_free(rbuf_as_str);
 
