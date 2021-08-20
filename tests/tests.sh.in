@@ -19,6 +19,91 @@ NL="
 
 code=0
 
+test_encode_bitmap() {
+	local line result expected
+	result="$(@abs_top_builddir@/tests/test-bitmaps -e "$*")"
+	if [ $? -ne 0 ]; then
+		echo FAIL: $*
+		code=1
+		return
+	fi
+
+	while read line; do
+		expected="${expected}${expected:+$NL}${line}"
+	done
+
+	if [ "$result" = "$expected" ]; then
+		echo PASS: $*
+	else
+		echo FAIL: $*
+		code=1
+	fi
+}
+
+
+test_decode_bitmap() {
+	local line result expected
+	result="$(@abs_top_builddir@/tests/test-bitmaps -d $*)"
+	if [ $? -ne 0 ]; then
+		echo FAIL: $*
+		code=1
+		return
+	fi
+
+	while read line; do
+		expected="${expected}${expected:+$NL}${line}"
+	done
+
+	if [ "$result" = "$expected" ]; then
+		echo PASS: $*
+	else
+		echo FAIL: $*
+		code=1
+	fi
+}
+
+test_decode_bitmap_fail() {
+	local line result expected
+	result="$(@abs_top_builddir@/tests/test-bitmaps -d $*)"
+	if [ $? -eq 0 ]; then
+		echo FAIL: $*
+		code=1
+		return
+	fi
+}
+
+
+test_encode_bitmap 'A SOA' << EOF
+bitmap: 000142
+EOF
+
+test_decode_bitmap 000142 << EOF
+rrtype = 1 = A
+rrtype = 6 = SOA
+EOF
+
+test_encode_bitmap 'A SOA TYPE65534' << EOF
+bitmap: 000142ff200000000000000000000000000000000000000000000000000000000000000002
+EOF
+
+test_encode_bitmap 'TYPE260' << EOF
+bitmap: 010108
+EOF
+
+test_decode_bitmap 000142ff200000000000000000000000000000000000000000000000000000000000000002 << EOF
+rrtype = 1 = A
+rrtype = 6 = SOA
+rrtype = 65534 = (not assigned)
+EOF
+
+test_decode_bitmap_fail ff200000000000000000000000000000000000000000000000000000000000000002000142
+
+test_decode_bitmap_fail 00014000
+
+test_decode_bitmap_fail 0001400000
+
+test_decode_bitmap_fail 000140000101
+
 test_lookup() {
 	local line result expected
 	result="$($DNSTQ $*)"
