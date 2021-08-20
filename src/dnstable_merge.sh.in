@@ -3,7 +3,8 @@ export MTBL_MERGE_DSO="@LIBDNSTABLE_DLNAME@"
 export MTBL_MERGE_FUNC_PREFIX="dnstable_merge"
 
 if [ -z "$1" -o -z "$2" ]; then
-    echo "Usage: $0 <INPUT MTBL FILE> [<INPUT MTBL FILE>...] <OUTPUT MTBL FILE>"
+    echo "Usage: $0 [mtbl_merge options] <INPUT MTBL FILE> [<INPUT MTBL FILE>...] <OUTPUT MTBL FILE>"
+    echo "For more information, use \$ man mtbl_merge"
     exit 1
 fi
 

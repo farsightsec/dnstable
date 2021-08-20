@@ -6,12 +6,13 @@ dnstable_merge - merge multiple dnstable data files together
 
 == SYNOPSIS ==
 
-^dnstable_merge^ 'INPUT' ['INPUT']... 'OUTPUT'
+^dnstable_merge^ [mtbl_merge options] 'INPUT' ['INPUT']... 'OUTPUT'
 
 == DESCRIPTION ==
 
 Merges multiple dnstable data files into a single output using the libmtbl merge
-function ^dnstable_merge_func^(3).
+function ^dnstable_merge_func^(3).  All of the ^mtbl_merge^(1) options may be specified.
+In typical usage, use at least ^-c zlib -l 3^.
 
 == SEE ALSO ==
 

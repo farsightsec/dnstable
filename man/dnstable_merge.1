@@ -2,12 +2,12 @@
 .\"     Title: dnstable_merge
 .\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
 .\" Generator: DocBook XSL Stylesheets v1.79.1 <http://docbook.sf.net/>
-.\"      Date: 05/31/2018
+.\"      Date: 07/21/2021
 .\"    Manual: \ \&
 .\"    Source: \ \&
 .\"  Language: English
 .\"
-.TH "DNSTABLE_MERGE" "1" "05/31/2018" "\ \&" "\ \&"
+.TH "DNSTABLE_MERGE" "1" "07/21/2021" "\ \&" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -31,10 +31,10 @@
 dnstable_merge \- merge multiple dnstable data files together
 .SH "SYNOPSIS"
 .sp
-\fBdnstable_merge\fR \fIINPUT\fR [\fIINPUT\fR]\&... \fIOUTPUT\fR
+\fBdnstable_merge\fR [mtbl_merge options] \fIINPUT\fR [\fIINPUT\fR]\&... \fIOUTPUT\fR
 .SH "DESCRIPTION"
 .sp
-Merges multiple dnstable data files into a single output using the libmtbl merge function \fBdnstable_merge_func\fR(3)\&.
+Merges multiple dnstable data files into a single output using the libmtbl merge function \fBdnstable_merge_func\fR(3)\&. All of the \fBmtbl_merge\fR(1) options may be specified\&. In typical usage, use at least \fB\-c zlib \-l 3\fR\&.
 .SH "SEE ALSO"
 .sp
 \fBdnstable_merge_func\fR(3), \fBmtbl_merge\fR(1), \fBmtbl_merger\fR(3)
