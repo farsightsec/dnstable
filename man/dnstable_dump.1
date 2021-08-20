@@ -2,12 +2,12 @@
 .\"     Title: dnstable_dump
 .\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
 .\" Generator: DocBook XSL Stylesheets v1.79.1 <http://docbook.sf.net/>
-.\"      Date: 06/07/2021
+.\"      Date: 08/06/2021
 .\"    Manual: \ \&
 .\"    Source: \ \&
 .\"  Language: English
 .\"
-.TH "DNSTABLE_DUMP" "1" "06/07/2021" "\ \&" "\ \&"
+.TH "DNSTABLE_DUMP" "1" "08/06/2021" "\ \&" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -41,7 +41,7 @@ Dumps a dnstable data file to stdout, either in an ad\-hoc text format (the defa
 .PP
 \fB\-R\fR, \fB\-\-raw\fR
 .RS 4
-When using JSON format for output, add a hex representation of the raw rdata and the rrtype\&.
+When using JSON format for \-\-rdata_full output, add a hex representation of the raw rdata\&.
 .RE
 .PP
 \fB\-j\fR, \fB\-\-json\fR
@@ -49,31 +49,55 @@ When using JSON format for output, add a hex representation of the raw rdata and
 Use JSON format for output\&. One JSON\-formatted entry per line will be printed\&.
 .RE
 .PP
-\fB\-r\fR, \fB\-\-rrset\fR
+\fB\-r\fR, \fB\-\-rrset_full\fR
 .RS 4
-Dump the
+Dump the full
 \fBRRset\fR
-section of the data file\&.
+section of the data file from
+\fBENTRY_TYPE_RRSET\fR
+records\&.
 .RE
 .PP
-\fB\-d\fR, \fB\-\-rdata\fR
+\fB\-d\fR, \fB\-\-rdata_full\fR
 .RS 4
-Dump the
+Dump the full
 \fBRdata\fR
-section of the data file\&.
+section of the data file from
+\fBENTRY_TYPE_RDATA\fR
+records\&.
+.RE
+.PP
+\fB\-\-rrset_names\fR
+.RS 4
+Dump the rrset names from
+\fBENTRY_TYPE_RRSET_NAME_FWD\fR
+records\&.
+.RE
+.PP
+\fB\-\-rdata_names\fR
+.RS 4
+Dump the rdata names from
+\fBENTRY_TYPE_RDATA_NAME_REV\fR
+records\&.
 .RE
 .PP
 \fB\-t\fR, \fB\-\-time_range\fR
 .RS 4
-Output time range metadata\&.
+Output time range metadata from
+\fBENTRY_TYPE_TIME_RANGE\fR
+records\&.
 .RE
 .PP
-\fB\-v\fR, \fB\-\-version\fR
+\fB\-v\fR, \fB\-\-version_entries\fR
 .RS 4
-Output version metadata\&.
+Output version metadata from
+\fBENTRY_TYPE_VERSION\fR
+records\&.
 .RE
 .SH "EXAMPLES"
 .sp
 $ dnstable_dump \-R \-j \-d /path/to/dns\&.mtbl
 .sp
 $ dnstable_dump \-r /path/to/dns\&.mtbl
+.sp
+$ dnstable_dump \-\-rdata_names /path/to/dns\&.mtbl

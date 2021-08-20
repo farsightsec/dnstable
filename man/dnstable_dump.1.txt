@@ -19,24 +19,30 @@ required in order to select which section of the data file to dump.
 == OPTIONS ==
 
 ^-R^, ^--raw^::
-    When using JSON format for output, add a hex representation of the
-    raw rdata and the rrtype.
+    When using JSON format for --rdata_full output, add a hex
+    representation of the raw rdata.
 
 ^-j^, ^--json^::
     Use JSON format for output. One JSON-formatted entry per line will be
     printed.
 
-^-r^, ^--rrset^::
-    Dump the ^RRset^ section of the data file.
+^-r^, ^--rrset_full^::
+    Dump the full ^RRset^ section of the data file from ^ENTRY_TYPE_RRSET^ records.
 
-^-d^, ^--rdata^::
-    Dump the ^Rdata^ section of the data file.
+^-d^, ^--rdata_full^::
+    Dump the full ^Rdata^ section of the data file from ^ENTRY_TYPE_RDATA^ records.
+
+^--rrset_names^::
+    Dump the rrset names from ^ENTRY_TYPE_RRSET_NAME_FWD^ records.
+
+^--rdata_names^::
+    Dump the rdata names from ^ENTRY_TYPE_RDATA_NAME_REV^ records.
 
 ^-t^, ^--time_range^::
-    Output time range metadata.
+    Output time range metadata from ^ENTRY_TYPE_TIME_RANGE^ records.
 
-^-v^, ^--version^::
-    Output version metadata.
+^-v^, ^--version_entries^::
+    Output version metadata from ^ENTRY_TYPE_VERSION^ records.
 
 
 == EXAMPLES ==
@@ -44,3 +50,5 @@ required in order to select which section of the data file to dump.
 $ dnstable_dump -R -j -d /path/to/dns.mtbl
 
 $ dnstable_dump -r /path/to/dns.mtbl
+
+$ dnstable_dump --rdata_names /path/to/dns.mtbl
