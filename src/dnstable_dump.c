@@ -53,21 +53,21 @@ static argv_t args[] = {
 		ARGV_BOOL,
 		&g_add_raw,
 		NULL,
-		"add raw rdata representation" },
+		"add raw rdata representation to --rdata_full" },
 
-	{ 'r',	"rrset",
+	{ 'r',	"rrset_full",
 		ARGV_BOOL,
 		&g_rrset,
 		NULL,
-		"output rrset records" },
+		"output rrset full records" },
 
 	{ ARGV_ONE_OF },
 
-	{ 'd',	"rdata",
+	{ 'd',	"rdata_full",
 		ARGV_BOOL,
 		&g_rdata,
 		NULL,
-		"output rdata records" },
+		"output rdata full records" },
 
 	{ ARGV_ONE_OF },
 
@@ -95,11 +95,11 @@ static argv_t args[] = {
 
 	{ARGV_ONE_OF },
 
-	{ 'v', "version",
+	{ 'v', "version_entries",
 		ARGV_BOOL,
 		&g_version,
 		NULL,
-		"output version metadata" },
+		"output version entries" },
 
 	{ ARGV_MAND, NULL,
 		ARGV_CHAR_P,
@@ -161,9 +161,15 @@ main(int argc, char **argv)
 
 	argv_process(args, argc, argv);
 
-	if (!g_json && g_add_raw) {
-		fprintf(stderr, "dnstable_dump: adding raw rdata only supported with json output format\n");
-		exit(EXIT_FAILURE);
+	if (g_add_raw) {
+		if (!g_rdata) {
+			fprintf(stderr,
+				"dnstable_dump: adding raw rdata only supported with --rdata_full output format\n");
+			exit(EXIT_FAILURE);
+		} else if (!g_json) {
+			fprintf(stderr, "dnstable_dump: adding raw rdata only supported with json output format\n");
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	m_reader = mtbl_reader_init(g_fname, NULL);
