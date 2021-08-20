@@ -2,12 +2,12 @@
 .\"     Title: dnstable_merge_func
 .\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
 .\" Generator: DocBook XSL Stylesheets v1.79.1 <http://docbook.sf.net/>
-.\"      Date: 05/31/2018
+.\"      Date: 07/02/2021
 .\"    Manual: \ \&
 .\"    Source: \ \&
 .\"  Language: English
 .\"
-.TH "DNSTABLE_MERGE_FUNC" "3" "05/31/2018" "\ \&" "\ \&"
+.TH "DNSTABLE_MERGE_FUNC" "3" "07/02/2021" "\ \&" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -47,9 +47,9 @@ This is the libmtbl merging function for dnstable key\-value entries\&. dnstable
 .sp
 There are four dnstable \fBMTBL\fR key\-value entry types\&. \fBdnstable_merge_func\fR handles them in the following manner:
 .sp
-\fBENTRY_TYPE_RRSET_NAME_FWD\fR and \fBENTRY_TYPE_RDATA_NAME_REV\fR entries have no associated value (that is, the values for these types is zero length)\&. A zero\-length byte array is provided as the merged value\&.
+\fBENTRY_TYPE_RRSET_NAME_FWD\fR and \fBENTRY_TYPE_RDATA_NAME_REV\fR entries: In dnstable versions before 0\&.12\&.0, these have no associated value (that is, the values for these types is zero length)\&. A zero\-length byte array is provided as the merged value\&. As of version 0\&.12\&.0, the value is an RRtype union described in the \fBdnstable\-encoding\fR(5) manual page\&.
 .sp
-\fBENTRY_TYPE_RRSET\fR and \fBENTRY_TYPE_RDATA\fR entries have an identical encoding format\&. These types encode a triplet of varint\-encoded integers representing the \fBtime_first\fR, \fBtime_last\fR, and \fBcount\fR value fields\&. A new triplet of varint\-encoded integers is generated as the merged value as follows:
+\fBENTRY_TYPE_RRSET\fR and \fBENTRY_TYPE_RDATA\fR entries: These have an identical encoding format\&. These types encode a triplet of varint\-encoded integers representing the \fBtime_first\fR, \fBtime_last\fR, and \fBcount\fR value fields\&. A new triplet of varint\-encoded integers is generated as the merged value as follows:
 .sp
 .RS 4
 .ie n \{\

@@ -27,11 +27,14 @@ dnstable key-value data.
 There are four dnstable ^MTBL^ key-value entry types. ^dnstable_merge_func^
 handles them in the following manner:
 
-^ENTRY_TYPE_RRSET_NAME_FWD^ and ^ENTRY_TYPE_RDATA_NAME_REV^ entries have no
-associated value (that is, the values for these types is zero length). A
-zero-length byte array is provided as the merged value.
+^ENTRY_TYPE_RRSET_NAME_FWD^ and ^ENTRY_TYPE_RDATA_NAME_REV^ entries:
+In dnstable versions before 0.12.0, these have no associated value (that is,
+the values for these types is zero length). A zero-length byte array
+is provided as the merged value.  As of version 0.12.0, the value is
+an RRtype union described in the ^dnstable-encoding^(5) manual page.
 
-^ENTRY_TYPE_RRSET^ and ^ENTRY_TYPE_RDATA^ entries have an identical encoding
+^ENTRY_TYPE_RRSET^ and ^ENTRY_TYPE_RDATA^ entries:
+These have an identical encoding
 format. These types encode a triplet of varint-encoded integers representing the
 ^time_first^, ^time_last^, and ^count^ value fields. A new triplet of
 varint-encoded integers is generated as the merged value as follows:
