@@ -52,6 +52,7 @@
 #include "libmy/my_alloc.h"
 #include "libmy/my_time.h"
 #include "libmy/ubuf.h"
+#include "libmy/my_byteorder.h"
 
 #define ENTRY_TYPE_RRSET			((uint8_t)0)
 #define ENTRY_TYPE_RRSET_NAME_FWD		((uint8_t)1)
@@ -107,5 +108,56 @@ bytes_compare(const uint8_t *a, size_t len_a,
 
 bool
 dnstable_query_is_aggregated(const struct dnstable_query *);
+
+/*
+ * The maximum number of rrtypes that can be in an rrtype bitmap index.
+ * For safety due to degenerate cases in the actual DNS, allow *all*
+ * possible RRtypes.  As an example, "boxun.com.cn." in 2017 had 111
+ * unique RRtypes defined, many not standardized.
+ */
+#define MAX_RRTYPES_MAPPABLE 65535
+
+typedef struct {
+	uint16_t rrtypes[MAX_RRTYPES_MAPPABLE];
+} rrtype_unpacked_set;
+
+/*
+ * rrtype_union_unpack: unpack a RRtype union into an array.
+ * The results are guaranteed to be sorted by increasing value.
+ *
+ * See the dnstable-encoding.5 section "Key-value entry
+ * types", "RRtype union" definition.
+
+ * Limits how many rrtypes it will support by truncating what it returns.
+ * In theory, there can be 2^16-1 bits set, since the rrtype values
+ * allowed are not restricted to those in the DNS RFCs and Assigned
+ * Numbers.
+ *
+ * Returns the number of rrtypes it unpacked.  This can be 0 if there
+ * are no rrtypes to unpack.  Returns -1 if the encoding is corrupt or
+ * if there are more rrtypes to unpack than will fit in rrtype_set.
+ */
+int
+rrtype_union_unpack(const uint8_t *rrtype_map, size_t rrtype_map_size,
+		    rrtype_unpacked_set *rrtype_set);
+
+/*
+ * Test if the RRtype is effectively set in this dnstable_entry, with
+ * special handling by entry type.  An empty RRtype index is
+ * interpreted as "no RRtypes are excluded by this index" for the
+ * appropriate set of RRtypes.
+ *
+ * Return true if the bit is set, is handled specially, or the RRtype
+ * index appears corrupt for this record (as a value of true will
+ * necessarily force a lookup of the indicated rrtype).
+ * Returns false otherwise.
+ *
+ * valid for entry types:
+ *     DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD
+ *     DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV
+ */
+bool
+rrtype_test(dnstable_entry_type e_type, uint16_t rrtype,
+	    const uint8_t *rrtype_map, size_t rrtype_map_size);
 
 #endif /* DNSTABLE_PRIVATE_H */

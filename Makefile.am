@@ -110,6 +110,17 @@ tests_test_dnstable_LDADD = \
 	$(libmtbl_LIBS)
 tests_test_dnstable_SOURCES = tests/test-dnstable.c tests/errors.h
 
+check_PROGRAMS += tests/test-bitmaps
+tests_test_bitmaps_CPPFLAGS = -DSRCDIR="\"$(abs_srcdir)\"" $(AM_CPPFLAGS)
+tests_test_bitmaps_LDADD = \
+	dnstable/entry.o \
+	dnstable/triplet.o \
+	dnstable/libdnstable.la \
+	$(libyajl_LIBS) \
+	$(libmtbl_LIBS) \
+	$(libwdns_LIBS)
+tests_test_bitmaps_SOURCES = tests/test-bitmaps.c
+
 if BUILD_MAN
 SUFFIXES = .1.txt .3.txt .5.txt .7.txt .1 .3 .5 .7
 

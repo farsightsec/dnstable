@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014-2015 by Farsight Security, Inc.
+ * Copyright (c) 2012, 2014-2015, 2021 by Farsight Security, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ struct dnstable_entry {
 	wdns_name_t		name, bailiwick;
 	uint32_t		rrtype;
 	rdata_vec		*rdatas;
+	ubuf			*rrtype_map;
 	uint64_t		time_first, time_last, count;
 	dnstable_entry_type	v_type;
 	uint32_t		version;
@@ -105,6 +106,22 @@ fmt_rfc3339_time_json(yajl_gen g, uint64_t v)
 	return yajl_gen_string(g, (const unsigned char *)ts, ret);
 }
 
+/*
+ * fill u with the two-digit hex representation of each character in
+ * string s of len len_s.
+ * Caller is responsible to initialize the ubuf and terminate the ubuf
+ * with ubuf_cterm(rbuf).
+ */
+static void
+fmt_hex_str(ubuf *u, uint8_t *s, size_t len_s)
+{
+	for (size_t c = 0; c < len_s; c++) {
+		char hexbuf[3];
+		snprintf(hexbuf, sizeof(hexbuf), "%02x", s[c]);
+		ubuf_add_cstr(u, hexbuf);
+	}
+}
+
 static void
 fmt_rrtype(ubuf *u, uint16_t rrtype)
 {
@@ -118,19 +135,67 @@ fmt_rrtype(ubuf *u, uint16_t rrtype)
 	}
 }
 
-/*
- * fill u with the two-digit hex representation of each character in
- * string s of len len_s.
- * Caller is responsible to initialize the ubuf and terminate the ubuf
- * with ubuf_cterm(rbuf).
- */
-static void fmt_hex_str(ubuf *u, uint8_t *s, size_t len_s)
+static yajl_gen_status
+fmt_rrtype_json(yajl_gen g, uint16_t rrtype)
 {
-	for (size_t c = 0; c < len_s; c++) {
-		char hexbuf[3];
-		snprintf(hexbuf, sizeof(hexbuf), "%02x", s[c]);
-		ubuf_add_cstr(u, hexbuf);
+	const char *s_rrtype = wdns_rrtype_to_str(rrtype);
+	if (s_rrtype) {
+		add_yajl_string(g, s_rrtype);
+		return yajl_gen_status_ok;
+	} else {
+		char buf[sizeof("TYPE65535")];
+		size_t len = snprintf(buf, sizeof(buf), "TYPE%hu", (uint16_t)rrtype);
+		assert(len > 0);
+		return yajl_gen_string(g, (uint8_t *) buf, len);
 	}
+}
+
+static void
+fmt_rrtypes_union(ubuf *u, const struct dnstable_entry *e)
+{
+	ubuf_add_cstr(u, " RRtypes=[");
+
+	if (e->rrtype_map != NULL) {
+		rrtype_unpacked_set rrtype_set;
+		int n_rrtypes = rrtype_union_unpack(ubuf_data(e->rrtype_map), ubuf_size(e->rrtype_map), &rrtype_set);
+
+		if (n_rrtypes == -1)
+			ubuf_add_cstr(u, "<failure>");
+		else {
+			for (int n = 0; n < n_rrtypes; n++) {
+				fmt_rrtype(u, rrtype_set.rrtypes[n]);
+
+				if (n + 1 < n_rrtypes)
+					ubuf_add_cstr(u, " ");
+			}
+		}
+	}
+	ubuf_add_cstr(u, "] ");
+}
+
+static void
+fmt_rrtypes_union_json(yajl_gen g, const struct dnstable_entry *e)
+{
+	yajl_gen_status status;
+
+	add_yajl_string(g, "rrtypes");
+
+	status = yajl_gen_array_open(g);
+	assert(status == yajl_gen_status_ok);
+
+	if (e->rrtype_map != NULL) {
+		rrtype_unpacked_set rrtype_set;
+		int n_rrtypes = rrtype_union_unpack(ubuf_data(e->rrtype_map), ubuf_size(e->rrtype_map), &rrtype_set);
+		if (n_rrtypes == -1)
+			add_yajl_string(g, "<failure>");
+		else {
+			for (int n = 0; n < n_rrtypes; n++)
+				assert(yajl_gen_status_ok == fmt_rrtype_json(g, rrtype_set.rrtypes[n]));
+		}
+	}
+
+	status = yajl_gen_array_close(g);
+	assert(status == yajl_gen_status_ok);
 }
 
 static char *
@@ -208,10 +273,12 @@ dnstable_entry_to_text_fmt(const struct dnstable_entry *e, dnstable_date_format_
 	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD) {
 		wdns_domain_to_str(e->name.data, e->name.len, name);
 		ubuf_add_cstr(u, name);
+		fmt_rrtypes_union(u, e);
 		ubuf_add_cstr(u, " ;; rrset name fwd\n");
 	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV) {
 		wdns_domain_to_str(e->name.data, e->name.len, name);
 		ubuf_add_cstr(u, name);
+		fmt_rrtypes_union(u, e);
 		ubuf_add_cstr(u, " ;; rdata name rev\n");
 	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_TIME_RANGE) {
 		ubuf_add_cstr(u, ";; Earliest time_first: ");
@@ -333,17 +400,8 @@ dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
 
 		/* rrtype */
 		add_yajl_string(g, "rrtype");
-
-		const char *s_rrtype = wdns_rrtype_to_str(e->rrtype);
-		if (s_rrtype) {
-			add_yajl_string(g, s_rrtype);
-		} else {
-			char buf[sizeof("TYPE65535")];
-			len = snprintf(buf, sizeof(buf), "TYPE%hu", (uint16_t) e->rrtype);
-			assert(len > 0);
-			status = yajl_gen_string(g, (uint8_t *) buf, len);
-			assert(status == yajl_gen_status_ok);
-		}
+		status = fmt_rrtype_json(g, e->rrtype);
+		assert(status == yajl_gen_status_ok);
 	}
 
 	if (e->e_type == DNSTABLE_ENTRY_TYPE_RRSET) {
@@ -452,10 +510,12 @@ dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
 		add_yajl_string(g, "rrset_name");
 		wdns_domain_to_str(e->name.data, e->name.len, name);
 		add_yajl_string(g, name);
+		fmt_rrtypes_union_json(g, e);
 	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV) {
 		add_yajl_string(g, "rdata_name");
 		wdns_domain_to_str(e->name.data, e->name.len, name);
 		add_yajl_string(g, name);
+		fmt_rrtypes_union_json(g, e);
 	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_TIME_RANGE) {
 		add_yajl_string(g, "time_first");
 		status = time_formatter(g, e->time_first);
@@ -573,7 +633,6 @@ dnstable_entry_format(
 
 /*------------------------------------------------------------*/
 
-
 static dnstable_res
 decode_val_triplet(struct dnstable_entry *e, const uint8_t *val, size_t len_val)
 {
@@ -654,21 +713,31 @@ decode_rrset(struct dnstable_entry *e, const uint8_t *buf, size_t len_buf)
 }
 
 static dnstable_res
-decode_rrset_name_fwd(struct dnstable_entry *e, const uint8_t *buf, size_t len_buf)
+decode_rrset_name_fwd(struct dnstable_entry *e, const uint8_t *buf, size_t len_buf, const uint8_t *val, size_t len_val)
 {
 	e->name.len = len_buf;
 	e->name.data = my_malloc(len_buf);
 	memcpy(e->name.data, buf, len_buf);
+	if (len_val > 0) {
+		e->rrtype_map = ubuf_init(len_val);
+		ubuf_append(e->rrtype_map, val, len_val);
+	}
 	return (dnstable_res_success);
 }
 
 static dnstable_res
-decode_rdata_name_rev(struct dnstable_entry *e, const uint8_t *buf, size_t len_buf)
+decode_rdata_name_rev(struct dnstable_entry *e, const uint8_t *buf, size_t len_buf, const uint8_t *val, size_t len_val)
 {
 	e->name.len = len_buf;
 	e->name.data = my_malloc(len_buf);
 	if (wdns_reverse_name(buf, len_buf, e->name.data) != wdns_res_success)
 		return (dnstable_res_failure);
+
+	if (len_val > 0) {
+		e->rrtype_map = ubuf_init(len_val);
+		ubuf_append(e->rrtype_map, val, len_val);
+	}
+
 	return (dnstable_res_success);
 }
 
@@ -774,7 +843,7 @@ dnstable_entry_decode(const uint8_t *key, size_t len_key,
 		break;
 	case ENTRY_TYPE_RRSET_NAME_FWD:
 		e->e_type = DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD;
-		if (decode_rrset_name_fwd(e, key+1, len_key-1) != dnstable_res_success) goto err;
+		if (decode_rrset_name_fwd(e, key+1, len_key-1, val, len_val) != dnstable_res_success) goto err;
 		break;
 	case ENTRY_TYPE_RDATA:
 		e->e_type = DNSTABLE_ENTRY_TYPE_RDATA;
@@ -783,7 +852,7 @@ dnstable_entry_decode(const uint8_t *key, size_t len_key,
 		break;
 	case ENTRY_TYPE_RDATA_NAME_REV:
 		e->e_type = DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV;
-		if (decode_rdata_name_rev(e, key+1, len_key-1) != dnstable_res_success) goto err;
+		if (decode_rdata_name_rev(e, key+1, len_key-1, val, len_val) != dnstable_res_success) goto err;
 		break;
 	case ENTRY_TYPE_TIME_RANGE:
 		e->e_type = DNSTABLE_ENTRY_TYPE_TIME_RANGE;
@@ -909,7 +978,7 @@ dnstable_entry_get_rrtype(struct dnstable_entry *e, uint16_t *v)
 	if (e->e_type == DNSTABLE_ENTRY_TYPE_RRSET ||
 	    e->e_type == DNSTABLE_ENTRY_TYPE_RDATA)
 	{
-		*v = (uint16_t) e->rrtype;
+		*v = (uint16_t)e->rrtype;
 		return (dnstable_res_success);
 	}
 	return (dnstable_res_failure);
@@ -1016,4 +1085,158 @@ dnstable_entry_get_version_type(struct dnstable_entry *e, dnstable_entry_type *v
 		return (dnstable_res_success);
 	}
 	return (dnstable_res_failure);
+}
+
+/*------------------------------------------------------------*/
+
+int
+rrtype_union_unpack(const uint8_t *rrtype_map, size_t rrtype_map_size, rrtype_unpacked_set *rrtype_set)
+{
+	unsigned count_rrtypes = 0;
+
+	if (rrtype_map_size == 0) {
+		return 0;
+	} else if (rrtype_map_size == 1) {
+		rrtype_set->rrtypes[0] = (uint16_t)*rrtype_map;
+		return 1;
+	} else if (rrtype_map_size == 2) {
+		rrtype_set->rrtypes[0] = (uint16_t)le16toh(*(uint16_t*)rrtype_map);
+		return 1;
+	}
+
+	/* must be a bitmap */
+
+	bool saw_a_block = false;
+	uint8_t prev_window_block = 0;
+
+	while (rrtype_map_size >= 2) {
+		uint8_t window_block = *rrtype_map;
+		uint8_t block_len = *(rrtype_map + 1);
+
+		/* ensure block numbers are incrementing */
+		if (saw_a_block && window_block <= prev_window_block)
+			return -1; /* corrupt encoding */
+		prev_window_block = window_block;
+		saw_a_block = true;
+
+		rrtype_map_size -= 2;
+		rrtype_map += 2;
+
+		if (block_len < 1 || rrtype_map_size < block_len)
+			return -1; /* corrupt encoding */
+
+		uint16_t lo = 0;
+		for (unsigned i = 0; i < block_len; i++) {
+			uint8_t a = rrtype_map[i];
+			for (unsigned j = 1; j <= 8; j++) {
+				uint8_t is_bit_set = a & (1 << (8 - j));
+				if (is_bit_set != 0) {
+					/* if not too many rrtypes in the map, then add to our output */
+					if (count_rrtypes < sizeof(rrtype_unpacked_set) / sizeof(uint16_t)) {
+						/* re-form the rrtype */
+						rrtype_set->rrtypes[count_rrtypes++] = (window_block << 8) | lo;
+					} else
+						return -1; /* too many rrtypes to unpack, an error */
+				}
+				lo += 1;
+			}
+		}
+		rrtype_map_size -= block_len;
+		rrtype_map += block_len;
+	}
+
+	if (rrtype_map_size != 0) /* got trailing data that's not a valid additional block to unpack, an error */
+		return -1;
+
+	return count_rrtypes;
+}
+
+/*
+ * Check if the specified rrytpe is present in the RRtype union.
+ *
+ * Return true if the bit is set, the RRtype union is corrupt, or if
+ * entry has no rrtype set (as a value of true will necessarily force
+ * a lookup of the indicated rrtype).
+ * Returns false if the bit is not set.
+ */
+static bool
+rrtype_union_check(uint16_t rrtype, const uint8_t *rrtype_map, size_t rrtype_map_size)
+{
+	if (rrtype_map_size == (signed)0) {
+		return true;   /* effectively all bits are present since we don't have any specific optimization */
+	} else if (rrtype_map_size == (signed)1) {
+		return (rrtype == (uint16_t)*rrtype_map);
+	} else if (rrtype_map_size == (signed)2) {
+		return (rrtype == (uint16_t)le16toh(*(uint16_t*)rrtype_map));
+	}
+
+	/* must be a bitmap */
+
+	uint8_t want_window = rrtype / 256;
+
+	uint8_t offset = rrtype % 256;
+	uint8_t byte = offset / 8;
+	uint8_t bit = offset % 8;
+	uint8_t net_order_bit = 0x80 >> bit;
+
+	while (rrtype_map_size >= 2) {
+		uint8_t window_block = *rrtype_map;
+		uint8_t block_len = *(rrtype_map + 1);
+		rrtype_map_size -= 2;
+		rrtype_map += 2;
+		if (rrtype_map_size < block_len)
+			return true; /* corrupt encoding; treat as if all bits are present */
+
+		if (window_block != want_window) {
+			rrtype_map_size -= block_len;
+			rrtype_map += block_len;
+			continue;
+		}
+
+		/* at the right block; are there enough bytes in this block? */
+		if (byte > block_len)
+			return false;
+		return (rrtype_map[byte] & net_order_bit);
+	}
+
+	if (rrtype_map_size != 0) /* got trailing data that's not a valid additional block to unpack, an error */
+		return true;
+
+	/*
+	 * Ran out of blocks to check; might be that the window blocks
+	 * only covered rrtypes 1 to 255 and checking for rrtype 256.
+	 */
+	return false;
+}
+
+bool
+rrtype_test(dnstable_entry_type e_type, uint16_t rrtype, const uint8_t *rrtype_map, size_t rrtype_map_size)
+{
+	if (rrtype_map == NULL || rrtype_map_size == 0) {
+		/*
+		 * For testing an rrtype against the rrtype union: length = 0 means we
+		 * should treat the index as set for all rrtypes for which we do
+		 * corresponding rrtype indexing.
+		 *
+		 * For RRSET_NAME_FWD, we index any rrtype.
+		 *
+		 * For RDATA_NAME_REV, we index rrtypes NS, CNAME, SOA, PTR, MX, SRV, DNAME, SVCB, and HTTPS.
+		 */
+		static const uint16_t all_rrtypes_for_RDATA_NAME_REV[] = {
+			WDNS_TYPE_NS, WDNS_TYPE_CNAME, WDNS_TYPE_SOA, WDNS_TYPE_PTR, WDNS_TYPE_MX,
+			WDNS_TYPE_SRV, WDNS_TYPE_DNAME, WDNS_TYPE_SVCB, WDNS_TYPE_HTTPS
+		};
+
+		if (e_type == DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD)
+			return true;
+		else if (e_type == DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV) {
+			/* search for rrtype in all_rrtypes_for_RDATA_NAME_REV and send back true if present */
+			for (size_t i = 0; i < sizeof(all_rrtypes_for_RDATA_NAME_REV) / sizeof(uint16_t); i++)
+				if (rrtype == all_rrtypes_for_RDATA_NAME_REV[i])
+					return true;
+			return false;
+		}
+	}
+
+	return rrtype_union_check(rrtype, rrtype_map, rrtype_map_size);
 }

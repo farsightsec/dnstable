@@ -15,7 +15,7 @@ atomicity. Additionally, dnstable preserves extra metadata available in the
 ^dnsdedupe^ payloads.
 
 dnstable makes use of the ^MTBL^ Sorted String Table (SSTable) format, which
-provides an immutable mapping of keys to values. This format allows fast lookups
+provides an immutable mapping of keys to optional values. This format allows fast lookups
 of key prefixes, so the precise encoding and layout of dnstable keys are chosen
 to take advantage of this property.
 
@@ -35,7 +35,8 @@ packs individual fields together.
 
 In the string literals given in the text below, C-style `"\xNN"` hex encoding
 may be used to represent particular byte values. For example, `"\x03"` is an
-octet with decimal value 3.
+octet with decimal value 3. Note that this is different than the `\DDD`
+encoding of arbitrary decimal values in DNS names.
 
 === Key-value entry types ===
 
@@ -45,7 +46,7 @@ are used:
 
 - Byte.
 
-- Fixed-width 16 bit integer.
+- Fixed-width 16 bit integer in little-endian order.
 
 - Variable-width integer.
 
@@ -57,13 +58,30 @@ are used:
 - Label-reversed wire-format DNS domain names. The domain name
   `"www.example.com"` would be encoded as `"\x03com\x07example\x03www\x00"`.
 
+- RRtype union.  This can contain one of multiple types, depending upon the length of the value.
+
+* If the length is 0, then it is interpreted the same as if all defined RRtype bits were set.
+
+* If the length is 1, then the value is an RRtype valued from 0 to 255.
+
+* If the length is 2, then the value is an RRtype valued from 256 to 65535, in little-endian order.
+
+* If the length is 3 or more, then the value is an RRtype bitmap, as defined in RFC4034 section 4.1.2.
+
+- Examples of RFC4034 bitmaps:
+
+* RRtypes A, NS, and SOA are encoded as bitmap ^00 01 62^.
+
+* RRtypes A, NS, NAPTR, SPF, SOA, MX, TXT, AAAA, and LOC are encoded
+    as bitmap ^00 0d 62 01 80 0c 10 00 00 00 00 00 00 00 10^.
+
 ==== ^ENTRY_TYPE_RRSET^ ====
 
-This entry type encodes the complete passive DNS payload. The RRset owner name
-is encoded at the beginning of the key so that ``forward'' lookups can be
-performed on the owner name. The owner name is also encoded with labels reversed
-from the usual DNS order to increase locality and allow for wildcard matches.
-(For example, `"*.example.com"`.)
+This entry type encodes the complete passive DNS payload. The RRset
+owner name is encoded at the beginning of the key so that ``forward''
+lookups can be performed on the owner name. The owner name is encoded
+with labels reversed from the usual DNS order to increase locality and
+allow for wildcard matches.  (For example, `"*.example.com"`.)
 
 The key is a packed tuple consisting of the following fields, in order:
 
@@ -103,7 +121,8 @@ The key consists of the following fields, in order:
 
 . ^RRset owner name^. Wire-format DNS domain name.
 
-There is no value associated with this entry type.
+In versions before 0.12.0, there was no value associated with this entry type.
+As of that version, the value is an RRtype union described above.
 
 ==== ^ENTRY_TYPE_RDATA^ ====
 
@@ -121,26 +140,34 @@ The key consists of the following fields, in order:
 
 . ^RR owner name^. Label-reversed wire-format DNS domain name.
 
-. ^Rdata length^. Fixed-width 16 bit integer. Number of bytes in the ^Rdata^
-field.
+. ^Rdata length^. Fixed-width 16 bit integer in little-endian
+order. Number of bytes in the ^Rdata^ field.
 
 The ^Rdata length^ field is encoded at the end of the key so that searches can
 be performed over the ^Rdata^ field without needing to know the length of the
 record data value in advance (or worse, needing to iterate over all possible
 length values).
 
-^ENTRY_TYPE_RDATA^ is also used to encode an entry sub-type specifically for
-`MX` and `SRV` DNS records, which contain a DNS domain name offset into the
-latter part of the record data. (An `MX` record contains a domain name offset 2
-octets into the record data value, and a `SRV` record contains a domain name
-offset 6 octets into the record data value. If the `MX` and `SRV` record data
-types had been laid out with the domain name at the beginning of the record data
-the following hack would not be necessary in order to make the domain name part
-of these record types searchable.) This sub-type ``slices'' the record data so
-that the domain name in the latter part of the record appears at the beginning
-of the key and the initial bytes of the record appear just before the ^Rdata
-length^ field at the end of the key. That is, the key consists of the following
-fields, in order:
+An additional ^ENTRY_TYPE_RDATA^ entry is produced for DNS records
+which encode a domain name but do not begin with one (i.e. DNS records
+which contain a DNS domain name offset into the latter part of the
+record data):
+
+* An `MX` record contains a domain name offset 2 octets into the record data value.
+* An `SVCB` record contains a domain name offset 2 octets into the record data value.
+* An `HTTPS` record contains a domain name offset 2 octets into the record data value.
+* A `SRV` record contains a domain name offset 6 octets into the record data value.
+
+If those record types had been laid out in the applicable DNS RFCs
+with the domain name at the beginning of the record data the following
+hack would not be necessary in order to make these record types easily
+searchable by domain, or for records of different rrtypes that
+reference the same domains to cluster together.  This sub-type
+``slices'' the record data so that the domain name in the latter part
+of the record appears at the beginning of the key and the initial
+bytes of the record appear just before the ^Rdata length^ field at the
+end of the key. That is, the key consists of the following fields, in
+order:
 
 . ^Type byte^. The constant `"\x02"`.
 
@@ -154,9 +181,15 @@ record data.
 . ^Initial data slice^. Wire-format DNS record data. This is the initial part of
 the record data.
 
-. ^Latter data slice length^. Fixed-width 16 bit integer. Number of bytes in the
-^latter data slice^. The number of bytes in the ^initial data slice^ is
-implicit.
+. ^Latter data slice length^. Fixed-width 16 bit integer in
+little-endian order.  Number of bytes in the ^latter data slice^.
+
+The number of bytes in the initial data slice is implicit (the
+difference between the dnstable entry value length and the sum of the
+sizes of all previously described mandatory fields, once decoded.)  An
+entry can be determined to be either a sliced or un-sliced record by
+whether or not this implicit initial data slice length is non-zero or
+zero, respectively.
 
 The value consists of the following fields, in order:
 
@@ -171,10 +204,11 @@ This is the same encoding as the values for ^ENTRY_TYPE_RRSET^ entries.
 
 ==== ^ENTRY_TYPE_RDATA_NAME_REV^ ====
 
-This entry type encodes label-reversed domain names from the record data value
-for certain DNS record types that contain a domain name in the record data,
-specifically the `NS`, `CNAME`, `DNAME`, `PTR`, `MX`, and `SRV` DNS record
-types.
+This entry type encodes label-reversed domain names from the record
+data value for certain DNS record types that contain a domain name in
+the record data, specifically the `SOA`, `NS`, `CNAME`, `DNAME`,
+`PTR`, `MX`, `SRV`, `SVCB`, and `HTTPS` DNS record types.
+The "slicing" logic described above in ^ENTRY_TYPE_RDATA^ encompasses the extraction of these domain names.
 
 The key consists of the following fields, in order:
 
@@ -182,7 +216,8 @@ The key consists of the following fields, in order:
 
 . ^Rdata name^. Label-reversed wire-format DNS domain name.
 
-There is no value associated with this entry type.
+In versions before 0.12.0, there was no value associated with this entry type.
+As of that version, the value is an RRtype union described above.
 
 ==== ^ENTRY_TYPE_TIME_RANGE^ ====
 
@@ -249,6 +284,8 @@ The following entries will be generated:
 
 ==== example.com entry #1 (ENTRY_TYPE_RRSET) ====
 
+^Key^:
+
 [options="header"]
 |===
 |^Field^        | ^Data^ | ^Interpretation^
@@ -258,6 +295,13 @@ The following entries will be generated:
 |^bailiwick^    | `"\x03com\x00"` | com.
 |^rdata^        | `"\x11" "\x03ns1\x07example\x03com\x00"` | ns1.example.com.
 |^rdata^        | `"\x11" "\x03ns2\x07example\x03com\x00"` | ns2.example.com.
+|===
+
+^Value^:
+
+[options="header"]
+|===
+|^Field^        | ^Data^ | ^Interpretation^
 |^time_first^   | `"\x90\xb9\xe6\xfb\x04"` | 1333370000 (Mon Apr  2 12:33:20 2012)
 |^time_last^    | `"\xa0\x87\xe7\xfb\x04"` | 1333380000 (Mon Apr  2 15:20:00 2012)
 |^count^        | `"\x17"` | 23
@@ -273,6 +317,8 @@ The following entries will be generated:
 
 ==== example.com entry #2 (ENTRY_TYPE_RRSET_NAME_FWD) ====
 
+^Key^:
+
 [options="header"]
 |===
 |^Field^        | ^Data^ | ^Interpretation^
@@ -280,11 +326,25 @@ The following entries will be generated:
 |^rrname^       | `"\x07example\x03com\x00"` | example.com.
 |===
 
+^Value^:
+
+[options="header"]
+|===
+|^Field^        | ^Data^ | ^Interpretation^
+|^rrtype union^ | `"\x02"` | NS
+|===
+
 ^Final key^:
 
 `"\x01\x07example\x03com\x00"`
 
+^Final value^:
+
+`"\x02"`
+
 ==== example.com entry #3 (ENTRY_TYPE_RDATA) ====
+
+^Key^:
 
 [options="header"]
 |===
@@ -294,6 +354,13 @@ The following entries will be generated:
 |^rrtype^       | `"\x02"` | NS
 |^rrname^       | `"\x03com\x07example\x00"` | example.com.
 |^rdata length^ | `"\x00\x11"` | ^rdata^ field is 17 octets long
+|===
+
+^Value^:
+
+[options="header"]
+|===
+|^Field^        | ^Data^ | ^Interpretation^
 |^time_first^   | `"\x90\xb9\xe6\xfb\x04"` | 1333370000 (Mon Apr  2 12:33:20 2012)
 |^time_last^    | `"\xa0\x87\xe7\xfb\x04"` | 1333380000 (Mon Apr  2 15:20:00 2012)
 |^count^        | `"\x17"` | 23
@@ -309,6 +376,8 @@ The following entries will be generated:
 
 ==== example.com entry #4 (ENTRY_TYPE_RDATA) ====
 
+^Key^:
+
 [options="header"]
 |===
 |^Field^        | ^Data^ | ^Interpretation^
@@ -317,6 +386,13 @@ The following entries will be generated:
 |^rrtype^       | `"\x02"` | NS
 |^rrname^       | `"\x03com\x07example\x00"` | example.com.
 |^rdata length^ | `"\x00\x11"` | ^rdata^ field is 17 octets long
+|===
+
+^Value^:
+
+[options="header"]
+|===
+|^Field^        | ^Data^ | ^Interpretation^
 |^time_first^   | `"\x90\xb9\xe6\xfb\x04"` | 1333370000 (Mon Apr  2 12:33:20 2012)
 |^time_last^    | `"\xa0\x87\xe7\xfb\x04"` | 1333380000 (Mon Apr  2 15:20:00 2012)
 |^count^        | `"\x17"` | 23
@@ -332,6 +408,8 @@ The following entries will be generated:
 
 ==== example.com entry #5 (ENTRY_TYPE_RDATA_NAME_REV) ====
 
+^Key^:
+
 [options="header"]
 |===
 |^Field^        | ^Data^ | ^Interpretation^
@@ -339,11 +417,25 @@ The following entries will be generated:
 |^rdata name^   | `"\x03com\x07example\x03ns1\x00"` | ns1.example.com.
 |===
 
+^Value^:
+
+[options="header"]
+|===
+|^Field^        | ^Data^ | ^Interpretation^
+|^rrtype union^ | `"\x02"` | NS
+|===
+
 ^Final key^:
 
 `"\x03\x03com\x07example\x03ns1\x00"`
 
+^Final value^:
+
+`"\x02"`
+
 ==== example.com entry #6 (ENTRY_TYPE_RDATA_NAME_REV) ====
+
+^Key^:
 
 [options="header"]
 |===
@@ -352,9 +444,21 @@ The following entries will be generated:
 |^rdata name^   | `"\x03com\x07example\x03ns2\x00"` | ns2.example.com.
 |===
 
+^Value^:
+
+[options="header"]
+|===
+|^Field^        | ^Data^ | ^Interpretation^
+|^rrtype union^ | `"\x02"` | NS
+|===
+
 ^Final key^:
 
 `"\x03\x03com\x07example\x03ns2\x00"`
+
+^Final value^:
+
+`"\x02"`
 
 === Example 2: www.isc.org./A ===
 
@@ -376,6 +480,8 @@ The following entries will be generated:
 
 ==== www.isc.org entry #1 (ENTRY_TYPE_RRSET) ====
 
+^Key^:
+
 [options="header"]
 |===
 |^Field^        | ^Data^ | ^Interpretation^
@@ -384,6 +490,13 @@ The following entries will be generated:
 |^rrtype^       | `"\x01"` | A
 |^bailiwick^    | `"\x03org\x03isc\x00"` | isc.org.
 |^rdata^        | `"\x04" "\x95\x14\x40\x2a"` | 149.20.64.42
+|===
+
+^Value^:
+
+[options="header"]
+|===
+|^Field^        | ^Data^ | ^Interpretation^
 |^time_first^   | `"\x90\xb9\xe6\xfb\x04"` | 1333370000 (Mon Apr  2 12:33:20 2012)
 |^time_last^    | `"\xa0\x87\xe7\xfb\x04"` | 1333380000 (Mon Apr  2 15:20:00 2012)
 |^count^        | `"\x01"` | 1
@@ -399,6 +512,8 @@ The following entries will be generated:
 
 ==== www.isc.org entry #2 (ENTRY_TYPE_RRSET_NAME_FWD) ====
 
+^Key^:
+
 [options="header"]
 |===
 |^Field^        | ^Data^ | ^Interpretation^
@@ -406,11 +521,25 @@ The following entries will be generated:
 |^rrname^       | `"\x03www\x03isc\x03org\x00"` | www.isc.org.
 |===
 
+^Value^:
+
+[options="header"]
+|===
+|^Field^        | ^Data^ | ^Interpretation^
+|^rrtype union^ | `"\x01"` | A
+|===
+
 ^Final key^:
 
 `"\x01\x03www\x03isc\x03org\x00"`
 
+^Final value^:
+
+`"\x01"`
+
 ==== www.isc.org entry #3 (ENTRY_TYPE_RDATA) ====
+
+^Key^:
 
 [options="header"]
 |===
@@ -420,6 +549,13 @@ The following entries will be generated:
 |^rrtype^       | `"\x01"` | A
 |^rrname^       | `"\x03org\x03isc\x03www\x00"` | www.isc.org.
 |^rdata length^ | `"\x00\x04"` | ^rdata^ field is 4 octets long
+|===
+
+^Value^:
+
+[options="header"]
+|===
+|^Field^        | ^Data^ | ^Interpretation^
 |^time_first^   | `"\x90\xb9\xe6\xfb\x04"` | 1333370000 (Mon Apr  2 12:33:20 2012)
 |^time_last^    | `"\xa0\x87\xe7\xfb\x04"` | 1333380000 (Mon Apr  2 15:20:00 2012)
 |^count^        | `"\x01"` | 1

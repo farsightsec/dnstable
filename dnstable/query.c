@@ -733,6 +733,7 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 	return (dnstable_res_failure);
 }
 
+/* this assumes it is called on an entry type with possible new rrtype indexes */
 static dnstable_res
 query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t type_byte)
 {
@@ -758,14 +759,21 @@ query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t t
 		}
 
 		if (it->m_iter == NULL) {
+			uint16_t wanted_rrtype = it->query->rrtype;
+
 			if (mtbl_iter_next(it->m_iter2,
 					   &key, &len_key,
 					   &val, &len_val) != mtbl_res_success)
 			{
 				return (dnstable_res_failure);
 			}
+
+			/* use the new rrtype indexes */
+			if (it->query->do_rrtype && !rrtype_test(type_byte, wanted_rrtype, val, len_val))
+				continue;
+
 			ubuf_clip(it->key, 0);
-			ubuf_reserve(it->key, len_key + mtbl_varint_length(it->query->rrtype));
+			ubuf_reserve(it->key, len_key + mtbl_varint_length(wanted_rrtype));
 			ubuf_add(it->key, type_byte);
 			if (wdns_reverse_name(key + 1, len_key - 1, ubuf_ptr(it->key))
 			    != wdns_res_success)
@@ -773,16 +781,16 @@ query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t t
 			ubuf_advance(it->key, len_key - 1);
 			if (it->query->do_rrtype &&
 				(type_byte == ENTRY_TYPE_RRSET))
-				add_rrtype_to_key(it->key, it->query->rrtype);
+				add_rrtype_to_key(it->key, wanted_rrtype);
 			else if (it->query->do_rrtype) {
-				switch(it->query->rrtype) {
+				switch(wanted_rrtype) {
 				case WDNS_TYPE_NS:
 				case WDNS_TYPE_CNAME:
 				case WDNS_TYPE_DNAME:
 				case WDNS_TYPE_PTR:
 				case WDNS_TYPE_MX:
 				case WDNS_TYPE_SRV:
-					add_rrtype_to_key(it->key, it->query->rrtype);
+					add_rrtype_to_key(it->key, wanted_rrtype);
 				}
 			}
 			it->m_iter = mtbl_source_get_prefix(it->source,
