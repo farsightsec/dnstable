@@ -583,6 +583,8 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 		dnstable_res res;
 		const uint8_t *key, *val;
 		size_t len_key, len_val;
+		uint16_t rrtype;
+		int ret;
 
 		if (it->query->do_timeout) {
 			struct timespec now;
@@ -591,129 +593,252 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 				return (dnstable_res_timeout);
 		}
 
-		if (mtbl_iter_next(it->m_iter, &key, &len_key, &val, &len_val) != mtbl_res_success)
+		if (mtbl_iter_next(it->m_iter, &key, &len_key, &val, &len_val)
+			!= mtbl_res_success) {
 			return (dnstable_res_failure);
+		}
 
 		*ent = dnstable_entry_decode(key, len_key, val, len_val);
 		if (*ent ==  NULL)
 			continue;
 
-		/*
-		 * it->key2 != NULL implies an IP prefix/range search, for which
-		 * we can perform a special optimization to skip past irrelevant
-		 * entries.
-		 */
-		if (it->query->do_rrtype && it->key2 != NULL) {
-			/* Get the rrtype of the decoded entry. */
-			uint16_t rrtype;
-			res = dnstable_entry_get_rrtype(*ent, &rrtype);
-			if (res != dnstable_res_success) {
-				dnstable_entry_destroy(ent);
-				return (res);
-			}
+		/* Get the rrtype of the decoded entry. */
 
-			if (rrtype != it->query->rrtype) {
-				/*
-				 * Destroy the current entry. It will not be
-				 * processed since it's the wrong rrtype.
-				 */
-				dnstable_entry_destroy(ent);
-
-				/*
-				 * Create a new start key with the prefix of the
-				 * current entry's key, plus the target rrtype.
-				 * This ends up being an IP address derived from
-				 * the first 4 or 16 bytes of the current key's
-				 * rdata, sandwiched between the entry type byte
-				 * and the rrtype.
-				 *
-				 * This is helpful when the query rrtype is AAAA
-				 * (28), which comes numerically after many
-				 * common rrtypes.
-				 */
-				ubuf *new_key = ubuf_init(ubuf_size(it->key));
-				size_t rrtype_len = mtbl_varint_length(it->query->rrtype);
-				size_t key_prefix_len = ubuf_size(it->key) - rrtype_len;
-				if (key_prefix_len <= len_key) {
-					ubuf_append(new_key, key, key_prefix_len);
-				} else {
-					/* Zero fill short keys. */
-					ubuf_reserve(new_key, key_prefix_len);
-					ubuf_append(new_key, key, len_key);
-					ubuf_advance(new_key, key_prefix_len - len_key);
-					memset(ubuf_data(new_key) + len_key, 0,
-					       key_prefix_len - len_key);
-				}
-				add_rrtype_to_key(new_key, it->query->rrtype);
-
-				/*
-				 * Check if the key that we just generated sorts
-				 * prior to the current entry's key. If so, it's
-				 * OK to skip ahead to the next IP address,
-				 * because we must have *already* consumed any
-				 * entries between the key we just generated up
-				 * to the current entry's key.
-				 *
-				 * This check is very likely to succeed for IPv4
-				 * addresses, since rrtype A (1) is the lowest
-				 * rrtype value in use, but less likely to
-				 * succeed for IPv6 addresses since rrtype AAAA
-				 * (28) sorts after many common rrtypes.
-				 */
-				if (bytes_compare(ubuf_data(new_key), ubuf_size(new_key),
-						  key, len_key) <= 0)
-				{
-					/*
-					 * Increment the IP address in the
-					 * middle of our key by one. This
-					 * correctly handles octet overflow,
-					 * e.g. 10.0.255.255 -> 10.1.0.0.
-					 *
-					 * This potentially eliminates a large
-					 * number of irrelevant entries, which
-					 * we would otherwise have to retrieve
-					 * and filter out.
-					 */
-					res = increment_key(new_key, key_prefix_len - 1);
-
-					/*
-					 * If increment_key() failed, then we
-					 * were already at the all-ones A/AAAA
-					 * address. Entries up to and including
-					 * that address have already been
-					 * consumed, so stop iterating now.
-					 */
-					if (res != dnstable_res_success) {
-						ubuf_destroy(&new_key);
-						mtbl_iter_destroy(&it->m_iter);
-						return (dnstable_res_failure);
-					}
-				}
-
-				/*
-				 * Safety check: we should have generated a key
-				 * containing embedded data exactly as long as
-				 * an IP address, and thus the key should be
-				 * exactly as long as the original search key.
-				 */
-				assert(ubuf_size(new_key) == ubuf_size(it->key));
-
-				/*
-				 * Seek to the newly generated key.
-				 */
-				if (mtbl_iter_seek(it->m_iter, ubuf_data(new_key), ubuf_size(new_key)) != mtbl_res_success) {
-					ubuf_destroy(&new_key);
-					return (dnstable_res_failure);
-				}
-				ubuf_destroy(&new_key);
-
-				/*
-				 * Restart processing starting from the new key.
-				 */
-				continue;
-			}
+		res = dnstable_entry_get_rrtype(*ent, &rrtype);
+		if (res != dnstable_res_success) {
+			dnstable_entry_destroy(ent);
+			return (res);
 		}
 
+		if (rrtype == it->query->rrtype) {
+			goto filter;
+		}
+
+		/*
+		 * Destroy the current entry. It will not be
+		 * processed since it's the wrong rrtype.
+		 */
+		dnstable_entry_destroy(ent);
+
+		/*
+		 * Create a new start key with the prefix of the
+		 * current entry's key, plus the target rrtype.
+		 * This ends up being an IP address derived from
+		 * the first 4 or 16 bytes of the current key's
+		 * rdata, sandwiched between the entry type byte
+		 * and the rrtype.
+		 *
+		 * This is helpful when the query rrtype is AAAA
+		 * (28), which comes numerically after many
+		 * common rrtypes.
+		 */
+		ubuf *new_key = ubuf_init(ubuf_size(it->key));
+		size_t rrtype_len = mtbl_varint_length(it->query->rrtype);
+		size_t key_prefix_len = ubuf_size(it->key) - rrtype_len;
+
+		if (len_key < key_prefix_len) {
+			/*
+			 * If the current key is shorter than a complete
+			 * address rdata prefix, fill the remaining address
+			 * bytes with zero and append the rrtype. Any
+			 * subsequent address rdata entry will sort after
+			 * this zero-extended address, so we have a usable
+			 * start key.
+			 */
+			ubuf_reserve(new_key, key_prefix_len);
+			ubuf_append(new_key, key, len_key);
+			ubuf_advance(new_key, key_prefix_len - len_key);
+			memset(ubuf_data(new_key) + len_key, 0,
+			       key_prefix_len - len_key);
+			add_rrtype_to_key(new_key, it->query->rrtype);
+
+			goto seek;
+		}
+
+		ubuf_append(new_key, key, key_prefix_len);
+		add_rrtype_to_key(new_key, it->query->rrtype);
+
+		ret = bytes_compare(ubuf_data(new_key), ubuf_size(new_key),
+					key, ubuf_size(new_key));
+		if (ret < 0) {
+			/*
+			 * If the start key sorts before the current key, the
+			 * key bytes corresponding to the rrtype sort after the
+			 * desired rrtype, meaning that we can move on to the
+			 * next IP address.
+			 *
+			 * Increment the IP address portion of our key by one.
+			 * The increment_key function will carry uint8_t
+			 * overflows to the previous byte. For example,
+			 * 10.1.255.255 will increment to 10.2.0.0.
+			 */
+			goto increment;
+		} else if (ret > 0) {
+			/*
+			 * If the start key sorts after the current key, we
+			 * can use it immediately.
+			 */
+			goto seek;
+		}
+
+		/* Now, for the fun part. */
+
+		/*
+		 * The current key has sufficient length for an address,
+		 * and the bytes corresponding to the rrtype match the
+		 * desired rrtype, but it is not a record of the desired
+		 * rrtype.
+		 *
+		 * Records of the desired rrtype for the corresponding
+		 * address may exist. These will have a prefix of our
+		 * current start key, followed by a sequence of domain
+		 * name labels ending with an empty label.
+		 *
+		 * We copy further bytes from the current key to extend
+		 * our start key with a series of DNS labels which will
+		 * sort at or before any valid address rdata entry which
+		 * sorts after the current key.
+		 */
+
+		if (len_key == ubuf_size(new_key)) {
+			/*
+			 * We have no more data to copy from key.
+			 * Zero-extend our start key and proceed.
+			 */
+			ubuf_reserve(new_key, len_key + 1);
+			ubuf_add(new_key, 0);
+
+			goto seek;
+		}
+
+		for (;;) {
+			uint8_t llen = key[ubuf_size(new_key)];
+			uint16_t rdlen;
+
+			if (llen > 63) {
+				/*
+				 * We have found an invalid label length,
+				 * and thus are no longer following a
+				 * sequence of labels. If we arrived here
+				 * via a previous label length, the next
+				 * possible hostname  must end with a longer
+				 * label. Chop off the last label and increment
+				 * the previous label length.
+				 *
+				 * If this is the first byte post-rrtype,
+				 * key_prefix_len will point to the end of the
+				 * address within the key, and we will increment
+				 * to the next address. If we have copied a
+				 * label to the start key, key_prefix_len will
+				 * point to that label length.
+				 */
+
+				ubuf_clip(new_key, key_prefix_len);
+				goto increment;
+			}
+
+
+			if (llen == 0) {
+				/*
+				 * We have found a sequence of bytes
+				 * satisfying the syntax of a series of DNS
+				 * labels with llen being the terminating empty
+				 * label. Append this label and the rdata length
+				 * to form a complete rdata address entry.
+				 */
+				ubuf_reserve(new_key, ubuf_size(new_key) +
+							1 + sizeof(rdlen));
+				ubuf_add(new_key, llen);
+				switch (it->query->rrtype) {
+				case WDNS_TYPE_A:
+					rdlen = htole16(4);
+					break;
+				case WDNS_TYPE_AAAA:
+					rdlen = htole16(16);
+					break;
+				default:
+					assert(0);
+				}
+				ubuf_append(new_key, (const uint8_t *)&rdlen,
+							sizeof(rdlen));
+
+				/*
+				 * If this candidate rdata address entry sorts
+				 * after our current key, we can seek forward
+				 * to it.
+				 */
+				if (bytes_compare(ubuf_data(new_key),
+						  ubuf_size(new_key),
+							key, len_key) > 0) {
+					goto seek;
+				}
+
+				/*
+				 * Otherwise, we have established that there
+				 * are no address rdata entries with the same
+				 * address and hostname as our entry, as such
+				 * an entry would sort before the current key.
+				 * We clip off the rdata length and increment
+				 * the final empty label to search for any
+				 * rdata entries with the current address but
+				 * later-sorting hostnames.
+				 */
+				ubuf_clip(new_key, ubuf_size(new_key)
+							- sizeof(rdlen));
+				key_prefix_len = ubuf_size(new_key);
+				goto increment;
+			}
+
+			if (llen + 1 + ubuf_size(new_key) > len_key) {
+				ubuf_reserve(new_key, len_key + 1);
+				ubuf_append(new_key, &key[ubuf_size(new_key)],
+						len_key - ubuf_size(new_key));
+				ubuf_add(new_key, 0);
+
+				goto seek;
+			}
+
+			ubuf_reserve(new_key, llen + 1 + ubuf_size(new_key));
+			ubuf_add(new_key, llen);
+			key_prefix_len = ubuf_size(new_key);
+			ubuf_append(new_key, &key[ubuf_size(new_key)], llen);
+		}
+
+increment:
+		res = increment_key(new_key, key_prefix_len - 1);
+
+		/*
+		 * Because the first byte of new_key will be ENTRY_TYPE_RDATA
+		 * (0x03), increment_key will succeed, but if we increment
+		 * an entry prefix corresponding to an all-ones IP, it may
+		 * overflow into the type byte, in which case we have finished
+		 * iteration.
+		 */
+		assert(res == dnstable_res_success);
+		if (ubuf_value(new_key, 0) != ENTRY_TYPE_RDATA) {
+			ubuf_destroy(&new_key);
+			mtbl_iter_destroy(&it->m_iter);
+			return (dnstable_res_failure);
+		}
+
+seek:
+		/*
+		 * Seek to the newly generated key.
+		 */
+		if (mtbl_iter_seek(it->m_iter,
+				   ubuf_data(new_key),
+				   ubuf_size(new_key)) != mtbl_res_success) {
+			ubuf_destroy(&new_key);
+			return (dnstable_res_failure);
+		}
+		ubuf_destroy(&new_key);
+
+		/*
+		 * Restart processing starting from the new key.
+		 */
+		continue;
+
+filter:
 		res = dnstable_query_filter(it->query, *ent, &pass);
 		assert(res == dnstable_res_success);
 		if (pass) {
