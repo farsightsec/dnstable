@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018 by Farsight Security, Inc.
+ * Copyright (c) 2012, 2018, 2021 by Farsight Security, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -199,8 +199,8 @@ main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	if (!g_json && g_add_raw) {
-		fprintf(stderr, "dnstable_lookup: adding raw rdata only supported with -j json output format\n");
+	if (!(g_Json || g_json) && g_add_raw) {
+		fprintf(stderr, "dnstable_lookup: adding raw rdata only supported with a json output format\n");
 		exit(EXIT_FAILURE);
 	}
 	env_fname = getenv("DNSTABLE_FNAME");

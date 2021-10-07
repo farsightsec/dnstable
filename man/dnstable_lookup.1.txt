@@ -46,7 +46,7 @@ can be used to request a specific type's version. ^ETYPE^ may be one of ^rrset^,
 == OPTIONS ==
 
 ^-R^, ^--raw^::
-    When using JSON format for output, add a hex representation of the
+    When using a JSON format for output, add a hex representation of the
     raw rdata and the rrtype.
 
 ^-j^::
