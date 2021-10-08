@@ -42,36 +42,40 @@ test_basic(void)
 	check_return(reader != NULL);
 
 	// test dnstable_entry_type_to_string() for unknown entry type
-        check_return(dnstable_entry_type_to_string((dnstable_entry_type)999) == NULL);
+	check_return(dnstable_entry_type_to_string((dnstable_entry_type)999) == NULL);
 
-        // test dnstable_entry_type_from_string() for entry type not found
-        {
-                dnstable_entry_type et;
-                check_return(dnstable_entry_type_from_string(&et, "BAD") == dnstable_res_failure);
-        }
+	// test dnstable_entry_type_to_string() for more entry types
+	check_return(dnstable_entry_type_to_string((dnstable_entry_type)DNSTABLE_ENTRY_TYPE_TIME_RANGE) != NULL);
+	check_return(dnstable_entry_type_to_string((dnstable_entry_type)DNSTABLE_ENTRY_TYPE_VERSION) != NULL);
+
+	// test dnstable_entry_type_from_string() for entry type not found
+	{
+		dnstable_entry_type et;
+		check_return(dnstable_entry_type_from_string(&et, "BAD") == dnstable_res_failure);
+	}
 
 	for (n = 0; n < 5; n++) {
 		struct dnstable_entry *entry;
 
 		switch(n) {
-			case 0:
-				iter = dnstable_reader_iter(reader);
-				break;
-			case 1:
-				iter = dnstable_reader_iter_rrset(reader);
-				break;
-			case 2:
-				iter = dnstable_reader_iter_rrset_names(reader);
-				break;
-			case 3:
-				iter = dnstable_reader_iter_rdata(reader);
-				break;
-			case 4:
-				iter = dnstable_reader_iter_rdata_names(reader);
-				break;
-			default:
-				iter = dnstable_reader_iter(reader);
-				break;
+		case 0:
+			iter = dnstable_reader_iter(reader);
+			break;
+		case 1:
+			iter = dnstable_reader_iter_rrset(reader);
+			break;
+		case 2:
+			iter = dnstable_reader_iter_rrset_names(reader);
+			break;
+		case 3:
+			iter = dnstable_reader_iter_rdata(reader);
+			break;
+		case 4:
+			iter = dnstable_reader_iter_rdata_names(reader);
+			break;
+		default:
+			iter = dnstable_reader_iter(reader);
+			break;
 		}
 
 		check_return(iter != NULL);
@@ -79,7 +83,7 @@ test_basic(void)
 		res = dnstable_iter_next(iter, &entry);
 		check_return(res == dnstable_res_success);
 
-                dnstable_entry_type et = dnstable_entry_get_type(entry);
+		dnstable_entry_type et = dnstable_entry_get_type(entry);
 
 		if (n <= 1) {
 			check_return(et == DNSTABLE_ENTRY_TYPE_RRSET);
@@ -91,9 +95,9 @@ test_basic(void)
 			check_return(et == DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV);
 		}
 
-                const uint8_t *owner, *bailiwick;
-                size_t lowner, lbailiwick;
-                uint16_t rrtype;
+		const uint8_t *owner, *bailiwick;
+		size_t lowner, lbailiwick;
+		uint16_t rrtype;
 		res = dnstable_entry_get_rrname(entry, &owner, &lowner);
 
 		if (n < 4) {
@@ -121,9 +125,9 @@ test_basic(void)
 			check_return(res != dnstable_res_success);
 		}
 
-	const uint8_t *rdata;
-	uint64_t time_first, time_last, count;
-	size_t nrdata, lrdata;
+		const uint8_t *rdata;
+		uint64_t time_first, time_last, count;
+		size_t nrdata, lrdata;
 		res = dnstable_entry_get_num_rdata(entry, &nrdata);
 		res2 = dnstable_entry_get_rdata(entry, 0, &rdata, &lrdata);
 		res3 = dnstable_entry_get_time_first(entry, &time_first);
@@ -148,13 +152,36 @@ test_basic(void)
 //count
 		}
 
-	char *e_text, *e_json;
+		char *e_text, *e_json;
 
 		e_text = dnstable_entry_to_text(entry);
 		check_return(e_text != NULL);
 		free(e_text);
+
 		e_json = dnstable_entry_to_json(entry);
 		check_return(e_json != NULL);
+		free(e_json);
+
+		struct dnstable_formatter *fmt = dnstable_formatter_init();
+		dnstable_formatter_set_date_format(fmt, dnstable_date_format_rfc3339);
+		e_text = dnstable_entry_format(fmt, entry);
+		check_return(e_text != NULL);
+		free(e_text);
+
+		dnstable_formatter_set_output_format(fmt, dnstable_output_format_text);
+		e_text = dnstable_entry_format(fmt, entry);
+		check_return(e_text != NULL);
+		free(e_text);
+
+		dnstable_formatter_set_output_format(fmt, dnstable_output_format_json);
+		dnstable_formatter_set_rdata_array(fmt, true);
+		e_json = dnstable_entry_format(fmt, entry);
+		check_return(e_text != NULL);
+		free(e_json);
+
+		dnstable_formatter_set_raw_rdata(fmt, true);
+		e_json = dnstable_entry_format(fmt, entry);
+		check_return(e_text != NULL);
 		free(e_json);
 
 		dnstable_entry_destroy(&entry);

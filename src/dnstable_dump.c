@@ -162,9 +162,9 @@ main(int argc, char **argv)
 	argv_process(args, argc, argv);
 
 	if (g_add_raw) {
-		if (!g_rdata) {
+		if (!(g_rdata || g_rrset)) {
 			fprintf(stderr,
-				"dnstable_dump: adding raw rdata only supported with --rdata_full output format\n");
+				"dnstable_dump: adding raw rdata only supported with --r or -d output formats\n");
 			exit(EXIT_FAILURE);
 		} else if (!g_json) {
 			fprintf(stderr, "dnstable_dump: adding raw rdata only supported with json output format\n");

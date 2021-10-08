@@ -493,6 +493,15 @@ test_dump -j --rdata_full $TESTFILE << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"A","rdata":"198.51.100.4"}
 EOF
 
+test_dump -j -R -r $TESTFILE << EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"NS","bailiwick":"example.com.","rdata":["ns1.example.com.","ns2.example.com."],"rdata_raw":["036e7331076578616d706c6503636f6d0002","036e7332076578616d706c6503636f6d0002"]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"SOA","bailiwick":"example.com.","rdata":["hidden-master.example.com. hostmaster.example.com. 2018032701 30 30 86400 300"],"rdata_raw":["0d68696464656e2d6d6173746572076578616d706c6503636f6d000a686f73746d6173746572076578616d706c6503636f6d007848bc3d0000001e0000001e000151800000012c06"]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","bailiwick":"example.com.","rdata":["10 mail.example.com.","20 mail2.example.com."],"rdata_raw":["000a046d61696c076578616d706c6503636f6d000f","0014056d61696c32076578616d706c6503636f6d000f"]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"A","bailiwick":"example.com.","rdata":["198.51.100.3","198.51.100.4"],"rdata_raw":["c633640301","c633640401"]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"AAAA","bailiwick":"example.com.","rdata":["2001:db8::1","2001:db8::2"],"rdata_raw":["20010db80000000000000000000000011c","20010db80000000000000000000000021c"]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"_ldap._tcp.example.com.","rrtype":"SRV","bailiwick":"example.com.","rdata":["10 1 389 ldap.example.com."],"rdata_raw":["000a00010185046c646170076578616d706c6503636f6d0021"]}
+EOF
+
 test_dump -j -R --rdata_full $TESTFILE << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"_ldap._tcp.example.com.","rrtype":"SRV","rdata":"10 1 389 ldap.example.com.","rdata_raw":"000a00010185046c646170076578616d706c6503636f6d00"}
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"10 mail.example.com.","rdata_raw":"000a046d61696c076578616d706c6503636f6d00"}
