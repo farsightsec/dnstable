@@ -84,7 +84,7 @@ if test "$lcov" != "no"; then
 		AC_MSG_ERROR([genhtml not found, needed for lcov])
 	fi
 	CFLAGS="$CFLAGS --coverage"
-	LIBS=" $LIBS -lgcov"
+	AC_CHECK_LIB(gcov, gcov_exit, [ LIBS="$LIBS -lgcov" ])
 	AC_SUBST(CPPFLAGS)
 	AC_SUBST(LIBS)
 	AC_SUBST(LCOV)
