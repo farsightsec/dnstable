@@ -242,6 +242,42 @@ test_lookup fails -R time_range
 test_lookup fails -R rrset www.example.com A
 test_lookup fails rdata ip ThisIsNotAnIP
 
+# query_iter_next_ip tests
+test_lookup matches -j rdata ip 192.168.1.0/24 <<EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"a.next_ip.dom.","rrtype":"A","rdata":"192.168.1.1"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"a.next_ip.","rrtype":"A","rdata":"192.168.1.1"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"b.next_ip.dom.","rrtype":"A","rdata":"192.168.1.2"}
+EOF
+
+test_lookup matches -j rdata ip 192.168.1.1 <<EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"a.next_ip.dom.","rrtype":"A","rdata":"192.168.1.1"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"a.next_ip.","rrtype":"A","rdata":"192.168.1.1"}
+EOF
+
+test_lookup matches -j rdata ip 192.168.1.2 <<EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"b.next_ip.dom.","rrtype":"A","rdata":"192.168.1.2"}
+EOF
+
+# query for IPv6 prefix to exercise short skip case.
+test_lookup matches -j rdata ip c0a8:0100::/24 <<EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"aaaa-0.next_ip.dom.","rrtype":"AAAA","rdata":"c0a8:101::"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"aaaa-2.next_ip.dom.","rrtype":"AAAA","rdata":"c0a8:101:100::"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"aaaa-3.next_ip.dom.","rrtype":"AAAA","rdata":"c0a8:101:100:400::"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"aaaa-4.next_ip.dom.","rrtype":"AAAA","rdata":"c0a8:101:103:636f:6d00::"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"aaaa-5.next_ip.dom.","rrtype":"AAAA","rdata":"c0a8:101:103:646f:6d00::"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"aaaa-6.next_ip.dom.","rrtype":"AAAA","rdata":"c0a8:101:103:646f:6d20::"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"aaaa-7.next_ip.dom.","rrtype":"AAAA","rdata":"c0a8:101:103:646f:6d80::"}
+EOF
+
+# all-ones address query, both prefix and point form.
+test_lookup matches -j rdata ip 255.255.255.255 <<EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"c.next_ip.dom.","rrtype":"A","rdata":"255.255.255.255"}
+EOF
+
+test_lookup matches -j rdata ip 255.255.255.255/32 <<EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"c.next_ip.dom.","rrtype":"A","rdata":"255.255.255.255"}
+EOF
+
 #####################
 
 # tests using set file pointing to mtbl files
