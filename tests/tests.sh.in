@@ -23,7 +23,7 @@ test_encode_bitmap() {
 	local line result expected
 	result="$(@abs_top_builddir@/tests/test-bitmaps -e "$*")"
 	if [ $? -ne 0 ]; then
-		echo FAIL: $*
+		echo test:bitmaps FAIL: $*
 		code=1
 		return
 	fi
@@ -33,9 +33,9 @@ test_encode_bitmap() {
 	done
 
 	if [ "$result" = "$expected" ]; then
-		echo PASS: $*
+		echo test:bitmaps PASS: $*
 	else
-		echo FAIL: $*
+		echo test:bitmaps FAIL: $*
 		code=1
 	fi
 }
@@ -45,7 +45,7 @@ test_decode_bitmap() {
 	local line result expected
 	result="$(@abs_top_builddir@/tests/test-bitmaps -d $*)"
 	if [ $? -ne 0 ]; then
-		echo FAIL: $*
+		echo test:bitmaps FAIL: $*
 		code=1
 		return
 	fi
@@ -55,9 +55,9 @@ test_decode_bitmap() {
 	done
 
 	if [ "$result" = "$expected" ]; then
-		echo PASS: $*
+		echo test:bitmaps PASS: $*
 	else
-		echo FAIL: $*
+		echo test:bitmaps FAIL: $*
 		code=1
 	fi
 }
@@ -65,10 +65,11 @@ test_decode_bitmap() {
 test_decode_bitmap_fail() {
 	local line result expected
 	result="$(@abs_top_builddir@/tests/test-bitmaps -d $*)"
-	if [ $? -eq 0 ]; then
-		echo FAIL: $*
+	if [ $? -ne 0 ]; then
+		echo test_fails:bitmaps PASS: $*
+	else
+		echo test_fails:bitmaps FAIL: $*
 		code=1
-		return
 	fi
 }
 
@@ -108,7 +109,7 @@ test_lookup() {
 	local line result expected
 	result="$($DNSTQ $*)"
 	if [ $? -ne 0 ]; then
-		echo FAIL: $*
+		echo test:lookup FAIL: $*
 		code=1
 		return
 	fi
@@ -118,9 +119,9 @@ test_lookup() {
 	done
 
 	if [ "$result" = "$expected" ]; then
-		echo PASS: $*
+		echo test:lookup PASS: $*
 	else
-		echo FAIL: $*
+		echo test:lookup FAIL: $*
 		code=1
 	fi
 }
@@ -128,9 +129,9 @@ test_lookup() {
 test_lookup_fails() {
 	$DNSTQ $* 2>/dev/null 1>/dev/null
 	if [ $? -ne 0 ]; then
-		echo PASS: $*
+		echo test_fails:lookup PASS: $*
 	else
-		echo FAIL: $*
+		echo test_fails:lookup FAIL: $*
 		code=1
 	fi
 }
@@ -357,5 +358,277 @@ EOF
 
 test_lookup -j time_range << EOF
 EOF
+
+######################################################################
+
+DUMP=@abs_top_builddir@/src/dnstable_dump
+export TESTFILE=@abs_top_srcdir@/tests/test-dns.mtbl
+
+test_dump() {
+	local line result expected
+	result="$($DUMP $*)"
+	if [ $? -ne 0 ]; then
+		echo test:dump FAIL: $*
+		code=1
+		return
+	fi
+
+	while read line; do
+		expected="${expected}${expected:+$NL}${line}"
+	done
+
+	if [ "$result" = "$expected" ]; then
+		echo test:dump PASS: $*
+	else
+		echo test:dump FAIL: $*
+		code=1
+	fi
+}
+
+test_dump_fails() {
+	$DUMP $* 2>/dev/null 1>/dev/null
+	if [ $? -ne 0 ]; then
+		echo test_fails:dump PASS: $*
+	else
+		echo test_fails:dump FAIL: $*
+		code=1
+	fi
+}
+
+test_dump --rrset_full $TESTFILE << EOF
+;;  bailiwick: example.com.
+;;      count: 1
+;; first seen: 2018-03-27 10:43:28 -0000
+;;  last seen: 2018-03-27 10:43:28 -0000
+example.com. IN NS ns1.example.com.
+example.com. IN NS ns2.example.com.
+
+;;  bailiwick: example.com.
+;;      count: 1
+;; first seen: 2018-03-27 10:43:28 -0000
+;;  last seen: 2018-03-27 10:43:28 -0000
+example.com. IN SOA hidden-master.example.com. hostmaster.example.com. 2018032701 30 30 86400 300
+
+;;  bailiwick: example.com.
+;;      count: 1
+;; first seen: 2018-03-27 10:43:28 -0000
+;;  last seen: 2018-03-27 10:43:28 -0000
+example.com. IN MX 10 mail.example.com.
+example.com. IN MX 20 mail2.example.com.
+
+;;  bailiwick: example.com.
+;;      count: 1
+;; first seen: 2018-03-27 10:43:28 -0000
+;;  last seen: 2018-03-27 10:43:28 -0000
+www.example.com. IN A 198.51.100.3
+www.example.com. IN A 198.51.100.4
+
+;;  bailiwick: example.com.
+;;      count: 1
+;; first seen: 2018-03-27 10:43:28 -0000
+;;  last seen: 2018-03-27 10:43:28 -0000
+www.example.com. IN AAAA 2001:db8::1
+www.example.com. IN AAAA 2001:db8::2
+
+;;  bailiwick: example.com.
+;;      count: 1
+;; first seen: 2018-03-27 10:43:28 -0000
+;;  last seen: 2018-03-27 10:43:28 -0000
+_ldap._tcp.example.com. IN SRV 10 1 389 ldap.example.com.
+EOF
+
+test_dump -j --rrset_full $TESTFILE << EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"NS","bailiwick":"example.com.","rdata":["ns1.example.com.","ns2.example.com."]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"SOA","bailiwick":"example.com.","rdata":["hidden-master.example.com. hostmaster.example.com. 2018032701 30 30 86400 300"]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","bailiwick":"example.com.","rdata":["10 mail.example.com.","20 mail2.example.com."]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"A","bailiwick":"example.com.","rdata":["198.51.100.3","198.51.100.4"]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"AAAA","bailiwick":"example.com.","rdata":["2001:db8::1","2001:db8::2"]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"_ldap._tcp.example.com.","rrtype":"SRV","bailiwick":"example.com.","rdata":["10 1 389 ldap.example.com."]}
+EOF
+
+test_dump --rdata_full $TESTFILE << EOF
+_ldap._tcp.example.com. IN SRV 10 1 389 ldap.example.com.
+example.com. IN MX 10 mail.example.com.
+example.com. IN MX 20 mail2.example.com.
+example.com. IN NS ns1.example.com.
+example.com. IN NS ns2.example.com.
+_ldap._tcp.example.com. IN SRV 10 1 389 ldap.example.com.
+example.com. IN MX 10 mail.example.com.
+example.com. IN MX 20 mail2.example.com.
+example.com. IN SOA hidden-master.example.com. hostmaster.example.com. 2018032701 30 30 86400 300
+www.example.com. IN AAAA 2001:db8::1
+www.example.com. IN AAAA 2001:db8::2
+www.example.com. IN A 198.51.100.3
+www.example.com. IN A 198.51.100.4
+EOF
+
+test_dump -j --rdata_full $TESTFILE << EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"_ldap._tcp.example.com.","rrtype":"SRV","rdata":"10 1 389 ldap.example.com."}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"10 mail.example.com."}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"20 mail2.example.com."}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"NS","rdata":"ns1.example.com."}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"NS","rdata":"ns2.example.com."}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"_ldap._tcp.example.com.","rrtype":"SRV","rdata":"10 1 389 ldap.example.com."}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"10 mail.example.com."}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"20 mail2.example.com."}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"SOA","rdata":"hidden-master.example.com. hostmaster.example.com. 2018032701 30 30 86400 300"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"AAAA","rdata":"2001:db8::1"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"AAAA","rdata":"2001:db8::2"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"A","rdata":"198.51.100.3"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"A","rdata":"198.51.100.4"}
+EOF
+
+test_dump -j -R --rdata_full $TESTFILE << EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"_ldap._tcp.example.com.","rrtype":"SRV","rdata":"10 1 389 ldap.example.com.","rdata_raw":"000a00010185046c646170076578616d706c6503636f6d00"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"10 mail.example.com.","rdata_raw":"000a046d61696c076578616d706c6503636f6d00"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"20 mail2.example.com.","rdata_raw":"0014056d61696c32076578616d706c6503636f6d00"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"NS","rdata":"ns1.example.com.","rdata_raw":"036e7331076578616d706c6503636f6d00"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"NS","rdata":"ns2.example.com.","rdata_raw":"036e7332076578616d706c6503636f6d00"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"_ldap._tcp.example.com.","rrtype":"SRV","rdata":"10 1 389 ldap.example.com.","rdata_raw":"000a00010185046c646170076578616d706c6503636f6d00"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"10 mail.example.com.","rdata_raw":"000a046d61696c076578616d706c6503636f6d00"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"20 mail2.example.com.","rdata_raw":"0014056d61696c32076578616d706c6503636f6d00"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"SOA","rdata":"hidden-master.example.com. hostmaster.example.com. 2018032701 30 30 86400 300","rdata_raw":"0d68696464656e2d6d6173746572076578616d706c6503636f6d000a686f73746d6173746572076578616d706c6503636f6d007848bc3d0000001e0000001e000151800000012c"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"AAAA","rdata":"2001:db8::1","rdata_raw":"20010db8000000000000000000000001"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"AAAA","rdata":"2001:db8::2","rdata_raw":"20010db8000000000000000000000002"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"A","rdata":"198.51.100.3","rdata_raw":"c6336403"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"A","rdata":"198.51.100.4","rdata_raw":"c6336404"}
+EOF
+
+test_dump -r $TESTFILE << EOF
+;;  bailiwick: example.com.
+;;      count: 1
+;; first seen: 2018-03-27 10:43:28 -0000
+;;  last seen: 2018-03-27 10:43:28 -0000
+example.com. IN NS ns1.example.com.
+example.com. IN NS ns2.example.com.
+
+;;  bailiwick: example.com.
+;;      count: 1
+;; first seen: 2018-03-27 10:43:28 -0000
+;;  last seen: 2018-03-27 10:43:28 -0000
+example.com. IN SOA hidden-master.example.com. hostmaster.example.com. 2018032701 30 30 86400 300
+
+;;  bailiwick: example.com.
+;;      count: 1
+;; first seen: 2018-03-27 10:43:28 -0000
+;;  last seen: 2018-03-27 10:43:28 -0000
+example.com. IN MX 10 mail.example.com.
+example.com. IN MX 20 mail2.example.com.
+
+;;  bailiwick: example.com.
+;;      count: 1
+;; first seen: 2018-03-27 10:43:28 -0000
+;;  last seen: 2018-03-27 10:43:28 -0000
+www.example.com. IN A 198.51.100.3
+www.example.com. IN A 198.51.100.4
+
+;;  bailiwick: example.com.
+;;      count: 1
+;; first seen: 2018-03-27 10:43:28 -0000
+;;  last seen: 2018-03-27 10:43:28 -0000
+www.example.com. IN AAAA 2001:db8::1
+www.example.com. IN AAAA 2001:db8::2
+
+;;  bailiwick: example.com.
+;;      count: 1
+;; first seen: 2018-03-27 10:43:28 -0000
+;;  last seen: 2018-03-27 10:43:28 -0000
+_ldap._tcp.example.com. IN SRV 10 1 389 ldap.example.com.
+EOF
+
+test_dump -j -r $TESTFILE << EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"NS","bailiwick":"example.com.","rdata":["ns1.example.com.","ns2.example.com."]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"SOA","bailiwick":"example.com.","rdata":["hidden-master.example.com. hostmaster.example.com. 2018032701 30 30 86400 300"]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","bailiwick":"example.com.","rdata":["10 mail.example.com.","20 mail2.example.com."]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"A","bailiwick":"example.com.","rdata":["198.51.100.3","198.51.100.4"]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"AAAA","bailiwick":"example.com.","rdata":["2001:db8::1","2001:db8::2"]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"_ldap._tcp.example.com.","rrtype":"SRV","bailiwick":"example.com.","rdata":["10 1 389 ldap.example.com."]}
+EOF
+
+test_dump -r -j $TESTFILE << EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"NS","bailiwick":"example.com.","rdata":["ns1.example.com.","ns2.example.com."]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"SOA","bailiwick":"example.com.","rdata":["hidden-master.example.com. hostmaster.example.com. 2018032701 30 30 86400 300"]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","bailiwick":"example.com.","rdata":["10 mail.example.com.","20 mail2.example.com."]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"A","bailiwick":"example.com.","rdata":["198.51.100.3","198.51.100.4"]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"AAAA","bailiwick":"example.com.","rdata":["2001:db8::1","2001:db8::2"]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"_ldap._tcp.example.com.","rrtype":"SRV","bailiwick":"example.com.","rdata":["10 1 389 ldap.example.com."]}
+EOF
+
+test_dump_fails -j -R
+
+test_dump_fails -j -R $TESTFILE
+
+test_dump_fails --time_range
+
+test_dump --time_range $TESTFILE << EOF
+;; Earliest time_first: 2018-03-27 10:43:28 -0000
+;; Latest time_last: 2018-03-27 10:43:28 -0000
+EOF
+
+test_dump --time_range -j $TESTFILE << EOF
+{"time_first":1522147408,"time_last":1522147408}
+EOF
+
+test_dump_fails -R --time_range -j $TESTFILE
+
+test_dump_fails --version
+
+test_dump --version $TESTFILE << EOF
+;; Version type rrset: 0
+
+;; Version type rrset_name: 0
+
+;; Version type rdata: 1
+
+;; Version type rdata_name: 1
+EOF
+
+test_dump --version -j $TESTFILE << EOF
+{"entry_type":"rrset","version":0}
+{"entry_type":"rrset_name","version":0}
+{"entry_type":"rdata","version":1}
+{"entry_type":"rdata_name","version":1}
+EOF
+
+test_dump_fails -R --version -j $TESTFILE
+
+test_dump --rrset_names $TESTFILE << EOF
+www.example.com. RRtypes=[]  ;; rrset name fwd
+
+_ldap._tcp.example.com. RRtypes=[]  ;; rrset name fwd
+
+example.com. RRtypes=[]  ;; rrset name fwd
+EOF
+
+test_dump -j --rrset_names $TESTFILE << EOF
+{"rrset_name":"www.example.com.","rrtypes":[]}
+{"rrset_name":"_ldap._tcp.example.com.","rrtypes":[]}
+{"rrset_name":"example.com.","rrtypes":[]}
+EOF
+
+test_dump --rdata_names $TESTFILE << EOF
+ns1.example.com. RRtypes=[]  ;; rdata name rev
+
+ns2.example.com. RRtypes=[]  ;; rdata name rev
+
+ldap.example.com. RRtypes=[]  ;; rdata name rev
+
+mail.example.com. RRtypes=[]  ;; rdata name rev
+
+mail2.example.com. RRtypes=[]  ;; rdata name rev
+
+hidden-master.example.com. RRtypes=[]  ;; rdata name rev
+EOF
+
+test_dump -j --rdata_names $TESTFILE << EOF
+{"rdata_name":"ns1.example.com.","rrtypes":[]}
+{"rdata_name":"ns2.example.com.","rrtypes":[]}
+{"rdata_name":"ldap.example.com.","rrtypes":[]}
+{"rdata_name":"mail.example.com.","rrtypes":[]}
+{"rdata_name":"mail2.example.com.","rrtypes":[]}
+{"rdata_name":"hidden-master.example.com.","rrtypes":[]}
+EOF
+
+test_dump_fails -R -j --rdata_names $TESTFILE
 
 exit $code

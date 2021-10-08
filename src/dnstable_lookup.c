@@ -114,7 +114,7 @@ main(int argc, char **argv)
 	struct dnstable_iter *d_iter;
 	struct dnstable_reader *d_reader;
 	struct dnstable_query *d_query;
-	dnstable_query_type d_qtype;
+	dnstable_query_type d_qtype = 0; /* fix lint warning; will always override */
 	dnstable_res res;
 	int ch;
 
@@ -193,6 +193,20 @@ main(int argc, char **argv)
 	} else {
 		usage();
 	}
+
+        // check for certain options that make no sense with version or time_range commands
+        if (d_qtype == DNSTABLE_QUERY_TYPE_VERSION || d_qtype == DNSTABLE_QUERY_TYPE_TIME_RANGE) {
+                if (g_offset != 0) {
+                        fprintf(stderr,
+                                "dnstable_lookup: Offset option makes no sense with version or time_range commands\n");
+                        exit(EXIT_FAILURE);
+                }
+                if (g_add_raw != 0) {
+                        fprintf(stderr,
+                                "dnstable_lookup: Raw option makes no sense with version or time_range commands\n");
+                        exit(EXIT_FAILURE);
+                }
+        }
 
 	if (g_Json && g_json) {
 		fprintf(stderr, "dnstable_lookup: cannot specify both -j and -J\n");
