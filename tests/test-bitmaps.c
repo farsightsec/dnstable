@@ -82,30 +82,46 @@ static int encode_test(const char *encode_this)
 	size_t len;
 	char buf[10240];
 
-	/*
-	 * The "1 1 0 - 00 %s " is an NSEC3 rdata value, as a string.
-	 * Given encode_this = "A", this will result in
-	 * 01-01-00-00-00-02-00-00-00-01-40
-	 * where the trailing 00-01-40 is the rrtype bitmap.
-	 * so we extract starting from index 8 in the returned value.
-	 * Note: the trailing space is important, otherwise there will be a parse error.
+	/* If no embedded spaces, assume a single rrtype is specified and do not use union encoding.
+	 * Note that single rrtypes are output in little-endian order, but the bitmap encoding uses
+	 * network-bit order, which is big endian.
 	 */
-	assert((unsigned)snprintf(buf, sizeof(buf) - 1, "1 1 0 - 00 %s ", encode_this) < sizeof(buf));
-	w_res = wdns_str_to_rdata(buf, WDNS_TYPE_NSEC3, WDNS_CLASS_IN, (uint8_t **) &encoding, &len);
-	if (w_res == wdns_res_parse_error) {
-		fprintf(stderr, "wdns_str_to_rdata returned a wdns_res_parse_error -- are the RRtypes all valid?\n");
-		return EXIT_FAILURE;
-	} else if (w_res != wdns_res_success) {
-		fprintf(stderr, "wdns_str_to_rdata returned an unknown wdns error %d\n", (int) w_res);
-		return EXIT_FAILURE;
-	}
+	if (strchr(encode_this, ' ') == NULL) {
+		uint16_t rrtype = wdns_str_to_rrtype(encode_this);
+		if (rrtype == 0) {
+			fprintf(stderr, "Unsupported rrtype '%s' to encode\n", encode_this);
+			return EXIT_FAILURE;
+		}
+		if (rrtype > 255)
+			printf("encoding: %02x%02x\n", rrtype & 0xff, (rrtype & 0xff00) >> 8);
+		else
+			printf("encoding: %02x\n", rrtype & 0xff);
+	} else {
+		/*
+		 * The "1 1 0 - 00 %s " is an NSEC3 rdata value, as a string.
+		 * Given encode_this = "A", this will result in
+		 * 01-01-00-00-00-02-00-00-00-01-40
+		 * where the trailing 00-01-40 is the rrtype bitmap.
+		 * so we extract starting from index 8 in the returned value.
+		 * Note: the trailing space is important, otherwise there will be a parse error.
+		 */
+		assert((unsigned)snprintf(buf, sizeof(buf) - 1, "1 1 0 - 00 %s ", encode_this) < sizeof(buf));
+		w_res = wdns_str_to_rdata(buf, WDNS_TYPE_NSEC3, WDNS_CLASS_IN, (uint8_t **) &encoding, &len);
+		if (w_res == wdns_res_parse_error) {
+			fprintf(stderr, "wdns_str_to_rdata returned a wdns_res_parse_error -- are the RRtypes all valid?\n");
+			return EXIT_FAILURE;
+		} else if (w_res != wdns_res_success) {
+			fprintf(stderr, "wdns_str_to_rdata returned an unknown wdns error %d\n", (int) w_res);
+			return EXIT_FAILURE;
+		}
 
-	printf("bitmap: ");
-	for (size_t i = 8; i < len; i++) {
-		printf("%02x", encoding[i]);
+		printf("encoding: ");
+		for (size_t i = 8; i < len; i++) {
+			printf("%02x", encoding[i]);
+		}
+		printf("\n");
+		free(encoding);
 	}
-	printf("\n");
-	free(encoding);
 	return EXIT_SUCCESS;
 }
 

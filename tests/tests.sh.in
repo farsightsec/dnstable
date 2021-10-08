@@ -40,6 +40,16 @@ test_encode_bitmap() {
 	fi
 }
 
+test_encode_bitmap_fail() {
+	local line result expected
+	result="$(@abs_top_builddir@/tests/test-bitmaps -e $*)"
+	if [ $? -ne 0 ]; then
+		echo test_fails:bitmaps PASS: $*
+	else
+		echo test_fails:bitmaps FAIL: $*
+		code=1
+	fi
+}
 
 test_decode_bitmap() {
 	local line result expected
@@ -73,9 +83,8 @@ test_decode_bitmap_fail() {
 	fi
 }
 
-
 test_encode_bitmap 'A SOA' << EOF
-bitmap: 000142
+encoding: 000142
 EOF
 
 test_decode_bitmap 000142 << EOF
@@ -84,12 +93,18 @@ rrtype = 6 = SOA
 EOF
 
 test_encode_bitmap 'A SOA TYPE65534' << EOF
-bitmap: 000142ff200000000000000000000000000000000000000000000000000000000000000002
+encoding: 000142ff200000000000000000000000000000000000000000000000000000000000000002
 EOF
 
 test_encode_bitmap 'TYPE260' << EOF
-bitmap: 010108
+encoding: 0401
 EOF
+
+test_decode_bitmap '0401' << EOF
+rrtype = 260 = (not assigned)
+EOF
+
+test_encode_bitmap_fail 'A,TYPE260'
 
 test_decode_bitmap 000142ff200000000000000000000000000000000000000000000000000000000000000002 << EOF
 rrtype = 1 = A

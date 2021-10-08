@@ -41,6 +41,15 @@ test_basic(void)
 	reader = dnstable_reader_init(mtbl_reader_source(mreader));
 	check_return(reader != NULL);
 
+	// test dnstable_entry_type_to_string() for unknown entry type
+        check_return(dnstable_entry_type_to_string((dnstable_entry_type)999) == NULL);
+
+        // test dnstable_entry_type_from_string() for entry type not found
+        {
+                dnstable_entry_type et;
+                check_return(dnstable_entry_type_from_string(&et, "BAD") == dnstable_res_failure);
+        }
+
 	for (n = 0; n < 5; n++) {
 		struct dnstable_entry *entry;
 
@@ -70,8 +79,7 @@ test_basic(void)
 		res = dnstable_iter_next(iter, &entry);
 		check_return(res == dnstable_res_success);
 
-	dnstable_entry_type et;
-		et = dnstable_entry_get_type(entry);
+                dnstable_entry_type et = dnstable_entry_get_type(entry);
 
 		if (n <= 1) {
 			check_return(et == DNSTABLE_ENTRY_TYPE_RRSET);
@@ -83,9 +91,9 @@ test_basic(void)
 			check_return(et == DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV);
 		}
 
-	const uint8_t *owner, *bailiwick;
-	size_t lowner, lbailiwick;
-	uint16_t rrtype;
+                const uint8_t *owner, *bailiwick;
+                size_t lowner, lbailiwick;
+                uint16_t rrtype;
 		res = dnstable_entry_get_rrname(entry, &owner, &lowner);
 
 		if (n < 4) {
