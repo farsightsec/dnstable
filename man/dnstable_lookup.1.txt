@@ -31,7 +31,7 @@ optionally be specified.
 specified IP address, IP prefix, or IP range.
 
 ^dnstable_lookup rdata raw^ returns Resource Records whose record data matches
-the specified data value, expressed as a hexademical string.
+the specified data value, expressed as a hexadecimal string.
 
 ^dnstable_lookup rdata name^ returns Resource Records whose record data matches
 the specified domain name.
