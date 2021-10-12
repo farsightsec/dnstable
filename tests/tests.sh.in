@@ -546,4 +546,30 @@ EOF
 
 test_dump_fails -R -j --rdata_names $TESTFILE
 
+##################################################
+# Test dnstable_merge with ENTRY_TYPE_TIME_RANGE and ENTRY_TYPE_VERSION entries
+##################################################
+
+MRG=@abs_top_builddir@/src/dnstable_merge
+TEMPOUT=@abs_top_srcdir@/tests/test-out.mtbl
+
+$MRG $TESTFILE $TESTFILE $TEMPOUT
+
+test_dump --time_range -j $TEMPOUT << EOF
+{"time_first":1522147408,"time_last":1522147408}
+EOF
+
+test_dump_leading_match --version -j $TEMPOUT << EOF
+{"entry_type":"rrset","version":0}
+EOF
+
+# this should be the same output as the above test
+#   test_dump_leading_match -j --rrset_full $TESTFILE
+# except the count is doubled.
+test_dump_leading_match -j --rrset_full $TEMPOUT << EOF
+{"count":2,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"NS","bailiwick":"example.com.","rdata":["ns1.example.com.","ns2.example.com."]}
+EOF
+
+rm -f $TEMPOUT
+
 exit $code
