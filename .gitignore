@@ -13,8 +13,8 @@
 /build-aux
 /config.*
 /configure
-/coverage.info
-/coveragereport
+/*.coverage
+/coverage-html
 /libtool
 /stamp-h1
 test-suite.log
