@@ -1,0 +1,175 @@
+#!/bin/sh
+
+convert() {
+	if [ "$1" = "-d" ]; then
+		grep -v '^#' | jq -Mc .
+		return
+	fi
+	grep -v '^#' | jq -Mc . | nmsgtool -j - -w test-dns-$$.nmsg
+	rm test-dns.mtbl
+	dnstable_convert test-dns-$$.nmsg \
+			 test-dns.mtbl \
+			 scratch-dnssec.mtbl
+	rm test-dns-$$.nmsg
+}
+
+convert $* <<EOF
+#
+# Name and number space breakdown for test data. Use
+# this, and keep names (both owner and rdata) and
+# addresses within these ranges and name spaces to
+# avoid breaking existing tests.
+#
+#	dns:	*.example.com   	core tests
+#
+#	ip4:	198.51.100.0/24 	core tests
+#
+#	ip6:	2001:c00::/23   	core tests
+#
+#	SRV,MX pref: 	  10		core tests
+#
+# Data:
+# -----
+#
+# --------------
+# Core test data
+# --------------
+#
+# Simple NS record. Used to test rrset search, rdata
+# name search *.example.com
+#
+{
+  "time": "2021-10-06 21:34:53.214684000",
+  "vname": "SIE",
+  "mname": "dnsdedupe",
+  "message": {
+    "type": "EXPIRATION",
+    "count": 1,
+    "time_first": "2018-03-27 10:43:28",
+    "time_last": "2018-03-27 10:43:28",
+    "bailiwick": "example.com.",
+    "rrname": "example.com.",
+    "rrclass": "IN",
+    "rrtype": "NS",
+    "rdata": [
+      "ns1.example.com.",
+      "ns2.example.com."
+    ]
+  }
+}
+#
+# SOA record with hidden master. hidden-master.example.com
+# does not appear in any other rdata value or as an rrset
+# owner name.
+#
+# Used to test that SOA MNAME names are indexed correctly.
+#
+{
+  "time": "2021-10-06 21:34:53.214782000",
+  "vname": "SIE",
+  "mname": "dnsdedupe",
+  "message": {
+    "type": "EXPIRATION",
+    "count": 1,
+    "time_first": "2018-03-27 10:43:28",
+    "time_last": "2018-03-27 10:43:28",
+    "bailiwick": "example.com.",
+    "rrname": "example.com.",
+    "rrclass": "IN",
+    "rrtype": "SOA",
+    "rdata": [
+      "hidden-master.example.com. hostmaster.example.com. 2018032701 30 30 86400 300"
+    ]
+  }
+}
+#
+# MX records. Used to verify MX target names are indexed.
+#
+{
+  "time": "2021-10-06 21:34:53.214790000",
+  "vname": "SIE",
+  "mname": "dnsdedupe",
+  "message": {
+    "type": "EXPIRATION",
+    "count": 1,
+    "time_first": "2018-03-27 10:43:28",
+    "time_last": "2018-03-27 10:43:28",
+    "bailiwick": "example.com.",
+    "rrname": "example.com.",
+    "rrclass": "IN",
+    "rrtype": "MX",
+    "rdata": [
+      "10 mail.example.com.",
+      "20 mail2.example.com."
+    ]
+  }
+}
+#
+# A records. Used to test rdata address lookups,
+# including prefix and range.
+#
+{
+  "time": "2021-10-06 21:34:53.214798000",
+  "vname": "SIE",
+  "mname": "dnsdedupe",
+  "message": {
+    "type": "EXPIRATION",
+    "count": 1,
+    "time_first": "2018-03-27 10:43:28",
+    "time_last": "2018-03-27 10:43:28",
+    "bailiwick": "example.com.",
+    "rrname": "www.example.com.",
+    "rrclass": "IN",
+    "rrtype": "A",
+    "rdata": [
+      "198.51.100.3",
+      "198.51.100.4"
+    ]
+  }
+}
+#
+# AAAA records. Used to test rdata address lookups,
+# including prefix and range.
+#
+{
+  "time": "2021-10-06 21:34:53.214805000",
+  "vname": "SIE",
+  "mname": "dnsdedupe",
+  "message": {
+    "type": "EXPIRATION",
+    "count": 1,
+    "time_first": "2018-03-27 10:43:28",
+    "time_last": "2018-03-27 10:43:28",
+    "bailiwick": "example.com.",
+    "rrname": "www.example.com.",
+    "rrclass": "IN",
+    "rrtype": "AAAA",
+    "rdata": [
+      "2001:db8::1",
+      "2001:db8::2"
+    ]
+  }
+}
+#
+# SRV record. Used to verify SRV record slicing and
+# rdata name indexing.
+#
+{
+  "time": "2021-10-06 21:34:53.214812000",
+  "vname": "SIE",
+  "mname": "dnsdedupe",
+  "message": {
+    "type": "EXPIRATION",
+    "count": 1,
+    "time_first": "2018-03-27 10:43:28",
+    "time_last": "2018-03-27 10:43:28",
+    "bailiwick": "example.com.",
+    "rrname": "_ldap._tcp.example.com.",
+    "rrclass": "IN",
+    "rrtype": "SRV",
+    "rdata": [
+      "10 1 389 ldap.example.com."
+    ]
+  }
+}
+EOF

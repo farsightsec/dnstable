@@ -1,8 +1,14 @@
 #!/bin/sh
 
+. @abs_top_srcdir@/tests/test.subr
+
 DNSTQ=@abs_top_builddir@/src/dnstable_lookup
+DUMP=@abs_top_builddir@/src/dnstable_dump
+TESTFILE=@abs_top_srcdir@/tests/test-dns.mtbl
+TESTBITMAP=@abs_top_builddir@/tests/test-bitmaps
+
 unset DNSTABLE_SETFILE
-export DNSTABLE_FNAME=@abs_top_srcdir@/tests/test-dns.mtbl
+export DNSTABLE_FNAME=${TESTFILE}
 
 export MTBL_MERGE_DSO="@abs_top_builddir@/dnstable/.libs/libdnstable.so"
 export MTBL_MERGE_FUNC_PREFIX="dnstable_merge"
@@ -23,180 +29,78 @@ NL="
 
 code=0
 
+test_bitmap() {
+	test=$1; shift
+	test_command "test_bitmap" $test $TESTBITMAP "$@"
+}
+
+test_lookup() {
+	test=$1; shift
+	file=${DNSTABLE_SETFILE:-${DNSTABLE_FNAME:-no-file}}
+	test_command "dnstable_lookup ($(basename ${file}))" $test $DNSTQ "$@"
+}
+
+test_dump() {
+	test=$1; shift
+	test_command dnstable_dump $test $DUMP "$@"
+}
+
 ##################################################
 # Bitmap tests
 ##################################################
 
-test_encode_bitmap() {
-	local line result expected
-	result="$(@abs_top_builddir@/tests/test-bitmaps -e "$*")"
-	if [ $? -ne 0 ]; then
-		echo test:bitmaps FAIL: $*
-		code=1
-		return
-	fi
-
-	while read line; do
-		expected="${expected}${expected:+$NL}${line}"
-	done
-
-	if [ "$result" = "$expected" ]; then
-		echo test:bitmaps PASS: $*
-	else
-		echo test:bitmaps FAIL: $*
-		code=1
-	fi
-}
-
-test_encode_bitmap_fail() {
-	local line result expected
-	result="$(@abs_top_builddir@/tests/test-bitmaps -e $*)"
-	if [ $? -ne 0 ]; then
-		echo test_fails:bitmaps PASS: $*
-	else
-		echo test_fails:bitmaps FAIL: $*
-		code=1
-	fi
-}
-
-test_decode_bitmap() {
-	local line result expected
-	result="$(@abs_top_builddir@/tests/test-bitmaps -d $*)"
-	if [ $? -ne 0 ]; then
-		echo test:bitmaps FAIL: $*
-		code=1
-		return
-	fi
-
-	while read line; do
-		expected="${expected}${expected:+$NL}${line}"
-	done
-
-	if [ "$result" = "$expected" ]; then
-		echo test:bitmaps PASS: $*
-	else
-		echo test:bitmaps FAIL: $*
-		code=1
-	fi
-}
-
-test_decode_bitmap_fail() {
-	local line result expected
-	result="$(@abs_top_builddir@/tests/test-bitmaps -d $*)"
-	if [ $? -ne 0 ]; then
-		echo test_fails:bitmaps PASS: $*
-	else
-		echo test_fails:bitmaps FAIL: $*
-		code=1
-	fi
-}
-
-test_encode_bitmap 'A SOA' << EOF
+test_bitmap matches -e 'A SOA' << EOF
 encoding: 000142
 EOF
 
-test_decode_bitmap 000142 << EOF
+test_bitmap matches -d 000142 << EOF
 rrtype = 1 = A
 rrtype = 6 = SOA
 EOF
 
-test_encode_bitmap 'A SOA TYPE65534' << EOF
+test_bitmap matches -e 'A SOA TYPE65534' << EOF
 encoding: 000142ff200000000000000000000000000000000000000000000000000000000000000002
 EOF
 
-test_encode_bitmap 'TYPE260' << EOF
+test_bitmap matches -e 'TYPE260' << EOF
 encoding: 0401
 EOF
 
-test_decode_bitmap '0401' << EOF
+test_bitmap matches -d '0401' << EOF
 rrtype = 260 = (not assigned)
 EOF
 
-test_encode_bitmap_fail 'A,TYPE260'
+test_bitmap fails -e 'A,TYPE260'
 
-test_decode_bitmap 000142ff200000000000000000000000000000000000000000000000000000000000000002 << EOF
+test_bitmap matches -d 000142ff200000000000000000000000000000000000000000000000000000000000000002 << EOF
 rrtype = 1 = A
 rrtype = 6 = SOA
 rrtype = 65534 = (not assigned)
 EOF
 
-test_decode_bitmap_fail ff200000000000000000000000000000000000000000000000000000000000000002000142
+test_bitmap fails -d ff200000000000000000000000000000000000000000000000000000000000000002000142
 
-test_decode_bitmap_fail 00014000
+test_bitmap fails -d 00014000
 
-test_decode_bitmap_fail 0001400000
+test_bitmap fails -d 0001400000
 
-test_decode_bitmap_fail 000140000101
+test_bitmap fails -d 000140000101
 
 ##################################################
 # Lookup tests
 ##################################################
 
-test_lookup() {
-	local line result expected
-	result="$($DNSTQ $*)"
-	if [ $? -ne 0 ]; then
-		echo test:lookup FAIL: $*
-		code=1
-		return
-	fi
-
-	while read line; do
-		expected="${expected}${expected:+$NL}${line}"
-	done
-
-	if [ "$result" = "$expected" ]; then
-		echo test:lookup PASS: $*
-	else
-		echo test:lookup FAIL: $*
-		code=1
-	fi
-}
-
-# Test only the leading text to match
-test_lookup_leading_match() {
-	local line result expected
-	result="$($DNSTQ $*)"
-	if [ $? -ne 0 ]; then
-		echo test:lookup FAIL: $*
-		code=1
-		return
-	fi
-
-        read expected
-        len=`echo "$expected" | wc -c`
-
-        result=`echo "$result" | head -c $len`
-
-	if [ "$result" = "$expected" ]; then
-		echo test:lookup PASS: $*
-	else
-		echo test:lookup FAIL: $*
-		code=1
-	fi
-}
-
-test_lookup_fails() {
-	$DNSTQ $* 2>/dev/null 1>/dev/null
-	if [ $? -ne 0 ]; then
-		echo test_fails:lookup PASS: $*
-	else
-		echo test_fails:lookup FAIL: $*
-		code=1
-	fi
-}
-
-test_lookup -j rrset www.example.com << EOF
+test_lookup matches -j rrset www.example.com << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"A","bailiwick":"example.com.","rdata":["198.51.100.3","198.51.100.4"]}
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"AAAA","bailiwick":"example.com.","rdata":["2001:db8::1","2001:db8::2"]}
 EOF
 
-test_lookup -j rrset www.example.com A << EOF
+test_lookup matches -j rrset www.example.com A << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"A","bailiwick":"example.com.","rdata":["198.51.100.3","198.51.100.4"]}
 EOF
 
 # same test again but with default dig presentation output
-test_lookup rrset www.example.com A << EOF
+test_lookup matches  rrset www.example.com A << EOF
 ;;  bailiwick: example.com.
 ;;      count: 1
 ;; first seen: 2018-03-27 10:43:28 -0000
@@ -206,72 +110,72 @@ www.example.com. IN A 198.51.100.4
 EOF
 
 # test with bailiwick argument too
-test_lookup -j rrset www.example.com A example.com << EOF
+test_lookup matches  -j rrset www.example.com A example.com << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"A","bailiwick":"example.com.","rdata":["198.51.100.3","198.51.100.4"]}
 EOF
 
 # wrong bailiwick has no results
-test_lookup -j rrset www.example.com A example.ORG << EOF
+test_lookup matches  -j rrset www.example.com A example.ORG << EOF
 EOF
 
-test_lookup -j rrset www.example.com AAAA << EOF
+test_lookup matches  -j rrset www.example.com AAAA << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"AAAA","bailiwick":"example.com.","rdata":["2001:db8::1","2001:db8::2"]}
 EOF
 
-test_lookup -j rrset example.com << EOF
+test_lookup matches  -j rrset example.com << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"NS","bailiwick":"example.com.","rdata":["ns1.example.com.","ns2.example.com."]}
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"SOA","bailiwick":"example.com.","rdata":["hidden-master.example.com. hostmaster.example.com. 2018032701 30 30 86400 300"]}
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","bailiwick":"example.com.","rdata":["10 mail.example.com.","20 mail2.example.com."]}
 EOF
 
-test_lookup -j rrset example.com NS << EOF
+test_lookup matches  -j rrset example.com NS << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"NS","bailiwick":"example.com.","rdata":["ns1.example.com.","ns2.example.com."]}
 EOF
 
-test_lookup -j rrset example.com SOA << EOF
+test_lookup matches  -j rrset example.com SOA << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"SOA","bailiwick":"example.com.","rdata":["hidden-master.example.com. hostmaster.example.com. 2018032701 30 30 86400 300"]}
 EOF
 
-test_lookup -j rrset example.com MX << EOF
+test_lookup matches  -j rrset example.com MX << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","bailiwick":"example.com.","rdata":["10 mail.example.com.","20 mail2.example.com."]}
 EOF
 
-test_lookup -j rrset _ldap._tcp.example.com SRV << EOF
+test_lookup matches  -j rrset _ldap._tcp.example.com SRV << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"_ldap._tcp.example.com.","rrtype":"SRV","bailiwick":"example.com.","rdata":["10 1 389 ldap.example.com."]}
 EOF
 
 # offset first five entries, left wildcard rrset lookup
-test_lookup -j -O 5 rrset \*. << EOF
+test_lookup matches  -j -O 5 rrset \*.example.com. << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"_ldap._tcp.example.com.","rrtype":"SRV","bailiwick":"example.com.","rdata":["10 1 389 ldap.example.com."]}
 EOF
 
 # offset first entry, right wildcard rrset lookup
-test_lookup -j -O 1 rrset www.example.\* << EOF
+test_lookup matches  -j -O 1 rrset www.example.\* << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"AAAA","bailiwick":"example.com.","rdata":["2001:db8::1","2001:db8::2"]}
 EOF
 
 # offset 1000 entries should have no result
-test_lookup -j -O 1000 rrset www.example.\* << EOF
+test_lookup matches  -j -O 1000 rrset www.example.\* << EOF
 EOF
 
-test_lookup -j rdata ip 198.51.100.3 << EOF
+test_lookup matches  -j rdata ip 198.51.100.3 << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"A","rdata":"198.51.100.3"}
 EOF
 
-test_lookup -j rdata ip 2001:db8::1 << EOF
+test_lookup matches  -j rdata ip 2001:db8::1 << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"AAAA","rdata":"2001:db8::1"}
 EOF
 
 # offset first entry, rdata ip subnet lookup
-test_lookup -j -O 1 rdata ip 2001:db8::/0 << EOF
+test_lookup matches  -j -O 1 rdata ip 2001:db8::/64 << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"AAAA","rdata":"2001:db8::2"}
 EOF
 
-test_lookup -j rdata name ns1.example.com << EOF
+test_lookup matches  -j rdata name ns1.example.com << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"NS","rdata":"ns1.example.com."}
 EOF
 
-test_lookup -j rdata name \*.example.com << EOF
+test_lookup matches  -j rdata name \*.example.com << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"NS","rdata":"ns1.example.com."}
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"NS","rdata":"ns2.example.com."}
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"_ldap._tcp.example.com.","rrtype":"SRV","rdata":"10 1 389 ldap.example.com."}
@@ -280,45 +184,48 @@ test_lookup -j rdata name \*.example.com << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"SOA","rdata":"hidden-master.example.com. hostmaster.example.com. 2018032701 30 30 86400 300"}
 EOF
 
-test_lookup -j rdata name hidden-master.example.com SOA << EOF
+test_lookup matches  -j rdata name hidden-master.example.com SOA << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"SOA","rdata":"hidden-master.example.com. hostmaster.example.com. 2018032701 30 30 86400 300"}
 EOF
 
-test_lookup -j rdata name \*.example.com SOA << EOF
+test_lookup matches  -j rdata name \*.example.com SOA << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"SOA","rdata":"hidden-master.example.com. hostmaster.example.com. 2018032701 30 30 86400 300"}
 EOF
 
-test_lookup -j rdata name ldap.example.com << EOF
+test_lookup matches  -j rdata name ldap.example.com << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"_ldap._tcp.example.com.","rrtype":"SRV","rdata":"10 1 389 ldap.example.com."}
 EOF
 
-test_lookup -j rdata raw 00 SRV << EOF
+test_lookup matches  -j rdata raw 00 SRV << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"_ldap._tcp.example.com.","rrtype":"SRV","rdata":"10 1 389 ldap.example.com."}
 EOF
 
-test_lookup -j rdata raw 00 MX << EOF
+test_lookup matches  -j rdata raw 00 MX << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"10 mail.example.com."}
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"20 mail2.example.com."}
 EOF
 
-test_lookup -j -O 1 rdata raw 00 MX << EOF
+test_lookup matches  -j -O 1 rdata raw 00 MX << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"20 mail2.example.com."}
 EOF
 
-test_lookup_leading_match -j version << EOF
+test_lookup matches  -j version << EOF
 {"entry_type":"rrset","version":0}
+{"entry_type":"rrset_name","version":1}
+{"entry_type":"rdata","version":1}
+{"entry_type":"rdata_name","version":1}
 EOF
 
-test_lookup -j version rdata << EOF
+test_lookup matches  -j version rdata << EOF
 {"entry_type":"rdata","version":1}
 EOF
 
-test_lookup -j time_range << EOF
+test_lookup matches  -j time_range << EOF
 {"time_first":1522147408,"time_last":1522147408}
 EOF
 
 # -u unaggregated results mode requires DNSTABLE_SETFILE set
-test_lookup_fails -j -u rdata raw 00 MX
+test_lookup fails -j -u rdata raw 00 MX
 
 #####################
 
@@ -326,229 +233,172 @@ test_lookup_fails -j -u rdata raw 00 MX
 export DNSTABLE_SETFILE=@abs_top_srcdir@/tests/test-dns.setfile
 unset DNSTABLE_FNAME
 
-test_lookup -j -u rdata raw 00 MX << EOF
+test_lookup matches  -j -u rdata raw 00 MX << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"10 mail.example.com."}
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"10 mail.example.com."}
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"20 mail2.example.com."}
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"20 mail2.example.com."}
 EOF
 
-test_lookup -j -O 2 -u rdata raw 00 MX << EOF
+test_lookup matches  -j -O 2 -u rdata raw 00 MX << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"20 mail2.example.com."}
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"MX","rdata":"20 mail2.example.com."}
 EOF
 
-test_lookup -J -O 2 -u rdata raw 00 MX << EOF
+test_lookup matches  -J -O 2 -u rdata raw 00 MX << EOF
 {"count":1,"time_first":"2018-03-27T10:43:28Z","time_last":"2018-03-27T10:43:28Z","rrname":"example.com.","rrtype":"MX","rdata":"20 mail2.example.com."}
 {"count":1,"time_first":"2018-03-27T10:43:28Z","time_last":"2018-03-27T10:43:28Z","rrname":"example.com.","rrtype":"MX","rdata":"20 mail2.example.com."}
 EOF
 
 # test negative offset
-test_lookup_fails -J -O -1 -u rdata raw 00 MX
+test_lookup fails -J -O -1 -u rdata raw 00 MX
 
 # test no search query
-test_lookup_fails -J -O 2
+test_lookup fails -J -O 2
 
 # test both -j and -J
-test_lookup_fails -J -j -O 2 -u rdata raw 00 MX
+test_lookup fails -J -j -O 2 -u rdata raw 00 MX
 
 # missing rrset arguments
-test_lookup_fails rrset
+test_lookup fails rrset
 
 # too many rrset arguments
-test_lookup_fails rrset www.example.org A example.org thisisextra
+test_lookup fails rrset www.example.org A example.org thisisextra
 
 # for rrset, slash / is not allowed in owner name
-test_lookup_fails rrset www/example.org
+test_lookup fails rrset www/example.org
 
 # using unknown rdata subtype will fail
-test_lookup_fails rdata junk foo
+test_lookup fails rdata junk foo
 
 # using unknown query type will fail
-test_lookup_fails junk foo bar
+test_lookup fails junk foo bar
 
 # rrset test using unknown RRTYPE mnemonic will fail
-test_lookup_fails rrset www.example.org BOGUSTYPE example.org
+test_lookup fails rrset www.example.org BOGUSTYPE example.org
 
 # rdata raw test using unknown RRTYPE mnemonic will fail
-test_lookup_fails rdata raw 00 BOGUSTYPE
+test_lookup fails rdata raw 00 BOGUSTYPE
 
 #####################
 
 # environment variable must be set
 unset DNSTABLE_SETFILE
 unset DNSTABLE_FNAME
-test_lookup_fails rrset www.example.org A
+test_lookup fails rrset www.example.org A
 
 #####################
 
 # test for DNSTABLE_FNAME set to bogus filename
 export DNSTABLE_FNAME=@abs_top_srcdir@/tests/this-does-not-exist
-test_lookup_fails rrset www.example.org A
+test_lookup fails rrset www.example.org A
 
 #####################
 
 # test suppression of version entries with empty values
 export DNSTABLE_FNAME=@abs_top_srcdir@/tests/empty-version.mtbl
-test_lookup -j version << EOF
+test_lookup matches  -j version << EOF
 EOF
 
-test_lookup -j time_range << EOF
+test_lookup matches  -j time_range << EOF
 EOF
 
 # test suppression of version entries merged with empty-valued
 # entries.
 export DNSTABLE_SETFILE=@abs_top_srcdir@/tests/empty-version.setfile
 unset DNSTABLE_FNAME
-test_lookup -j version << EOF
+test_lookup matches  -j version << EOF
 EOF
 
-test_lookup -j time_range << EOF
+test_lookup matches  -j time_range << EOF
 EOF
 
 ##################################################
 # Dump tests
 ##################################################
 
-DUMP=@abs_top_builddir@/src/dnstable_dump
-export TESTFILE=@abs_top_srcdir@/tests/test-dns.mtbl
-
-test_dump() {
-	local line result expected
-	result="$($DUMP $*)"
-	if [ $? -ne 0 ]; then
-		echo test:dump FAIL: $*
-		code=1
-		return
-	fi
-
-	while read line; do
-		expected="${expected}${expected:+$NL}${line}"
-	done
-
-	if [ "$result" = "$expected" ]; then
-		echo test:dump PASS: $*
-	else
-		echo test:dump FAIL: $*
-		code=1
-	fi
-}
-
-# Test only the leading text to match
-test_dump_leading_match() {
-	local line result expected
-	result="$($DUMP $*)"
-	if [ $? -ne 0 ]; then
-		echo test:dump FAIL: $*
-		code=1
-		return
-	fi
-
-        read expected
-        len=`echo "$expected" | wc -c`
-
-        result=`echo "$result" | head -c $len`
-
-	if [ "$result" = "$expected" ]; then
-		echo test:dump PASS: $*
-	else
-		echo test:dump FAIL: $*
-		code=1
-	fi
-}
-
-test_dump_fails() {
-	$DUMP $* 2>/dev/null 1>/dev/null
-	if [ $? -ne 0 ]; then
-		echo test_fails:dump PASS: $*
-	else
-		echo test_fails:dump FAIL: $*
-		code=1
-	fi
-}
-
-test_dump_leading_match --rrset_full $TESTFILE << EOF
+test_dump contains --rrset_full $TESTFILE << EOF
 ;;  bailiwick: example.com.
 EOF
 
-test_dump_leading_match -j --rrset_full $TESTFILE << EOF
+test_dump contains -j --rrset_full $TESTFILE << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"NS","bailiwick":"example.com.","rdata":["ns1.example.com.","ns2.example.com."]}
 EOF
 
-test_dump_leading_match --rdata_full $TESTFILE << EOF
+test_dump contains --rdata_full $TESTFILE << EOF
 _ldap._tcp.example.com. IN SRV 10 1 389 ldap.example.com.
 EOF
 
-test_dump_leading_match -j --rdata_full $TESTFILE << EOF
+test_dump contains -j --rdata_full $TESTFILE << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"_ldap._tcp.example.com.","rrtype":"SRV","rdata":"10 1 389 ldap.example.com."}
 EOF
 
-test_dump_leading_match -j -R -r $TESTFILE << EOF
+test_dump contains -j -R -r $TESTFILE << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"NS","bailiwick":"example.com.","rdata":["ns1.example.com.","ns2.example.com."],"rdata_raw":["036e7331076578616d706c6503636f6d0002","036e7332076578616d706c6503636f6d0002"]}
 EOF
 
-test_dump_leading_match -j -R --rdata_full $TESTFILE << EOF
+test_dump contains -j -R --rdata_full $TESTFILE << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"_ldap._tcp.example.com.","rrtype":"SRV","rdata":"10 1 389 ldap.example.com.","rdata_raw":"000a00010185046c646170076578616d706c6503636f6d00"}
 EOF
 
-test_dump_leading_match -r $TESTFILE << EOF
+test_dump contains -r $TESTFILE << EOF
 ;;  bailiwick: example.com.
 EOF
 
-test_dump_leading_match -j -r $TESTFILE << EOF
+test_dump contains -j -r $TESTFILE << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"NS","bailiwick":"example.com.","rdata":["ns1.example.com.","ns2.example.com."]}
 EOF
 
-test_dump_leading_match -r -j $TESTFILE << EOF
+test_dump contains -r -j $TESTFILE << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"NS","bailiwick":"example.com.","rdata":["ns1.example.com.","ns2.example.com."]}
 EOF
 
-test_dump_fails -j -R
+test_dump fails -j -R
 
-test_dump_fails -j -R $TESTFILE
+test_dump fails -j -R $TESTFILE
 
-test_dump_fails --time_range
+test_dump fails --time_range
 
-test_dump --time_range $TESTFILE << EOF
+test_dump matches --time_range $TESTFILE << EOF
 ;; Earliest time_first: 2018-03-27 10:43:28 -0000
 ;; Latest time_last: 2018-03-27 10:43:28 -0000
 EOF
 
-test_dump --time_range -j $TESTFILE << EOF
+test_dump matches --time_range -j $TESTFILE << EOF
 {"time_first":1522147408,"time_last":1522147408}
 EOF
 
-test_dump_fails -R --time_range -j $TESTFILE
+test_dump fails -R --time_range -j $TESTFILE
 
-test_dump_fails --version
+test_dump fails --version
 
-test_dump_leading_match --version $TESTFILE << EOF
+test_dump contains --version $TESTFILE << EOF
 ;; Version type rrset: 0
 EOF
 
-test_dump_leading_match --version -j $TESTFILE << EOF
+test_dump contains --version -j $TESTFILE << EOF
 {"entry_type":"rrset","version":0}
 EOF
 
-test_dump_fails -R --version -j $TESTFILE
+test_dump fails -R --version -j $TESTFILE
 
-test_dump_leading_match --rrset_names $TESTFILE << EOF
-www.example.com. RRtypes=[]  ;; rrset name fwd
+test_dump contains --rrset_names $TESTFILE << EOF
+www.example.com. RRtypes=[A AAAA]  ;; rrset name fwd
 EOF
 
-test_dump_leading_match -j --rrset_names $TESTFILE << EOF
-{"rrset_name":"www.example.com.","rrtypes":[]}
+test_dump contains -j --rrset_names $TESTFILE << EOF
+{"rrset_name":"www.example.com.","rrtypes":["A","AAAA"]}
 EOF
 
-test_dump_leading_match --rdata_names $TESTFILE << EOF
-ns1.example.com. RRtypes=[]  ;; rdata name rev
+test_dump contains --rdata_names $TESTFILE << EOF
+ns1.example.com. RRtypes=[NS]  ;; rdata name rev
 EOF
 
-test_dump_leading_match -j --rdata_names $TESTFILE << EOF
-{"rdata_name":"ns1.example.com.","rrtypes":[]}
+test_dump contains -j --rdata_names $TESTFILE << EOF
+{"rdata_name":"ns1.example.com.","rrtypes":["NS"]}
 EOF
 
-test_dump_fails -R -j --rdata_names $TESTFILE
+test_dump fails -R -j --rdata_names $TESTFILE
 
 ##################################################
 # Test dnstable_merge with ENTRY_TYPE_TIME_RANGE and ENTRY_TYPE_VERSION entries
@@ -558,18 +408,18 @@ TEMPOUT=@abs_top_builddir@/tests/test-out.mtbl
 
 $MTBL_MERGE $TESTFILE $TESTFILE $TEMPOUT
 
-test_dump --time_range -j $TEMPOUT << EOF
+test_dump matches --time_range -j $TEMPOUT << EOF
 {"time_first":1522147408,"time_last":1522147408}
 EOF
 
-test_dump_leading_match --version -j $TEMPOUT << EOF
+test_dump contains --version -j $TEMPOUT << EOF
 {"entry_type":"rrset","version":0}
 EOF
 
 # this should be the same output as the above test
-#   test_dump_leading_match -j --rrset_full $TESTFILE
+#   test_dump contains -j --rrset_full $TESTFILE
 # except the count is doubled.
-test_dump_leading_match -j --rrset_full $TEMPOUT << EOF
+test_dump contains -j --rrset_full $TEMPOUT << EOF
 {"count":2,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"NS","bailiwick":"example.com.","rdata":["ns1.example.com.","ns2.example.com."]}
 EOF
 
@@ -582,19 +432,19 @@ rm -f $TEMPOUT
 $MTBL_MERGE ${TESTFILE}.old ${TESTFILE}.old $TEMPOUT
 
 # just pass-through so no time range entry
-test_dump --time_range -j $TEMPOUT << EOF
+test_dump matches --time_range -j $TEMPOUT << EOF
 EOF
 
 # just pass-through so no version entry
-test_dump_leading_match --version -j $TEMPOUT << EOF
+test_dump contains --version -j $TEMPOUT << EOF
 EOF
 
 # this should be the same output as above test with the count doubled
 #   test_dump_leading_match -j --rrset_full $TESTFILE
-test_dump_leading_match -j --rrset_full $TEMPOUT << EOF
+test_dump contains -j --rrset_full $TEMPOUT << EOF
 {"count":2,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"NS","bailiwick":"example.com.","rdata":["ns1.example.com.","ns2.example.com."]}
 EOF
 
 rm -f $TEMPOUT
 
-exit $code
+test_finish

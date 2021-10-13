@@ -121,7 +121,8 @@ EXTRA_DIST += \
 	tests/generic-tests/m1.mtbl \
 	tests/generic-tests/m2.mtbl \
 	tests/generic-tests/m12.mtbl \
-	tests/generic-tests/test.mtbl
+	tests/generic-tests/test.mtbl \
+	tests/test.subr
 
 check_PROGRAMS =
 

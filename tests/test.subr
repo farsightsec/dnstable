@@ -1,0 +1,111 @@
+# Usage:
+#
+# test_command short-name test command args ... <<EOF
+# test-output
+# EOF
+# ...
+#
+# test_finish
+#
+# test = matches (exactly matches test-output)
+#        contains (contains each line of test-output)
+#        excludes (contains no lines from test-output)
+#	 fails (command exits with nonzero status
+#
+test_command() {
+	local name test prog args cmd result rcode
+	name=$1; shift
+	test=$1; shift
+	prog=$1; shift
+	args=$(requote "$@")
+	cmd="$name $args"
+	result=$($prog "$@" 2>/dev/null)
+	rcode=$?
+
+	if [ $rcode -ne 0 ]; then
+		if [ "$test" = "fails" ]; then
+			echo "PASS: $cmd (fails)"
+			return 0
+		fi
+		echo "FAIL: $cmd (failed)"
+		CODE=1
+		return $CODE
+	else
+		if [ "$test" = "fails" ]; then
+			echo "FAIL: $cmd (no-fail)"
+			CODE=1
+			return $CODE
+		fi
+	fi
+
+	case "$test" in
+		"matches")
+			if [ "$(readall)" != "$result" ]; then
+				echo "FAIL: $cmd (no-matches)"
+				CODE=1
+				return 1
+			fi
+			echo "PASS: $cmd (matches)"
+			return 0 ;;
+		"contains")
+			local expected check
+
+			expected=$(readall | sort -u)
+			check=$(echo "$result" | sort -u ; echo "$expected")
+			check=$(echo "$check" | sort | uniq -d)
+			if [ "$check" != "$expected" ]; then
+				echo "FAIL: $cmd (no-contains)"
+				echo "    missing:"
+				(echo "$check"; echo "$expected") | sort | uniq -u | sed 's:^:	:'
+				CODE=1
+				return $CODE
+			fi
+			echo "PASS: $cmd (contains)"
+			return 0 ;;
+
+		"excludes")
+			local expected check
+
+			expected=$(readall | sort -u)
+			check=$(echo "$result" | sort -u ; echo "$expected")
+			check=$(echo "$check" | sort | uniq -d)
+			if [ -n "$check" ]; then
+				echo "FAIL: $cmd (no-excludes)"
+				echo "    contains:"
+				echo "$check" | sed 's:^:	:'
+				CODE=1
+				return $CODE
+			fi
+			echo "PASS: $cmd (excludes)"
+			return 0 ;;
+		*)
+			echo "FAIL: $cmd -- Unknown test $test"
+			CODE=1
+			return 1 ;;
+	esac
+}
+
+test_finish() {
+	exit $CODE
+}
+
+readall() {
+	local line expected
+	while read line; do
+		expected="${expected}${expected:+
+}${line}"
+	done
+	echo "$expected"
+}
+
+requote() {
+	local v
+	for v; do
+		case $v in
+		*[[:space:]]*)
+			echo "'$v'";;
+		*)
+			echo "$v";;
+		esac
+	done | tr '\n' ' ' | sed 's: $:\t:'
+}
