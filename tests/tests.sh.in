@@ -4,6 +4,10 @@ DNSTQ=@abs_top_builddir@/src/dnstable_lookup
 unset DNSTABLE_SETFILE
 export DNSTABLE_FNAME=@abs_top_srcdir@/tests/test-dns.mtbl
 
+export MTBL_MERGE_DSO="@abs_top_builddir@/dnstable/.libs/libdnstable.so"
+export MTBL_MERGE_FUNC_PREFIX="dnstable_merge"
+MTBL_MERGE=${MTBL_MERGE:-mtbl_merge}
+
 #
 # If test script is run with dnstable_lookup arguments, perform the lookup
 # using JSON format for output.
@@ -550,10 +554,9 @@ test_dump_fails -R -j --rdata_names $TESTFILE
 # Test dnstable_merge with ENTRY_TYPE_TIME_RANGE and ENTRY_TYPE_VERSION entries
 ##################################################
 
-MRG=@abs_top_builddir@/src/dnstable_merge
-TEMPOUT=@abs_top_srcdir@/tests/test-out.mtbl
+TEMPOUT=@abs_top_builddir@/tests/test-out.mtbl
 
-$MRG $TESTFILE $TESTFILE $TEMPOUT
+$MTBL_MERGE $TESTFILE $TESTFILE $TEMPOUT
 
 test_dump --time_range -j $TEMPOUT << EOF
 {"time_first":1522147408,"time_last":1522147408}
@@ -566,6 +569,28 @@ EOF
 # this should be the same output as the above test
 #   test_dump_leading_match -j --rrset_full $TESTFILE
 # except the count is doubled.
+test_dump_leading_match -j --rrset_full $TEMPOUT << EOF
+{"count":2,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"NS","bailiwick":"example.com.","rdata":["ns1.example.com.","ns2.example.com."]}
+EOF
+
+rm -f $TEMPOUT
+
+##################################################
+# Test dnstable_merge with old mtbl format without time range nor version
+##################################################
+
+$MTBL_MERGE ${TESTFILE}.old ${TESTFILE}.old $TEMPOUT
+
+# just pass-through so no time range entry
+test_dump --time_range -j $TEMPOUT << EOF
+EOF
+
+# just pass-through so no version entry
+test_dump_leading_match --version -j $TEMPOUT << EOF
+EOF
+
+# this should be the same output as above test with the count doubled
+#   test_dump_leading_match -j --rrset_full $TESTFILE
 test_dump_leading_match -j --rrset_full $TEMPOUT << EOF
 {"count":2,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"NS","bailiwick":"example.com.","rdata":["ns1.example.com.","ns2.example.com."]}
 EOF
