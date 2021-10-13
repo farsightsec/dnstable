@@ -1,5 +1,6 @@
 EXTRA_DIST = COPYRIGHT LICENSE README.md
 CLEANFILES =
+DISTCLEANFILES =
 ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
 
 AM_CPPFLAGS = \
@@ -116,13 +117,25 @@ src_dnstable_lookup_LDADD = \
 
 TESTS = tests/tests.sh
 EXTRA_DIST += \
+	tests/empty-version.mtbl \
+	tests/empty-version.setfile \
 	tests/test-dns.mtbl \
+	tests/test-dns.mtbl.old \
 	tests/test-dns.setfile \
 	tests/generic-tests/m1.mtbl \
 	tests/generic-tests/m2.mtbl \
 	tests/generic-tests/m12.mtbl \
 	tests/generic-tests/test.mtbl \
 	tests/test.subr
+
+tests/test-dnstable_merge:
+	dlname=`sed -n "s/^dlname='\(.*\)'/\1/p" dnstable/libdnstable.la` ; \
+	sed -e "s;@LIBDNSTABLE_DLNAME@;$(abs_top_builddir)/dnstable/.libs/$$dlname;" ${srcdir}/src/dnstable_merge.sh.in >$@
+	chmod +x $@
+
+check_SCRIPTS = tests/test-dnstable_merge
+
+DISTCLEANFILES += tests/test-dnstable_merge
 
 check_PROGRAMS =
 

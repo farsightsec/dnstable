@@ -10,9 +10,7 @@ TESTBITMAP=@abs_top_builddir@/tests/test-bitmaps
 unset DNSTABLE_SETFILE
 export DNSTABLE_FNAME=${TESTFILE}
 
-export MTBL_MERGE_DSO="@abs_top_builddir@/dnstable/.libs/libdnstable.so"
-export MTBL_MERGE_FUNC_PREFIX="dnstable_merge"
-MTBL_MERGE=${MTBL_MERGE:-mtbl_merge}
+DNSTABLE_MERGE=@abs_top_builddir@/tests/test-dnstable_merge
 
 #
 # If test script is run with dnstable_lookup arguments, perform the lookup
@@ -411,7 +409,7 @@ test_dump fails -R -j --rdata_names $TESTFILE
 
 TEMPOUT=@abs_top_builddir@/tests/test-out.mtbl
 
-$MTBL_MERGE $TESTFILE $TESTFILE $TEMPOUT
+$DNSTABLE_MERGE $TESTFILE $TESTFILE $TEMPOUT
 
 test_dump matches --time_range -j $TEMPOUT << EOF
 {"time_first":1522147408,"time_last":1522147408}
@@ -434,7 +432,7 @@ rm -f $TEMPOUT
 # Test dnstable_merge with old mtbl format without time range nor version
 ##################################################
 
-$MTBL_MERGE ${TESTFILE}.old ${TESTFILE}.old $TEMPOUT
+$DNSTABLE_MERGE ${TESTFILE}.old ${TESTFILE}.old $TEMPOUT
 
 # just pass-through so no time range entry
 test_dump matches --time_range -j $TEMPOUT << EOF

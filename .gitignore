@@ -27,3 +27,4 @@ src/dnstable_lookup
 src/dnstable_merge
 tests/test-bitmaps
 dnstable-*coverage*
+tests/test-dnstable_merge
