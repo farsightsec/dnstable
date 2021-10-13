@@ -109,6 +109,11 @@ www.example.com. IN A 198.51.100.3
 www.example.com. IN A 198.51.100.4
 EOF
 
+# test adding raw output to json
+test_lookup contains  -R -j rrset www.example.com A << EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"A","bailiwick":"example.com.","rdata":["198.51.100.3","198.51.100.4"],"rdata_raw":["c633640301","c633640401"]}
+EOF
+
 # test with bailiwick argument too
 test_lookup matches  -j rrset www.example.com A example.com << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"A","bailiwick":"example.com.","rdata":["198.51.100.3","198.51.100.4"]}
