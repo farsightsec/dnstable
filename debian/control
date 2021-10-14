@@ -84,7 +84,7 @@ Description: passive DNS encoding format library
 
 Package: libdnstable0-dbg
 Section: debug
-Priority: extra
+Priority: optional
 Architecture: any
 Depends: libdnstable0 (= ${binary:Version}), ${misc:Depends}
 Multi-Arch: same

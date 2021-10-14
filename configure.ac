@@ -1,6 +1,6 @@
 AC_PREREQ(2.64)
 AC_INIT([dnstable],
-        [0.11.2],
+        [0.12.0],
         [https://github.com/farsightsec/dnstable/issues],
         [dnstable],
         [https://github.com/farsightsec/dnstable])

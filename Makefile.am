@@ -45,9 +45,9 @@ report-coverage:
 fi
 
 
-LIBDNSTABLE_CURRENT=1
+LIBDNSTABLE_CURRENT=2
 LIBDNSTABLE_REVISION=0
-LIBDNSTABLE_AGE=1
+LIBDNSTABLE_AGE=2
 
 include_HEADERS = dnstable/dnstable.h
 lib_LTLIBRARIES = dnstable/libdnstable.la

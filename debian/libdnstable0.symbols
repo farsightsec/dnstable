@@ -1,5 +1,6 @@
 libdnstable.so.0 libdnstable0 #MINVER#
  LIBDNSTABLE_0.11.0@LIBDNSTABLE_0.11.0 0.11.0
+ LIBDNSTABLE_0.12.0@LIBDNSTABLE_0.12.0 0.12.0
  LIBDNSTABLE_0.6.0@LIBDNSTABLE_0.6.0 0.6.0
  LIBDNSTABLE_0.7.0@LIBDNSTABLE_0.7.0 0.7.0
  LIBDNSTABLE_0.8.0@LIBDNSTABLE_0.8.0 0.8.0
@@ -17,13 +18,18 @@ libdnstable.so.0 libdnstable0 #MINVER#
  dnstable_entry_get_time_first@LIBDNSTABLE_0.6.0 0.6.0
  dnstable_entry_get_time_last@LIBDNSTABLE_0.6.0 0.6.0
  dnstable_entry_get_type@LIBDNSTABLE_0.6.0 0.6.0
+ dnstable_entry_get_version@LIBDNSTABLE_0.12.0 0.12.0
+ dnstable_entry_get_version_type@LIBDNSTABLE_0.12.0 0.12.0
  dnstable_entry_set_iszone@LIBDNSTABLE_0.7.0 0.7.0
  dnstable_entry_to_json@LIBDNSTABLE_0.6.0 0.7.0
  dnstable_entry_to_text@LIBDNSTABLE_0.6.0 0.7.0
+ dnstable_entry_type_from_string@LIBDNSTABLE_0.12.0 0.12.0
+ dnstable_entry_type_to_string@LIBDNSTABLE_0.12.0 0.12.0
  dnstable_formatter_destroy@LIBDNSTABLE_0.11.0 0.11.0
  dnstable_formatter_init@LIBDNSTABLE_0.11.0 0.11.0
  dnstable_formatter_set_date_format@LIBDNSTABLE_0.11.0 0.11.0
  dnstable_formatter_set_output_format@LIBDNSTABLE_0.11.0 0.11.0
+ dnstable_formatter_set_raw_rdata@LIBDNSTABLE_0.12.0 0.12.0
  dnstable_formatter_set_rdata_array@LIBDNSTABLE_0.11.0 0.11.0
  dnstable_iter_destroy@LIBDNSTABLE_0.6.0 0.6.0
  dnstable_iter_init@LIBDNSTABLE_0.6.0 0.6.0
@@ -49,5 +55,7 @@ libdnstable.so.0 libdnstable0 #MINVER#
  dnstable_reader_iter_rdata_names@LIBDNSTABLE_0.8.0 0.8.0
  dnstable_reader_iter_rrset@LIBDNSTABLE_0.6.0 0.6.0
  dnstable_reader_iter_rrset_names@LIBDNSTABLE_0.8.0 0.8.0
+ dnstable_reader_iter_time_range@LIBDNSTABLE_0.12.0 0.12.0
+ dnstable_reader_iter_version@LIBDNSTABLE_0.12.0 0.12.0
  dnstable_reader_query@LIBDNSTABLE_0.6.0 0.6.0
  dnstable_reader_reload_setfile@LIBDNSTABLE_0.8.0 0.8.0
