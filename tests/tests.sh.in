@@ -455,7 +455,7 @@ test_dump matches --time_range -j $TEMPOUT << EOF
 EOF
 
 # just pass-through so no version entry
-test_dump contains --version -j $TEMPOUT << EOF
+test_dump matches --version -j $TEMPOUT << EOF
 EOF
 
 # this should be the same output as above test with the count doubled
