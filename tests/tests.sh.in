@@ -47,6 +47,8 @@ test_dump() {
 # Bitmap tests
 ##################################################
 
+test_bitmap fails -h
+
 test_bitmap matches -e 'A SOA' << EOF
 encoding: 000142
 EOF
@@ -230,6 +232,16 @@ EOF
 # -u unaggregated results mode requires DNSTABLE_SETFILE set
 test_lookup fails -j -u rdata raw 00 MX
 
+test_lookup fails -h
+test_lookup fails version toomanyargs toomanyargs
+test_lookup fails -O 10 version
+test_lookup fails -R version
+test_lookup fails time_range toomanyargs
+test_lookup fails -O 10 time_range
+test_lookup fails -R time_range
+test_lookup fails -R rrset www.example.com A
+test_lookup fails rdata ip ThisIsNotAnIP
+
 #####################
 
 # tests using set file pointing to mtbl files
@@ -356,7 +368,11 @@ test_dump contains -r -j $TESTFILE << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"example.com.","rrtype":"NS","bailiwick":"example.com.","rdata":["ns1.example.com.","ns2.example.com."]}
 EOF
 
-test_dump fails -j -R
+test_dump fails -R --rrset_full $TESTFILE
+
+test_dump fails -h $TESTFILE
+
+test_dump fails -j -R $TESTFILE
 
 test_dump fails -j -R $TESTFILE
 
