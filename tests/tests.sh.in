@@ -54,8 +54,8 @@ encoding: 000142
 EOF
 
 test_bitmap matches -d 000142 << EOF
-rrtype = 1 = A
-rrtype = 6 = SOA
+alpha decoding: A SOA
+numeric decoding: 1 6
 EOF
 
 test_bitmap matches -e 'A SOA TYPE65534' << EOF
@@ -67,15 +67,15 @@ encoding: 0401
 EOF
 
 test_bitmap matches -d '0401' << EOF
-rrtype = 260 = (not assigned)
+alpha decoding: TYPE260
+numeric decoding: 260
 EOF
 
 test_bitmap fails -e 'A,TYPE260'
 
 test_bitmap matches -d 000142ff200000000000000000000000000000000000000000000000000000000000000002 << EOF
-rrtype = 1 = A
-rrtype = 6 = SOA
-rrtype = 65534 = (not assigned)
+alpha decoding: A SOA TYPE65534
+numeric decoding: 1 6 65534
 EOF
 
 test_bitmap fails -d ff200000000000000000000000000000000000000000000000000000000000000002000142
