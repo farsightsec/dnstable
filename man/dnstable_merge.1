@@ -34,7 +34,7 @@ dnstable_merge \- merge multiple dnstable data files together
 \fBdnstable_merge\fR [mtbl_merge options] \fIINPUT\fR [\fIINPUT\fR]\&... \fIOUTPUT\fR
 .SH "DESCRIPTION"
 .sp
-Merges multiple dnstable data files into a single output using the libmtbl merge function \fBdnstable_merge_func\fR(3)\&. All of the \fBmtbl_merge\fR(1) options may be specified\&. In typical usage, use at least \fB\-c zlib \-l 3\fR\&.
+Merges multiple dnstable data files into a single output using the libmtbl merge function \fBdnstable_merge_func\fR(3)\&. All of the \fBmtbl_merge\fR(1) options may be specified\&. In typical usage, use at least \fB\-c zstd \-l 3\fR\&.
 .SH "SEE ALSO"
 .sp
 \fBdnstable_merge_func\fR(3), \fBmtbl_merge\fR(1), \fBmtbl_merger\fR(3)
