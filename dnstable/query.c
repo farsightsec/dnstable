@@ -745,6 +745,7 @@ query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t t
 				case WDNS_TYPE_PTR:
 				case WDNS_TYPE_MX:
 				case WDNS_TYPE_SRV:
+				case WDNS_TYPE_NSEC:
 					add_rrtype_to_key(it->key, it->query->rrtype);
 				}
 			}
@@ -957,6 +958,7 @@ query_init_rdata_name(struct query_iter *it)
 		case WDNS_TYPE_PTR:
 		case WDNS_TYPE_MX:
 		case WDNS_TYPE_SRV:
+		case WDNS_TYPE_NSEC:
 			add_rrtype_to_key(it->key, it->query->rrtype);
 		}
 	}

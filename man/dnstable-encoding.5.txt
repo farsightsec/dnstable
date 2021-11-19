@@ -173,8 +173,8 @@ This is the same encoding as the values for ^ENTRY_TYPE_RRSET^ entries.
 
 This entry type encodes label-reversed domain names from the record data value
 for certain DNS record types that contain a domain name in the record data,
-specifically the `NS`, `CNAME`, `DNAME`, `PTR`, `MX`, and `SRV` DNS record
-types.
+specifically the `NS`, `CNAME`, `DNAME`, `PTR`, `MX`, `SRV` and 'NSEC' DNS
+record types.
 
 The key consists of the following fields, in order:
 
