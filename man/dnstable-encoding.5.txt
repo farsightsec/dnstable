@@ -204,10 +204,11 @@ This is the same encoding as the values for ^ENTRY_TYPE_RRSET^ entries.
 
 ==== ^ENTRY_TYPE_RDATA_NAME_REV^ ====
 
+<<<<<<< HEAD
 This entry type encodes label-reversed domain names from the record
 data value for certain DNS record types that contain a domain name in
 the record data, specifically the `SOA`, `NS`, `CNAME`, `DNAME`,
-`PTR`, `MX`, `SRV`, `SVCB`, and `HTTPS` DNS record types.
+`PTR`, `MX`, `SRV`, `SVCB`, `HTTPS`, and `NSEC` DNS record types.
 The "slicing" logic described above in ^ENTRY_TYPE_RDATA^ encompasses the extraction of these domain names.
 
 The key consists of the following fields, in order:

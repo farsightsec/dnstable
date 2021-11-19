@@ -1220,7 +1220,7 @@ rrtype_test(dnstable_entry_type e_type, uint16_t rrtype, const uint8_t *rrtype_m
 		 *
 		 * For RRSET_NAME_FWD, we index any rrtype.
 		 *
-		 * For RDATA_NAME_REV, we index rrtypes NS, CNAME, SOA, PTR, MX, SRV, DNAME, SVCB, and HTTPS.
+		 * For RDATA_NAME_REV, we index rrtypes NS, CNAME, SOA, PTR, MX, SRV, DNAME, SVCB, HTTPS, and NSEC.
 		 */
 
 /*
@@ -1236,7 +1236,7 @@ rrtype_test(dnstable_entry_type e_type, uint16_t rrtype, const uint8_t *rrtype_m
 
 		static const uint16_t all_rrtypes_for_RDATA_NAME_REV[] = {
 			WDNS_TYPE_NS, WDNS_TYPE_CNAME, WDNS_TYPE_SOA, WDNS_TYPE_PTR, WDNS_TYPE_MX,
-			WDNS_TYPE_SRV, WDNS_TYPE_DNAME, WDNS_TYPE_SVCB, WDNS_TYPE_HTTPS
+			WDNS_TYPE_SRV, WDNS_TYPE_DNAME, WDNS_TYPE_SVCB, WDNS_TYPE_HTTPS, WDNS_TYPE_NSEC
 		};
 
 		if (e_type == DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD)
