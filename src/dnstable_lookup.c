@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <dnstable.h>
@@ -77,6 +78,70 @@ do_dump(struct dnstable_iter *it)
 		fprintf(stderr, ";;; Dumped %'" PRIu64 " entries.\n", count);
 }
 
+static uint64_t
+parse_time(const char *s)
+{
+	long long ll, total = 0;
+	char *endp;
+	struct timespec now;
+	struct tm tt = {0};
+
+
+	/* Parse absolute ISO8601 time */
+	if (((endp = strptime(s, "%F", &tt)) && (*endp == '\0')) ||
+	    ((endp = strptime(s, "%F %T", &tt)) && (*endp == '\0')) ||
+	    ((endp = strptime(s, "%FT%T", &tt)) && (*endp == '\0')) ||
+	    ((endp = strptime(s, "%FT%TZ", &tt)) && (*endp == '\0'))) {
+		return (uint64_t)timegm(&tt);
+	}
+
+	clock_gettime(CLOCK_REALTIME, &now);
+
+	/* Parse absolute or negative relative numeric time */
+	ll = strtoll(s, &endp, 10);
+	if (*endp == '\0') {
+		if (ll < 0) {
+			if (ll + now.tv_sec < 0)
+				return 0;
+			return (uint64_t)(ll + now.tv_sec);
+		}
+		return (uint64_t)ll;
+	}
+
+	/* Parse 10w3d4h */
+	while(*s) {
+		ll = strtoll(s, &endp, 10);
+		if (ll <= 0)
+			return 0;
+		switch(*endp) {
+		case 'W':
+		case 'w':
+			ll *= 7;
+		case 'D':
+		case 'd':
+			ll *= 24;
+		case 'H':
+		case 'h':
+			ll *= 60;
+		case 'M':
+		case 'm':
+			ll *= 60;
+		case 'S':
+		case 's':
+		case '\0':
+			break;
+		default:
+			return 0;
+		}
+		total += ll;
+		s = endp;
+		if (*s) s++;
+	}
+	if (total > now.tv_sec)
+		return 0;
+	return (uint64_t)(now.tv_sec - total);
+}
+
 static void
 usage(void)
 {
@@ -89,6 +154,11 @@ usage(void)
 	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-u] [-O #] time_range\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Flags:\n");
+	fprintf(stderr, "\t-a FIRST_AFTER: select results with time_first after FIRST_AFTER.\n");
+	fprintf(stderr, "\t-A LAST_AFTER: select results with time_last after LAST_AFTER.\n");
+	fprintf(stderr, "\t-b LAST_BEFORE: select results with time_last before LAST_BEFORE.\n");
+	fprintf(stderr, "\t-B FIRST_BEFORE: select results with time_first before FIRST_BEFORE.\n");
+	fprintf(stderr, "\t-c: treat -A as -a, -B as -b for dnsdbq \"complete (strict) matching\" semantics.\n");
 	fprintf(stderr, "\t-j: output in JSON format with epoch time; default is 'dig' presentation format\n");
 	fprintf(stderr, "\t-J: output in JSON format with human time (RFC3339 format); default is 'dig' presentation format\n");
 	fprintf(stderr, "\t-R: add raw rdata representation\n");
@@ -114,12 +184,38 @@ main(int argc, char **argv)
 	struct dnstable_iter *d_iter;
 	struct dnstable_reader *d_reader;
 	struct dnstable_query *d_query;
+	uint64_t time_last_after = 0, time_first_after = 0;
+	uint64_t time_first_before = 0, time_last_before = 0;
+	bool time_strict = false;
 	dnstable_query_type d_qtype = 0; /* fix lint warning; will always override */
 	dnstable_res res;
 	int ch;
 
-	while ((ch = getopt(argc, argv, "jJRuO:")) != -1) {
+	while ((ch = getopt(argc, argv, "a:A:b:B:cjJRuO:")) != -1) {
 		switch (ch) {
+		case 'a':
+			time_first_after = parse_time(optarg);
+			if (time_first_after == 0)
+				usage();
+			break;
+		case 'A':
+			time_last_after = parse_time(optarg);
+			if (time_last_after == 0)
+				usage();
+			break;
+		case 'b':
+			time_last_before = parse_time(optarg);
+			if (time_last_before == 0)
+				usage();
+			break;
+		case 'B':
+			time_first_before = parse_time(optarg);
+			if (time_first_before == 0)
+				usage();
+			break;
+		case 'c':
+			time_strict = true;
+			break;
 		case 'j':
 			g_json = true;
 			break;
@@ -286,6 +382,43 @@ main(int argc, char **argv)
 			exit(EXIT_FAILURE);
 		}
 
+	}
+
+	if ((d_qtype != DNSTABLE_QUERY_TYPE_VERSION) &&
+	    (d_qtype != DNSTABLE_QUERY_TYPE_TIME_RANGE)) {
+		if (time_strict) {
+			if (time_first_after < time_last_after) {
+				time_first_after = time_last_after;
+				time_last_after = 0;
+			}
+
+			if ((time_first_before > 0) &&
+			    ((time_last_before == 0) ||
+			     (time_last_before > time_first_before))) {
+				time_last_before = time_first_before;
+				time_first_before = 0;
+			}
+		}
+
+		if (time_first_after != 0)
+			dnstable_query_set_filter_parameter(d_query,
+					DNSTABLE_FILTER_PARAMETER_TIME_FIRST_AFTER,
+					&time_first_after, sizeof(time_first_after));
+
+		if (time_first_before != 0)
+			dnstable_query_set_filter_parameter(d_query,
+					DNSTABLE_FILTER_PARAMETER_TIME_FIRST_BEFORE,
+					&time_first_before, sizeof(time_first_before));
+
+		if (time_last_after != 0)
+			dnstable_query_set_filter_parameter(d_query,
+					DNSTABLE_FILTER_PARAMETER_TIME_LAST_AFTER,
+					&time_last_after, sizeof(time_last_after));
+
+		if (time_last_before != 0)
+			dnstable_query_set_filter_parameter(d_query,
+					DNSTABLE_FILTER_PARAMETER_TIME_LAST_BEFORE,
+					&time_last_before, sizeof(time_last_before));
 	}
 
 	if (g_offset != 0) {
