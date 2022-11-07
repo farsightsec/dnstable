@@ -1092,13 +1092,12 @@ query_init_version(struct query_iter *it)
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
 
-struct dnstable_iter *
-dnstable_query_iter(struct dnstable_query *q, const struct mtbl_source *source)
+static struct dnstable_iter *
+dnstable_query_iter_common(struct query_iter *it)
 {
 	struct dnstable_iter *d_it;
-	struct query_iter *it = my_calloc(1, sizeof(*it));
-	it->query = q;
-	it->source = source;
+	struct dnstable_query *q = it->query;
+
 	if (q->q_type == DNSTABLE_QUERY_TYPE_RRSET) {
 		d_it = query_init_rrset(it);
 	} else if (q->q_type == DNSTABLE_QUERY_TYPE_RDATA_NAME) {
@@ -1117,4 +1116,24 @@ dnstable_query_iter(struct dnstable_query *q, const struct mtbl_source *source)
 	if (d_it == NULL)
 		query_iter_free(it);
 	return (d_it);
+}
+
+struct dnstable_iter *
+dnstable_query_iter(struct dnstable_query *q, const struct mtbl_source *source)
+{
+	struct query_iter *it = my_calloc(1, sizeof(*it));
+
+	it->query = q;
+	it->source = source;
+	return dnstable_query_iter_common(it);
+}
+
+struct dnstable_iter *
+dnstable_query_iter_fileset(struct dnstable_query *q, struct mtbl_fileset *fs)
+{
+	struct query_iter *it = my_calloc(1, sizeof(*it));
+
+	it->query = q;
+	it->source = mtbl_fileset_source(fs);
+	return dnstable_query_iter_common(it);
 }

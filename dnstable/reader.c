@@ -23,7 +23,6 @@ struct reader_iter {
 
 struct dnstable_reader {
 	const struct mtbl_source	*source;
-	const struct mtbl_source	*source_no_merge;
 	struct mtbl_fileset		*fs;
 	struct mtbl_fileset		*fs_no_merge;
 };
@@ -113,9 +112,6 @@ dnstable_reader_init_setfile(const char *setfile)
 	r->fs_no_merge = mtbl_fileset_dup(r->fs, fopt);
 	mtbl_fileset_options_destroy(&fopt);
 
-	r->source = mtbl_fileset_source(r->fs);
-	r->source_no_merge = mtbl_fileset_source(r->fs_no_merge);
-
 	return (r);
 }
 
@@ -190,11 +186,12 @@ struct dnstable_iter *
 dnstable_reader_query(struct dnstable_reader *r, struct dnstable_query *q)
 {
 	if (dnstable_query_is_aggregated(q) == false) {
-		if (r->source_no_merge != NULL)
-			return (dnstable_query_iter(q, r->source_no_merge));
-		else
+		if (r->fs_no_merge == NULL)
 			return NULL; /* this is an error */
-	} else
+		return (dnstable_query_iter_fileset(q, r->fs_no_merge));
+	} else if (r->fs != NULL)
+		return (dnstable_query_iter_fileset(q, r->fs));
+	else
 		return (dnstable_query_iter(q, r->source));
 }
 
