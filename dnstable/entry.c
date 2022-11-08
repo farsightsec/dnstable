@@ -1029,7 +1029,8 @@ dnstable_res
 dnstable_entry_get_time_first(struct dnstable_entry *e, uint64_t *v)
 {
 	if (e->e_type == DNSTABLE_ENTRY_TYPE_RRSET ||
-	    e->e_type == DNSTABLE_ENTRY_TYPE_RDATA)
+	    e->e_type == DNSTABLE_ENTRY_TYPE_RDATA ||
+	    e->e_type == DNSTABLE_ENTRY_TYPE_TIME_RANGE)
 	{
 		*v = e->time_first;
 		return (dnstable_res_success);
@@ -1041,7 +1042,8 @@ dnstable_res
 dnstable_entry_get_time_last(struct dnstable_entry *e, uint64_t *v)
 {
 	if (e->e_type == DNSTABLE_ENTRY_TYPE_RRSET ||
-	    e->e_type == DNSTABLE_ENTRY_TYPE_RDATA)
+	    e->e_type == DNSTABLE_ENTRY_TYPE_RDATA ||
+	    e->e_type == DNSTABLE_ENTRY_TYPE_TIME_RANGE)
 	{
 		*v = e->time_last;
 		return (dnstable_res_success);
