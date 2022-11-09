@@ -46,6 +46,7 @@ struct dnstable_query {
 struct query_iter {
 	struct dnstable_query	*query;
 	const struct mtbl_source *source;
+	struct mtbl_fileset	*fs_filter;
 	struct mtbl_iter	*m_iter, *m_iter2;
 	ubuf			*key, *key2;
 };
@@ -492,6 +493,7 @@ query_iter_free(void *clos)
 	struct query_iter *it = (struct query_iter *) clos;
 	mtbl_iter_destroy(&it->m_iter);
 	mtbl_iter_destroy(&it->m_iter2);
+	mtbl_fileset_destroy(&it->fs_filter);
 	ubuf_destroy(&it->key);
 	ubuf_destroy(&it->key2);
 	my_free(it);
@@ -519,6 +521,58 @@ increment_key(ubuf *key, size_t pos)
 }
 
 static dnstable_res
+query_iter_next_filtered(struct query_iter *it, const struct timespec *expiry)
+{
+	const uint8_t *key, *val;
+	size_t len_key, len_val;
+
+	if (it->m_iter2 == NULL)
+		return (dnstable_res_success);
+
+	for (;;) {
+		if (mtbl_iter_next(it->m_iter2, &key, &len_key, &val, &len_val) != mtbl_res_success)
+			return (dnstable_res_failure);
+
+		if (it->query->do_rrtype) {
+			struct dnstable_entry *e;
+			dnstable_res res;
+			uint16_t rrtype;
+			struct timespec now = {0};
+
+			e = dnstable_entry_decode(key, len_key, val, len_val);
+			if (e == NULL)
+				continue;
+
+			res = dnstable_entry_get_rrtype(e, &rrtype);
+			dnstable_entry_destroy(&e);
+
+			if ((res == dnstable_res_success) && (rrtype == it->query->rrtype))
+				break;
+
+			if (it->query->do_timeout) {
+				my_gettime(DNSTABLE__CLOCK_MONOTONIC, &now);
+				if (my_timespec_cmp(&now, expiry) >= 0)
+					return (dnstable_res_timeout);
+			}
+			continue;
+		}
+		break;
+	}
+
+	/*
+	 * When operating with a time filtered fileset, m_iter2 iterates over a
+	 * subset of the keys of m_iter. Thus, we can seek m_iter to a key from
+	 * m_iter2 and know that the next mtbl_iter_next call will return the
+	 * same key.
+	 */
+
+	if (mtbl_iter_seek(it->m_iter, key, len_key) != mtbl_res_success)
+		return (dnstable_res_failure);
+
+	return (dnstable_res_success);
+}
+
+static dnstable_res
 query_iter_next(void *clos, struct dnstable_entry **ent)
 {
 	struct query_iter *it = (struct query_iter *) clos;
@@ -541,6 +595,10 @@ query_iter_next(void *clos, struct dnstable_entry **ent)
 			if (my_timespec_cmp(&now, &expiry) >= 0)
 				return (dnstable_res_timeout);
 		}
+
+		if (query_iter_next_filtered(it, &expiry) != dnstable_res_success)
+			return (dnstable_res_failure);
+
 		if (mtbl_iter_next(it->m_iter, &key, &len_key, &val, &len_val) != mtbl_res_success)
 			return (dnstable_res_failure);
 
@@ -590,6 +648,9 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 			if (my_timespec_cmp(&now, &expiry) >= 0)
 				return (dnstable_res_timeout);
 		}
+
+		if (query_iter_next_filtered(it, &expiry) != dnstable_res_success)
+			return (dnstable_res_failure);
 
 		if (mtbl_iter_next(it->m_iter, &key, &len_key, &val, &len_val) != mtbl_res_success)
 			return (dnstable_res_failure);
@@ -852,9 +913,14 @@ query_init_rrset_right_wildcard(struct query_iter *it)
 	/* key: rrset owner name, less trailing "\x01\x2a\x00" */
 	ubuf_append(it->key, it->query->name.data, it->query->name.len - 3);
 
-	it->m_iter2 = mtbl_source_get_prefix(it->source,
-					     ubuf_data(it->key),
-					     ubuf_size(it->key));
+	if (it->fs_filter != NULL)
+		it->m_iter2 = mtbl_source_get_prefix(mtbl_fileset_source(it->fs_filter),
+						     ubuf_data(it->key),
+						     ubuf_size(it->key));
+	else
+		it->m_iter2 = mtbl_source_get_prefix(it->source,
+						     ubuf_data(it->key),
+						     ubuf_size(it->key));
 
 	return dnstable_iter_init(query_iter_next_rrset_name_fwd, query_iter_free, it);
 }
@@ -873,6 +939,11 @@ query_init_rrset_left_wildcard(struct query_iter *it)
 	if (wdns_reverse_name(it->query->name.data + 2, len, name) != wdns_res_success)
 		return (NULL);
 	ubuf_append(it->key, name, len - 1);
+
+	if (it->fs_filter != NULL)
+		it->m_iter2 = mtbl_source_get_prefix(mtbl_fileset_source(it->fs_filter),
+						     ubuf_data(it->key),
+						     ubuf_size(it->key));
 
 	it->m_iter = mtbl_source_get_prefix(it->source, ubuf_data(it->key), ubuf_size(it->key));
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
@@ -942,6 +1013,11 @@ query_init_rrset(struct query_iter *it)
 		}
 	}
 
+	if (it->fs_filter != NULL)
+		it->m_iter2 = mtbl_source_get_prefix(
+				mtbl_fileset_source(it->fs_filter),
+				ubuf_data(it->key), ubuf_size(it->key));
+
 	it->m_iter = mtbl_source_get_prefix(it->source, ubuf_data(it->key), ubuf_size(it->key));
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
@@ -954,6 +1030,11 @@ query_init_rdata_right_wildcard(struct query_iter *it)
 
 	/* key: rdata name, less trailing "\x01\x2a\x00" */
 	ubuf_append(it->key, it->query->name.data, it->query->name.len - 3);
+
+	if (it->fs_filter != NULL)
+		it->m_iter2 = mtbl_source_get_prefix(mtbl_fileset_source(it->fs_filter),
+						     ubuf_data(it->key),
+						     ubuf_size(it->key));
 
 	it->m_iter = mtbl_source_get_prefix(it->source, ubuf_data(it->key), ubuf_size(it->key));
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
@@ -973,9 +1054,14 @@ query_init_rdata_left_wildcard(struct query_iter *it)
 		return (NULL);
 	ubuf_append(it->key, name, len - 1);
 
-	it->m_iter2 = mtbl_source_get_prefix(it->source,
-					     ubuf_data(it->key),
-					     ubuf_size(it->key));
+	if (it->fs_filter != NULL)
+		it->m_iter2 = mtbl_source_get_prefix(mtbl_fileset_source(it->fs_filter),
+						     ubuf_data(it->key),
+						     ubuf_size(it->key));
+	else
+		it->m_iter2 = mtbl_source_get_prefix(it->source,
+						     ubuf_data(it->key),
+						     ubuf_size(it->key));
 
 	return dnstable_iter_init(query_iter_next_rdata_name_rev, query_iter_free, it);
 }
@@ -1009,6 +1095,11 @@ query_init_rdata_name(struct query_iter *it)
 		}
 	}
 
+	if (it->fs_filter != NULL)
+		it->m_iter2 = mtbl_source_get_prefix(
+				mtbl_fileset_source(it->fs_filter),
+				ubuf_data(it->key), ubuf_size(it->key));
+
 	it->m_iter = mtbl_source_get_prefix(it->source, ubuf_data(it->key), ubuf_size(it->key));
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
@@ -1039,9 +1130,18 @@ query_init_rdata_ip(struct query_iter *it)
 	}
 
 	if (it->key2 == NULL) {
+		if (it->fs_filter != NULL)
+			it->m_iter2 = mtbl_source_get_prefix(
+					mtbl_fileset_source(it->fs_filter),
+					ubuf_data(it->key), ubuf_size(it->key));
 		it->m_iter = mtbl_source_get_prefix(it->source,
 						    ubuf_data(it->key), ubuf_size(it->key));
 	} else {
+		if (it->fs_filter != NULL)
+			it->m_iter2 = mtbl_source_get_range(
+					mtbl_fileset_source(it->fs_filter),
+					ubuf_data(it->key), ubuf_size(it->key),
+					ubuf_data(it->key2), ubuf_size(it->key2));
 		it->m_iter = mtbl_source_get_range(it->source,
 						   ubuf_data(it->key), ubuf_size(it->key),
 						   ubuf_data(it->key2), ubuf_size(it->key2));
@@ -1067,6 +1167,10 @@ query_init_rdata_raw(struct query_iter *it)
 	 * do_rrtype is set then the results will be filtered by
 	 * rrtype.
 	 */
+	if (it->fs_filter != NULL)
+		it->m_iter2 = mtbl_source_get_prefix(
+				mtbl_fileset_source(it->fs_filter),
+				ubuf_data(it->key), ubuf_size(it->key));
 
 	it->m_iter = mtbl_source_get_prefix(it->source, ubuf_data(it->key), ubuf_size(it->key));
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
@@ -1128,12 +1232,97 @@ dnstable_query_iter(struct dnstable_query *q, const struct mtbl_source *source)
 	return dnstable_query_iter_common(it);
 }
 
+static bool
+reader_time_filter(struct mtbl_reader *r, void *clos)
+{
+	struct dnstable_query *q = clos;
+	struct dnstable_query *tr_q = dnstable_query_init(DNSTABLE_QUERY_TYPE_TIME_RANGE);
+	struct dnstable_iter *tr_it = dnstable_query_iter(tr_q, mtbl_reader_source(r));
+	struct dnstable_entry *tr_e = NULL;
+	uint64_t min_time_first, max_time_last;
+	bool res = true;
+
+	if (tr_it == NULL) goto out;
+
+	if (dnstable_iter_next(tr_it, &tr_e) != dnstable_res_success) {
+		goto out;
+	}
+
+	if ((dnstable_entry_get_time_first(tr_e, &min_time_first) != dnstable_res_success) ||
+	    (dnstable_entry_get_time_last(tr_e, &max_time_last) != dnstable_res_success)) {
+		goto out;
+	}
+
+	/*
+	 * #1. If the current reader has only data observed before our
+	 * time_first_after cutoff, the resulting merged entries will
+	 * fail our time_first_after filter. Ignore for the filter pass.
+	 */
+	if (q->do_time_first_after && (q->time_first_after > max_time_last))
+		res = false;
+
+	/*
+	 * #2. If the current reader has no data with time_last after our
+	 * time_last_after cutoff, it will not cause any merged results
+	 * to pass our time_last_after filter. Ignore for the filter pass.
+	 */
+	if (q->do_time_last_after && (q->time_last_after > max_time_last))
+		res = false;
+
+	/*
+	 * #3. Like with time_first_after (#1), if the current reader has only
+	 * data observed after the time_last_before cutoff, the resulting merged
+	 * entries will fail our time_last_before filter. Ignore for the filter
+	 * pass.
+	 */
+	if (q->do_time_last_before && (q->time_last_before < min_time_first))
+		res = false;
+
+	/*
+	 * #4. If the current reader contains no data with time_first before
+	 * our time_first_before cutoff, it will not cause any merged
+	 * entries to match our time_first_before filter. Ignore for the
+	 * filter pass UNLESS a time_last_after filter needs the data.
+	 *
+	 * Note that the time_first_after (#1) and time_last_before (#3)
+	 * tests above exclude readers whose data is sufficient to show
+	 * an entry does not match the respective test, and thus will not
+	 * match the combined time filter.
+	 *
+	 * In contrast, the time_last_after (#2) and time_first_before (#4)
+	 * tests exclude readers whose data will not establish a match for
+	 * the respective test, but may be needed to establish a match for
+	 * the other test. Thus, if both tests are active, we choose one
+	 * to use to exclude readers for the filter pass.
+	 */
+	if (q->do_time_first_before && !q->do_time_last_after &&
+	    (q->time_first_before < min_time_first))
+		res = false;
+
+out:
+	dnstable_entry_destroy(&tr_e);
+	dnstable_iter_destroy(&tr_it);
+	dnstable_query_destroy(&tr_q);
+	return res;
+}
+
 struct dnstable_iter *
 dnstable_query_iter_fileset(struct dnstable_query *q, struct mtbl_fileset *fs)
 {
 	struct query_iter *it = my_calloc(1, sizeof(*it));
+	struct mtbl_fileset_options *fopt;
 
 	it->query = q;
 	it->source = mtbl_fileset_source(fs);
+
+	if (q->do_time_first_before || q->do_time_first_after ||
+	    q->do_time_last_before || q->do_time_last_after) {
+		fopt = mtbl_fileset_options_init();
+		mtbl_fileset_options_set_merge_func(fopt, dnstable_merge_func, NULL);
+		mtbl_fileset_options_set_reader_filter_func(fopt, reader_time_filter, q);
+		it->fs_filter = mtbl_fileset_dup(fs, fopt);
+		mtbl_fileset_options_destroy(&fopt);
+	}
+
 	return dnstable_query_iter_common(it);
 }
