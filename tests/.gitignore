@@ -1,4 +1,5 @@
 tests.sh
+test_timefilter.sh
 test-dnstable
 *.trs
 *.log

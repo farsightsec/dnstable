@@ -25,6 +25,7 @@ AC_SUBST([my_CFLAGS])
 AC_CONFIG_HEADERS(config.h)
 AC_CONFIG_FILES([Makefile dnstable/libdnstable.pc])
 AC_CONFIG_FILES([tests/tests.sh], [chmod +x tests/tests.sh])
+AC_CONFIG_FILES([tests/test_timefilter.sh], [chmod +x tests/test_timefilter.sh])
 
 PKG_PROG_PKG_CONFIG
 if test -n "$PKG_CONFIG"; then

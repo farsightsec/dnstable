@@ -115,7 +115,7 @@ src_dnstable_lookup_LDADD = \
 	$(libmtbl_LIBS) \
 	$(libwdns_LIBS)
 
-TESTS = tests/tests.sh
+TESTS = tests/tests.sh tests/test_timefilter.sh
 EXTRA_DIST += \
 	tests/empty-version.mtbl \
 	tests/empty-version.setfile \
@@ -126,6 +126,17 @@ EXTRA_DIST += \
 	tests/generic-tests/m2.mtbl \
 	tests/generic-tests/m12.mtbl \
 	tests/generic-tests/test.mtbl \
+	tests/test-timefilter/dns-2022-11-10.mtbl \
+	tests/test-timefilter/dns-2022-11-11.mtbl \
+	tests/test-timefilter/dns-2022-11-12.mtbl \
+	tests/test-timefilter/dns-2022-11-13.mtbl \
+	tests/test-timefilter/dns-2022-11-14.mtbl \
+	tests/test-timefilter/dns-2022-11-15.mtbl \
+	tests/test-timefilter/dns-2022-11-16.mtbl \
+	tests/test-timefilter/dns-2022-11-17.mtbl \
+	tests/test-timefilter/dns-2022-11-18.mtbl \
+	tests/test-timefilter/dns-merged.mtbl \
+	tests/test-timefilter/dns-test.fileset \
 	tests/test.subr
 
 tests/test-dnstable_merge:

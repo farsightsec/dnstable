@@ -1,0 +1,98 @@
+#!/bin/sh
+
+DNSTQ=@abs_top_builddir@/src/dnstable_lookup
+SETFILE=@abs_top_srcdir@/tests/test-timefilter/dns-test.fileset
+MERGEDFILE=@abs_top_srcdir@/tests/test-timefilter/dns-merged.mtbl
+
+unset DNSTABLE_FNAME
+unset DNSTABLE_SETFILE
+FSOUT=${TMPDIR:-/tmp}/fs-out.$$
+MOUT=${TMPDIR:-/tmp}/merged-out.$$
+
+RESULT=0
+
+cleanup() {
+	rm -f $FSOUT $MOUT
+}
+
+trap "rm -f $FSOUT $MOUT" 0 1 2 15
+
+
+test_fileset() {
+	env DNSTABLE_SETFILE=${SETFILE} $@
+}
+
+test_merged() {
+	env DNSTABLE_FNAME=${MERGEDFILE} $@
+}
+
+test_cmp() {
+	test_fileset $@ > /tmp/fs-out.$$ 2>/dev/null
+	test_merged $@ > /tmp/merged-out.$$ 2>/dev/null
+	if cmp /tmp/fs-out.$$ /tmp/merged-out.$$; then
+		echo PASS: $@
+		return
+	fi
+	echo "FAIL $*"
+	diff /tmp/merged-out.$$ /tmp/fs-out.$$
+	RESULT=1
+}
+
+for q in "rrset \*.example.com" \
+         "rdata name \*.example.net" \
+	 "rdata ip 10.0.0.0/21" \
+	 "rrset test-full.*" \
+	 "rrset test-first.*" \
+	 "rrset test-last.*" \
+	 "rdata name ns.*"; do
+
+#
+# Note that we only test certain combinations of time filters below,
+# since:
+#
+# 	-a (time_first_after) after -B (time_first_before), and
+# 	-A (time_last_after) after -b (time_last_before)
+#
+# will match no entries, and
+#
+#	-a (time_first_after) after -A (time_last_after)
+#	-b (time_last_before) before -B (time_first_before)
+#
+# are equivalent to a later -A or earlier -B, respectively.
+# The -A and -B timestamps have no restrictions on their order
+# with respect to each other.
+#
+
+# Test with no time fencing
+test_cmp $DNSTQ $q
+
+# single time filter
+test_cmp $DNSTQ -a 2022-11-11 $q
+test_cmp $DNSTQ -A 2022-11-11 $q
+test_cmp $DNSTQ -b 2022-11-11 $q
+test_cmp $DNSTQ -B 2022-11-11 $q
+
+# all pairs of time filters which make sense
+test_cmp $DNSTQ -a 2022-11-11 -A 2022-11-13 $q
+test_cmp $DNSTQ -a 2022-11-11 -B 2022-11-13 $q
+test_cmp $DNSTQ -a 2022-11-11 -b 2022-11-13 $q
+test_cmp $DNSTQ -A 2022-11-11 -B 2022-11-13 $q
+test_cmp $DNSTQ -A 2022-11-11 -b 2022-11-13 $q
+test_cmp $DNSTQ -B 2022-11-11 -A 2022-11-13 $q
+test_cmp $DNSTQ -B 2022-11-11 -b 2022-11-13 $q
+
+# all triples of time filters which make sense
+test_cmp $DNSTQ -a 2022-11-11 -A 2022-11-13 -B 2022-11-15 $q
+test_cmp $DNSTQ -a 2022-11-11 -A 2022-11-13 -b 2022-11-15 $q
+test_cmp $DNSTQ -a 2022-11-11 -B 2022-11-13 -A 2022-11-15 $q
+test_cmp $DNSTQ -a 2022-11-11 -B 2022-11-13 -b 2022-11-15 $q
+test_cmp $DNSTQ -A 2022-11-11 -B 2022-11-13 -b 2022-11-15 $q
+test_cmp $DNSTQ -B 2022-11-11 -A 2022-11-13 -b 2022-11-15 $q
+
+# Both combinations of all time filters which make sense
+test_cmp $DNSTQ -a 2022-11-11 -B 2022-11-13 -A 2022-11-15 -b 2022-11-17 $q
+test_cmp $DNSTQ -a 2022-11-11 -A 2022-11-13 -B 2022-11-15 -b 2022-11-17 $q
+
+done
+
+exit $RESULT
