@@ -45,6 +45,8 @@ struct dnstable_query {
 
 struct query_iter {
 	struct dnstable_query	*query;
+	const struct mtbl_source *source_filter;
+	const struct mtbl_source *source_index;
 	const struct mtbl_source *source;
 	struct mtbl_fileset	*fs_filter;
 	struct mtbl_fileset	*fs_no_merge;
@@ -910,14 +912,9 @@ query_init_rrset_right_wildcard(struct query_iter *it)
 	/* key: rrset owner name, less trailing "\x01\x2a\x00" */
 	ubuf_append(it->key, it->query->name.data, it->query->name.len - 3);
 
-	if (it->fs_filter != NULL)
-		it->m_iter2 = mtbl_source_get_prefix(mtbl_fileset_source(it->fs_filter),
-						     ubuf_data(it->key),
-						     ubuf_size(it->key));
-	else
-		it->m_iter2 = mtbl_source_get_prefix(it->source,
-						     ubuf_data(it->key),
-						     ubuf_size(it->key));
+	it->m_iter2 = mtbl_source_get_prefix(it->source_index,
+					     ubuf_data(it->key),
+					     ubuf_size(it->key));
 
 	return dnstable_iter_init(query_iter_next_rrset_name_fwd, query_iter_free, it);
 }
@@ -937,8 +934,8 @@ query_init_rrset_left_wildcard(struct query_iter *it)
 		return (NULL);
 	ubuf_append(it->key, name, len - 1);
 
-	if (it->fs_filter != NULL)
-		it->m_iter2 = mtbl_source_get_prefix(mtbl_fileset_source(it->fs_filter),
+	if (it->source_filter != NULL)
+		it->m_iter2 = mtbl_source_get_prefix(it->source_filter,
 						     ubuf_data(it->key),
 						     ubuf_size(it->key));
 
@@ -1010,9 +1007,8 @@ query_init_rrset(struct query_iter *it)
 		}
 	}
 
-	if (it->fs_filter != NULL)
-		it->m_iter2 = mtbl_source_get_prefix(
-				mtbl_fileset_source(it->fs_filter),
+	if (it->source_filter!= NULL)
+		it->m_iter2 = mtbl_source_get_prefix(it->source_filter,
 				ubuf_data(it->key), ubuf_size(it->key));
 
 	it->m_iter = mtbl_source_get_prefix(it->source, ubuf_data(it->key), ubuf_size(it->key));
@@ -1028,8 +1024,8 @@ query_init_rdata_right_wildcard(struct query_iter *it)
 	/* key: rdata name, less trailing "\x01\x2a\x00" */
 	ubuf_append(it->key, it->query->name.data, it->query->name.len - 3);
 
-	if (it->fs_filter != NULL)
-		it->m_iter2 = mtbl_source_get_prefix(mtbl_fileset_source(it->fs_filter),
+	if (it->source_filter != NULL)
+		it->m_iter2 = mtbl_source_get_prefix(it->source_filter,
 						     ubuf_data(it->key),
 						     ubuf_size(it->key));
 
@@ -1051,14 +1047,9 @@ query_init_rdata_left_wildcard(struct query_iter *it)
 		return (NULL);
 	ubuf_append(it->key, name, len - 1);
 
-	if (it->fs_filter != NULL)
-		it->m_iter2 = mtbl_source_get_prefix(mtbl_fileset_source(it->fs_filter),
-						     ubuf_data(it->key),
-						     ubuf_size(it->key));
-	else
-		it->m_iter2 = mtbl_source_get_prefix(it->source,
-						     ubuf_data(it->key),
-						     ubuf_size(it->key));
+	it->m_iter2 = mtbl_source_get_prefix(it->source_index,
+					     ubuf_data(it->key),
+					     ubuf_size(it->key));
 
 	return dnstable_iter_init(query_iter_next_rdata_name_rev, query_iter_free, it);
 }
@@ -1092,9 +1083,8 @@ query_init_rdata_name(struct query_iter *it)
 		}
 	}
 
-	if (it->fs_filter != NULL)
-		it->m_iter2 = mtbl_source_get_prefix(
-				mtbl_fileset_source(it->fs_filter),
+	if (it->source_filter != NULL)
+		it->m_iter2 = mtbl_source_get_prefix(it->source_filter,
 				ubuf_data(it->key), ubuf_size(it->key));
 
 	it->m_iter = mtbl_source_get_prefix(it->source, ubuf_data(it->key), ubuf_size(it->key));
@@ -1127,16 +1117,14 @@ query_init_rdata_ip(struct query_iter *it)
 	}
 
 	if (it->key2 == NULL) {
-		if (it->fs_filter != NULL)
-			it->m_iter2 = mtbl_source_get_prefix(
-					mtbl_fileset_source(it->fs_filter),
+		if (it->source_filter != NULL)
+			it->m_iter2 = mtbl_source_get_prefix(it->source_filter,
 					ubuf_data(it->key), ubuf_size(it->key));
 		it->m_iter = mtbl_source_get_prefix(it->source,
 						    ubuf_data(it->key), ubuf_size(it->key));
 	} else {
-		if (it->fs_filter != NULL)
-			it->m_iter2 = mtbl_source_get_range(
-					mtbl_fileset_source(it->fs_filter),
+		if (it->source_filter != NULL)
+			it->m_iter2 = mtbl_source_get_range(it->source_filter,
 					ubuf_data(it->key), ubuf_size(it->key),
 					ubuf_data(it->key2), ubuf_size(it->key2));
 		it->m_iter = mtbl_source_get_range(it->source,
@@ -1164,9 +1152,8 @@ query_init_rdata_raw(struct query_iter *it)
 	 * do_rrtype is set then the results will be filtered by
 	 * rrtype.
 	 */
-	if (it->fs_filter != NULL)
-		it->m_iter2 = mtbl_source_get_prefix(
-				mtbl_fileset_source(it->fs_filter),
+	if (it->source_filter != NULL)
+		it->m_iter2 = mtbl_source_get_prefix(it->source_filter,
 				ubuf_data(it->key), ubuf_size(it->key));
 
 	it->m_iter = mtbl_source_get_prefix(it->source, ubuf_data(it->key), ubuf_size(it->key));
@@ -1226,6 +1213,7 @@ dnstable_query_iter(struct dnstable_query *q, const struct mtbl_source *source)
 
 	it->query = q;
 	it->source = source;
+	it->source_index = source;
 	return dnstable_query_iter_common(it);
 }
 
@@ -1353,26 +1341,48 @@ dnstable_query_iter_fileset(struct dnstable_query *q, struct mtbl_fileset *fs)
 	struct mtbl_fileset_options *fopt;
 
 	it->query = q;
+	it->source = mtbl_fileset_source(fs);
+	it->source_index = it->source;
 
+	fopt = mtbl_fileset_options_init();
+	mtbl_fileset_options_set_merge_func(fopt, dnstable_merge_func, NULL);
+
+	/*
+	 * For queries with time filtering, we create a filtered fileset
+	 * containing only the set of files in which matching entries
+	 * or parts of matching entries will be present. We use this fileset
+	 * for index (indirect) queries and to filter candidates for direct
+	 * queries.
+	 */
 	if (q->do_time_first_before || q->do_time_first_after ||
 	    q->do_time_last_before || q->do_time_last_after) {
-		fopt = mtbl_fileset_options_init();
-		mtbl_fileset_options_set_merge_func(fopt, dnstable_merge_func, NULL);
 		mtbl_fileset_options_set_reader_filter_func(fopt, reader_time_filter, q);
 		it->fs_filter = mtbl_fileset_dup(fs, fopt);
-		mtbl_fileset_options_destroy(&fopt);
+		it->source_index = mtbl_fileset_source(it->fs_filter);
+		it->source_filter = it->source_index;
 	}
 
-	if (q->aggregated) {
-		it->source = mtbl_fileset_source(fs);
-	} else {
-		fopt = mtbl_fileset_options_init();
+	/*
+	 * If the query requests unaggregated results, we create a fileset
+	 * with no merge function and use it as the source for final results.
+	 * The merged index fileset source remains in place to avoid duplicate
+	 * results for queries involving indexes.
+	 *
+	 * If combined with time filtering, the unaggregated fileset will also
+	 * be time filtered, which takes the place of the filtered source.
+	 */
+	if (!q->aggregated) {
+		/*
+		 * Note that the reader_filter_func setting above remains in
+		 * effect for this fileset.
+		 */
 		mtbl_fileset_options_set_merge_func(fopt, NULL, NULL);
 		mtbl_fileset_options_set_dupsort_func(fopt, dnstable_dupsort_func, NULL);
 		it->fs_no_merge = mtbl_fileset_dup(fs, fopt);
-		mtbl_fileset_options_destroy(&fopt);
 		it->source = mtbl_fileset_source(it->fs_no_merge);
+		it->source_filter = NULL;
 	}
 
+	mtbl_fileset_options_destroy(&fopt);
 	return dnstable_query_iter_common(it);
 }
