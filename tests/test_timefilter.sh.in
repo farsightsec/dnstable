@@ -2,17 +2,18 @@
 
 DNSTQ=@abs_top_builddir@/src/dnstable_lookup
 SETFILE=@abs_top_srcdir@/tests/test-timefilter/dns-test.fileset
+SETFILE_NTF=@abs_top_srcdir@/tests/test-timefilter/dns-test-ntf.fileset
 MERGEDFILE=@abs_top_srcdir@/tests/test-timefilter/dns-merged.mtbl
 
 unset DNSTABLE_FNAME
 unset DNSTABLE_SETFILE
-FSOUT=${TMPDIR:-/tmp}/fs-out.$$
-MOUT=${TMPDIR:-/tmp}/merged-out.$$
+TEST_OUT=${TMPDIR:-/tmp}/test-out.$$
+CHECK_OUT=${TMPDIR:-/tmp}/check-out.$$
 
 RESULT=0
 
 cleanup() {
-	rm -f $FSOUT $MOUT
+	rm -f $TEST_OUT $CHECK_OUT
 }
 
 trap "rm -f $FSOUT $MOUT" 0 1 2 15
@@ -22,19 +23,27 @@ test_fileset() {
 	env DNSTABLE_SETFILE=${SETFILE} $@
 }
 
+test_fileset_ntf() {
+	env DNSTABLE_SETFILE=${SETFILE_NTF} $@
+}
+
 test_merged() {
 	env DNSTABLE_FNAME=${MERGEDFILE} $@
 }
 
 test_cmp() {
-	test_fileset $@ > /tmp/fs-out.$$ 2>/dev/null
-	test_merged $@ > /tmp/merged-out.$$ 2>/dev/null
-	if cmp /tmp/fs-out.$$ /tmp/merged-out.$$; then
+	test_fileset $@ > $TEST_OUT 2>/dev/null
+	if [ $2 = "-u" ]; then
+		test_fileset_ntf $@ > $CHECK_OUT 2>/dev/null
+	else
+		test_merged $@ > $CHECK_OUT 2>/dev/null
+	fi
+	if cmp $TEST_OUT $CHECK_OUT; then
 		echo PASS: $@
 		return
 	fi
 	echo "FAIL $*"
-	diff /tmp/merged-out.$$ /tmp/fs-out.$$
+	diff $CHECK_OUT $TEST_OUT
 	RESULT=1
 }
 
@@ -72,6 +81,12 @@ test_cmp $DNSTQ -A 2022-11-11 $q
 test_cmp $DNSTQ -b 2022-11-11 $q
 test_cmp $DNSTQ -B 2022-11-11 $q
 
+# single time filter, unaggregated
+test_cmp $DNSTQ -u -a 2022-11-11 $q
+test_cmp $DNSTQ -u -A 2022-11-11 $q
+test_cmp $DNSTQ -u -b 2022-11-11 $q
+test_cmp $DNSTQ -u -B 2022-11-11 $q
+
 # all pairs of time filters which make sense
 test_cmp $DNSTQ -a 2022-11-11 -A 2022-11-13 $q
 test_cmp $DNSTQ -a 2022-11-11 -B 2022-11-13 $q
@@ -81,6 +96,15 @@ test_cmp $DNSTQ -A 2022-11-11 -b 2022-11-13 $q
 test_cmp $DNSTQ -B 2022-11-11 -A 2022-11-13 $q
 test_cmp $DNSTQ -B 2022-11-11 -b 2022-11-13 $q
 
+# all pairs of time filters which make sense, unaggregated
+# (Removed -B 2022-11-11 -A 2022-11-13, no results expected)
+test_cmp $DNSTQ -u -a 2022-11-11 -A 2022-11-13 $q
+test_cmp $DNSTQ -u -a 2022-11-11 -B 2022-11-13 $q
+test_cmp $DNSTQ -u -a 2022-11-11 -b 2022-11-13 $q
+test_cmp $DNSTQ -u -A 2022-11-11 -B 2022-11-13 $q
+test_cmp $DNSTQ -u -A 2022-11-11 -b 2022-11-13 $q
+test_cmp $DNSTQ -u -B 2022-11-11 -b 2022-11-13 $q
+
 # all triples of time filters which make sense
 test_cmp $DNSTQ -a 2022-11-11 -A 2022-11-13 -B 2022-11-15 $q
 test_cmp $DNSTQ -a 2022-11-11 -A 2022-11-13 -b 2022-11-15 $q
@@ -89,9 +113,18 @@ test_cmp $DNSTQ -a 2022-11-11 -B 2022-11-13 -b 2022-11-15 $q
 test_cmp $DNSTQ -A 2022-11-11 -B 2022-11-13 -b 2022-11-15 $q
 test_cmp $DNSTQ -B 2022-11-11 -A 2022-11-13 -b 2022-11-15 $q
 
+# all triples of time filters which make sense, unaggregated
+test_cmp $DNSTQ -u -a 2022-11-11 -A 2022-11-13 -B 2022-11-15 $q
+test_cmp $DNSTQ -u -a 2022-11-11 -A 2022-11-13 -b 2022-11-15 $q
+test_cmp $DNSTQ -u -a 2022-11-11 -B 2022-11-13 -b 2022-11-15 $q
+test_cmp $DNSTQ -u -A 2022-11-11 -B 2022-11-13 -b 2022-11-15 $q
+
 # Both combinations of all time filters which make sense
 test_cmp $DNSTQ -a 2022-11-11 -B 2022-11-13 -A 2022-11-15 -b 2022-11-17 $q
 test_cmp $DNSTQ -a 2022-11-11 -A 2022-11-13 -B 2022-11-15 -b 2022-11-17 $q
+
+# The one combination of all time filters which make sense, unaggregated
+test_cmp $DNSTQ -u -a 2022-11-11 -A 2022-11-13 -B 2022-11-15 -b 2022-11-17 $q
 
 done
 
