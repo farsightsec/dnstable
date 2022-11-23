@@ -694,8 +694,9 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 		 *
 		 * Records of the desired rrtype for the corresponding
 		 * address may exist. These will have a prefix of our
-		 * current start key, followed by a sequence of domain
-		 * name labels ending with an empty label.
+		 * current start key (up to the rrtype), followed by a
+		 * sequence of domain name labels ending with an empty
+		 * label.
 		 *
 		 * We copy further bytes from the current key to extend
 		 * our start key with a series of DNS labels which will
@@ -792,6 +793,13 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 				goto increment;
 			}
 
+			/*
+			 *  The current label length would extend the search key
+			 *  to be longer than the current key. We copy the rest
+			 *  of the bytes from the current key to the search key
+			 *  truncating the purported label, and append a zero
+			 *  byte to advance the search.
+			 */
 			if (llen + 1 + ubuf_size(it->key2) > len_key) {
 				ubuf_reserve(it->key2, len_key + 1);
 				ubuf_append(it->key2, &key[ubuf_size(it->key2)],
@@ -811,8 +819,8 @@ increment:
 		res = increment_key(it->key2, key_prefix_len - 1);
 
 		/*
-		 * Because the first byte of it->key2 will be ENTRY_TYPE_RDATA
-		 * (0x03), increment_key will succeed, but if we increment
+		 * Because the first byte of seek_key will be ENTRY_TYPE_RDATA
+		 * (0x02), increment_key will succeed, but if we increment
 		 * an entry prefix corresponding to an all-ones IP, it may
 		 * overflow into the type byte, in which case we have finished
 		 * iteration.
