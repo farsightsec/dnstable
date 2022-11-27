@@ -793,18 +793,19 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 			}
 
 			/*
-			 *  The current label length would extend the search key
-			 *  to be longer than the current key. We copy the rest
-			 *  of the bytes from the current key to the search key
-			 *  truncating the purported label, and append a zero
-			 *  byte to advance the search.
+			 * The current label length would extend the search key
+			 * to be longer than the current key. We copy the rest
+			 * of the bytes from the current key to the search key
+			 * truncating the purported label and zero-fill the
+			 * remainder of the purported label to advance the search.
 			 */
 			if (llen + 1 + ubuf_size(seek_key) > len_key) {
-				ubuf_reserve(seek_key, len_key + 1);
+				size_t extra = llen + 1 + ubuf_size(seek_key) - len_key;
+				ubuf_reserve(seek_key, llen + 1);
 				ubuf_append(seek_key, &key[ubuf_size(seek_key)],
 						len_key - ubuf_size(seek_key));
-				ubuf_add(seek_key, 0);
-
+				memset(ubuf_ptr(seek_key), 0, extra);
+				ubuf_advance(seek_key, extra);
 				goto seek;
 			}
 
