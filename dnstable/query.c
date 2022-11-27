@@ -723,20 +723,26 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 				 * We have found an invalid label length,
 				 * and thus are no longer following a
 				 * sequence of labels. If we arrived here
-				 * via a previous label length, the next
-				 * possible hostname  must end with a longer
-				 * label. Chop off the last label and increment
-				 * the previous label length.
+				 * via a previous label length, we continue
+				 * our search by incrementing the last byte of
+				 * the previous label.
 				 *
-				 * If this is the first byte post-rrtype,
-				 * key_prefix_len will point to the end of the
-				 * address within the key, and we will increment
-				 * to the next address. If we have copied a
-				 * label to the start key, key_prefix_len will
-				 * point to that label length.
+				 * If this is the first byte of the owner name,
+				 * we additionally chop off the rrtype to increment
+				 * the address portion of the key.
 				 */
+				switch (it->query->rrtype) {
+				case WDNS_TYPE_A:
+					if (ubuf_size(seek_key) == 1 + 4 + 1) {
+						ubuf_clip(seek_key, ubuf_size(seek_key)-1);
+					}
+				case WDNS_TYPE_AAAA:
+					if (ubuf_size(seek_key) == 1 + 16 + 1)
+						ubuf_clip(seek_key, ubuf_size(seek_key)-1);
+					break;
+				}
 
-				ubuf_clip(seek_key, key_prefix_len);
+				key_prefix_len = ubuf_size(seek_key);
 				goto increment;
 			}
 
