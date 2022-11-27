@@ -709,12 +709,9 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 		if (len_key == ubuf_size(seek_key)) {
 			/*
 			 * We have no more data to copy from key.
-			 * Zero-extend our start key and proceed.
+			 * Move along to the next key.
 			 */
-			ubuf_reserve(seek_key, len_key + 1);
-			ubuf_add(seek_key, 0);
-
-			goto seek;
+			continue;
 		}
 
 		for (;;) {
