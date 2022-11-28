@@ -433,14 +433,32 @@ dnstable_res
 dnstable_query_filter(struct dnstable_query *q, struct dnstable_entry *e, bool *pass)
 {
 	dnstable_res res;
+	uint16_t rrtype;
 
-	if (q->do_rrtype) {
-		uint16_t rrtype;
+	if (q->do_rrtype || (q->q_type == DNSTABLE_QUERY_TYPE_RDATA_NAME)) {
 		res = dnstable_entry_get_rrtype(e, &rrtype);
 		if (res != dnstable_res_success)
 			return (res);
-		if (rrtype != q->rrtype)
+	}
+
+	if (q->do_rrtype) {
+	       if (rrtype != q->rrtype)
+		goto fail;
+	} else if (q->q_type == DNSTABLE_QUERY_TYPE_RDATA_NAME) {
+		switch(rrtype) {
+		case WDNS_TYPE_SOA:
+		case WDNS_TYPE_NS:
+		case WDNS_TYPE_CNAME:
+		case WDNS_TYPE_DNAME:
+		case WDNS_TYPE_PTR:
+		case WDNS_TYPE_MX:
+		case WDNS_TYPE_SRV:
+		case WDNS_TYPE_SVCB:
+		case WDNS_TYPE_HTTPS:
+			break;
+		default:
 			goto fail;
+		}
 	}
 
 	if (q->do_time_first_before || q->do_time_first_after) {
