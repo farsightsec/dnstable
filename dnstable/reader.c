@@ -17,7 +17,6 @@
 #include "dnstable-private.h"
 
 struct reader_iter {
-	struct dnstable_query		*q;
 	struct mtbl_iter		*m_it;
 };
 
@@ -164,20 +163,6 @@ reader_iter_next(void *clos, struct dnstable_entry **ent)
 		if (*ent == NULL)
 			continue;
 
-		if (it->q != NULL) {
-			bool pass = false;
-			dnstable_res res;
-			
-			res = dnstable_query_filter(it->q, *ent, &pass);
-			assert(res == dnstable_res_success);
-			if (pass) {
-				return (dnstable_res_success);
-			} else {
-				dnstable_entry_destroy(ent);
-				continue;
-			}
-		} else {
-			return (dnstable_res_success);
-		}
+		return (dnstable_res_success);
 	}
 }
