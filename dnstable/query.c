@@ -595,8 +595,9 @@ query_iter_next(void *clos, struct dnstable_entry **ent)
 				return (dnstable_res_timeout);
 		}
 
-		if (query_iter_next_filtered(it, &expiry) != dnstable_res_success)
-			return (dnstable_res_failure);
+		res = query_iter_next_filtered(it, &expiry);
+		if (res != dnstable_res_success)
+			return res;
 
 		if (mtbl_iter_next(it->m_iter, &key, &len_key, &val, &len_val) != mtbl_res_success)
 			return (dnstable_res_failure);
@@ -648,8 +649,9 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 				return (dnstable_res_timeout);
 		}
 
-		if (query_iter_next_filtered(it, &expiry) != dnstable_res_success)
-			return (dnstable_res_failure);
+		res = query_iter_next_filtered(it, &expiry);
+		if (res != dnstable_res_success)
+			return res;
 
 		if (mtbl_iter_next(it->m_iter, &key, &len_key, &val, &len_val) != mtbl_res_success)
 			return (dnstable_res_failure);
