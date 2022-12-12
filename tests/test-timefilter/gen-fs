@@ -1,0 +1,160 @@
+#!/bin/sh
+
+#
+# This script generates a set of 10 mtbl files populated by entries
+# spread across each of the 511 possible combinations of files. This
+# allows us to exercise all four time filtering parameters simultaneously
+# with each time cutoff in a file's time range, and outside the range
+# of at least one file before and after the cutoff.
+#
+# Query results are checked against a merged file of all 10 files. If
+# any file is improperly excluded when processing a query against the
+# file set, all entries present in that file will have incorrect counts
+# and any entries present *only* in the missing file will be missing
+# entirely
+
+DATE_BASE="2022-11-"
+DATA_DAYS="10 11 12 13 14 15 16 17 18"
+N=511
+
+sequence() {
+	seq $1 2>/dev/null || jot $1 2>/dev/null
+}
+
+time_first() {
+	local day
+	day=$(expr $1 - 1)
+	echo "${DATE_BASE}${day} 23:00:00"
+}
+
+time_last() {
+	local day
+	day=$1
+	echo "${DATE_BASE}${day} 00:00:01"
+}
+
+
+generate_entry() {
+	local number day first last
+	number=$1; shift
+	first=$1; shift
+	last=$1; shift
+jq -Mc . <<EOF
+{"vname":"SIE",
+ "mname":"dnsdedupe",
+ "message":{
+   "type":"EXPIRATION",
+   "count":1,
+   "time_first":"${first}",
+   "time_last":"${last}",
+   "bailiwick":"example.com",
+   "rrname":"test-full.d${number}.example.com.",
+   "rrclass":"IN",
+   "rrtype":"A",
+   "rrttl":300,
+   "rdata":["10.0.$(expr $number / 256).$(expr $number % 256)"]}}
+{"vname":"SIE",
+ "mname":"dnsdedupe",
+ "message":{
+   "type":"EXPIRATION",
+   "count":1,
+   "time_first":"${first}",
+   "time_last":"${first}",
+   "bailiwick":"example.com",
+   "rrname":"test-first.d${number}.example.com.",
+   "rrclass":"IN",
+   "rrtype":"A",
+   "rrttl":300,
+   "rdata":["10.0.$(expr 2 + $number / 256).$(expr $number % 256)"]}}
+{"vname":"SIE",
+ "mname":"dnsdedupe",
+ "message":{
+   "type":"EXPIRATION",
+   "count":1,
+   "time_first":"${last}",
+   "time_last":"${last}",
+   "bailiwick":"example.com",
+   "rrname":"test-last.d${number}.example.com.",
+   "rrclass":"IN",
+   "rrtype":"A",
+   "rrttl":300,
+   "rdata":["10.0.$(expr 4 + $number / 256).$(expr $number % 256)"]}}
+{"vname":"SIE",
+ "mname":"dnsdedupe",
+ "message":{
+   "type":"EXPIRATION",
+   "count":1,
+   "time_first":"${first}",
+   "time_last":"${last}",
+   "bailiwick":"example.com",
+   "rrname":"d${number}.example.com.",
+   "rrclass":"IN",
+   "rrtype":"NS",
+   "rrttl":300,
+   "rdata":["ns.d${number}.example.net"]}}
+EOF
+}
+
+#
+# Generate an entry with a time range wide enough to effectively
+# disable time filtering.
+#
+generate_time() {
+jq -Mc . <<EOF
+{"vname":"SIE",
+ "mname":"dnsdedupe",
+ "message":{
+   "type":"INSERTION",
+   "time_first":"2022-01-01 00:00:00",
+   "time_last":"2022-12-31 00:00:00",
+   "bailiwick":"example.dom.",
+   "rrname":"example.dom.",
+   "rrclass":"IN",
+   "rrtype":"A",
+   "rrttl":300,
+   "rdata":["0.0.0.0"]}}
+EOF
+}
+
+generate() {
+	local number day first last number
+	local divisor mtbl_file
+
+	divisor=1
+
+	for day in $DATA_DAYS; do
+		mtbl_file=dns-${DATE_BASE}${day}.mtbl
+		first=$(time_first $day)
+		last=$(time_last $day)
+
+		rm -f $mtbl_file
+		for number in $(sequence $N); do
+			if [ $(expr $number / $divisor % 2) != "0" ]; then
+				generate_entry $number "$first" "$last"
+			fi
+
+		done | nmsgtool -j - -w - | dnstable_convert - $mtbl_file scratch-dnssec.mtbl
+
+		divisor=$(expr $divisor \* 2)
+		echo $mtbl_file
+	done > dns-test.fileset
+
+	rm -f ntf.mtbl
+	generate_time | nmsgtool -j - -w - | dnstable_convert - ntf.mtbl scratch-dnssec.mtbl
+
+	for day in $DATA_DAYS; do
+		mtbl_file=dns-${DATE_BASE}${day}.mtbl
+		mtbl_file_ntf=dns-ntf-${DATE_BASE}${day}.mtbl
+
+		rm -f $mtbl_file_ntf
+		dnstable_merge $mtbl_file ntf.mtbl $mtbl_file_ntf
+		echo $mtbl_file_ntf
+	done > dns-test-ntf.fileset
+
+	rm -f ntf.mtbl
+
+	rm -f dns-merged.mtbl
+	dnstable_merge $(cat dns-test.fileset) dns-merged.mtbl
+}
+
+generate

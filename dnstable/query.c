@@ -45,7 +45,11 @@ struct dnstable_query {
 
 struct query_iter {
 	struct dnstable_query	*query;
+	const struct mtbl_source *source_filter;
+	const struct mtbl_source *source_index;
 	const struct mtbl_source *source;
+	struct mtbl_fileset	*fs_filter;
+	struct mtbl_fileset	*fs_no_merge;
 	struct mtbl_iter	*m_iter, *m_iter2;
 	ubuf			*key, *key2;
 };
@@ -373,11 +377,6 @@ dnstable_query_set_aggregated(struct dnstable_query *q, bool aggregated)
 	return (dnstable_res_success);
 }
 
-bool dnstable_query_is_aggregated(const struct dnstable_query *q)
-{
-	return q->aggregated;
-}
-
 dnstable_res
 dnstable_query_set_timeout(struct dnstable_query *q, const struct timespec *timeout)
 {
@@ -510,6 +509,8 @@ query_iter_free(void *clos)
 	struct query_iter *it = (struct query_iter *) clos;
 	mtbl_iter_destroy(&it->m_iter);
 	mtbl_iter_destroy(&it->m_iter2);
+	mtbl_fileset_destroy(&it->fs_filter);
+	mtbl_fileset_destroy(&it->fs_no_merge);
 	ubuf_destroy(&it->key);
 	ubuf_destroy(&it->key2);
 	my_free(it);
@@ -537,6 +538,57 @@ increment_key(ubuf *key, size_t pos)
 }
 
 static dnstable_res
+query_iter_next_filtered(struct query_iter *it, const struct timespec *expiry)
+{
+	const uint8_t *key, *val;
+	size_t len_key, len_val;
+
+	if (it->m_iter2 == NULL)
+		return (dnstable_res_success);
+
+	for (;;) {
+		if (mtbl_iter_next(it->m_iter2, &key, &len_key, &val, &len_val) != mtbl_res_success)
+			return (dnstable_res_failure);
+
+		if (it->query->do_rrtype) {
+			struct dnstable_entry *e;
+			dnstable_res res;
+			uint16_t rrtype;
+			struct timespec now = {0};
+
+			e = dnstable_entry_decode(key, len_key, val, len_val);
+			if (e == NULL)
+				continue;
+
+			res = dnstable_entry_get_rrtype(e, &rrtype);
+			dnstable_entry_destroy(&e);
+
+			if ((res == dnstable_res_success) && (rrtype == it->query->rrtype))
+				break;
+
+			if (it->query->do_timeout) {
+				my_gettime(DNSTABLE__CLOCK_MONOTONIC, &now);
+				if (my_timespec_cmp(&now, expiry) >= 0)
+					return (dnstable_res_timeout);
+			}
+			continue;
+		}
+		break;
+	}
+
+	/*
+	 * When operating with a time filtered fileset, m_iter2 iterates over a
+	 * subset of the keys of m_iter. Thus, we can seek m_iter to a key from
+	 * m_iter2 and the next mtbl_iter_next call will return the same key.
+	 */
+
+	if (mtbl_iter_seek(it->m_iter, key, len_key) != mtbl_res_success)
+		return (dnstable_res_failure);
+
+	return (dnstable_res_success);
+}
+
+static dnstable_res
 query_iter_next(void *clos, struct dnstable_entry **ent)
 {
 	struct query_iter *it = (struct query_iter *) clos;
@@ -559,6 +611,11 @@ query_iter_next(void *clos, struct dnstable_entry **ent)
 			if (my_timespec_cmp(&now, &expiry) >= 0)
 				return (dnstable_res_timeout);
 		}
+
+		res = query_iter_next_filtered(it, &expiry);
+		if (res != dnstable_res_success)
+			return res;
+
 		if (mtbl_iter_next(it->m_iter, &key, &len_key, &val, &len_val) != mtbl_res_success)
 			return (dnstable_res_failure);
 
@@ -609,6 +666,10 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 				return (dnstable_res_timeout);
 		}
 
+		res = query_iter_next_filtered(it, &expiry);
+		if (res != dnstable_res_success)
+			return res;
+
 		if (mtbl_iter_next(it->m_iter, &key, &len_key, &val, &len_val) != mtbl_res_success)
 			return (dnstable_res_failure);
 
@@ -617,9 +678,8 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 			continue;
 
 		/*
-		 * it->key2 != NULL implies an IP prefix/range search, for which
-		 * we can perform a special optimization to skip past irrelevant
-		 * entries.
+		 *  it->key2 != NULL implies an IP prefix/range search, which we
+		 *  can optimize to skip past irrelevant entries.
 		 */
 		if (it->query->do_rrtype && it->key2 != NULL) {
 			/* Get the rrtype of the decoded entry. */
@@ -716,18 +776,14 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 				 */
 				assert(ubuf_size(new_key) == ubuf_size(it->key));
 
-				/*
-				 * Seek to the newly generated key.
-				 */
+				/* Seek to the newly generated key. */
 				if (mtbl_iter_seek(it->m_iter, ubuf_data(new_key), ubuf_size(new_key)) != mtbl_res_success) {
 					ubuf_destroy(&new_key);
 					return (dnstable_res_failure);
 				}
 				ubuf_destroy(&new_key);
 
-				/*
-				 * Restart processing starting from the new key.
-				 */
+				/* Restart processing starting from the new key. */
 				continue;
 			}
 		}
@@ -861,6 +917,25 @@ query_iter_next_rdata_name_rev(void *clos, struct dnstable_entry **ent)
 	return query_iter_next_name_indirect(clos, ent, ENTRY_TYPE_RDATA);
 }
 
+static struct mtbl_iter *
+query_get_iterator(struct query_iter *it, const struct mtbl_source *s)
+{
+	if (it->key2 != NULL)
+		return mtbl_source_get_range(s, ubuf_data(it->key), ubuf_size(it->key),
+					        ubuf_data(it->key2), ubuf_size(it->key2));
+
+	return mtbl_source_get_prefix(s, ubuf_data(it->key), ubuf_size(it->key));
+}
+
+static void
+query_init_iterators(struct query_iter *it)
+{
+	if (it->source_filter != NULL)
+		it->m_iter2 = query_get_iterator(it, it->source_filter);
+
+	it->m_iter = query_get_iterator(it, it->source);
+}
+
 static struct dnstable_iter *
 query_init_rrset_right_wildcard(struct query_iter *it)
 {
@@ -870,7 +945,7 @@ query_init_rrset_right_wildcard(struct query_iter *it)
 	/* key: rrset owner name, less trailing "\x01\x2a\x00" */
 	ubuf_append(it->key, it->query->name.data, it->query->name.len - 3);
 
-	it->m_iter2 = mtbl_source_get_prefix(it->source,
+	it->m_iter2 = mtbl_source_get_prefix(it->source_index,
 					     ubuf_data(it->key),
 					     ubuf_size(it->key));
 
@@ -892,7 +967,7 @@ query_init_rrset_left_wildcard(struct query_iter *it)
 		return (NULL);
 	ubuf_append(it->key, name, len - 1);
 
-	it->m_iter = mtbl_source_get_prefix(it->source, ubuf_data(it->key), ubuf_size(it->key));
+	query_init_iterators(it);
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
 
@@ -960,7 +1035,7 @@ query_init_rrset(struct query_iter *it)
 		}
 	}
 
-	it->m_iter = mtbl_source_get_prefix(it->source, ubuf_data(it->key), ubuf_size(it->key));
+	query_init_iterators(it);
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
 
@@ -973,7 +1048,7 @@ query_init_rdata_right_wildcard(struct query_iter *it)
 	/* key: rdata name, less trailing "\x01\x2a\x00" */
 	ubuf_append(it->key, it->query->name.data, it->query->name.len - 3);
 
-	it->m_iter = mtbl_source_get_prefix(it->source, ubuf_data(it->key), ubuf_size(it->key));
+	query_init_iterators(it);
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
 
@@ -991,7 +1066,7 @@ query_init_rdata_left_wildcard(struct query_iter *it)
 		return (NULL);
 	ubuf_append(it->key, name, len - 1);
 
-	it->m_iter2 = mtbl_source_get_prefix(it->source,
+	it->m_iter2 = mtbl_source_get_prefix(it->source_index,
 					     ubuf_data(it->key),
 					     ubuf_size(it->key));
 
@@ -1027,7 +1102,7 @@ query_init_rdata_name(struct query_iter *it)
 		}
 	}
 
-	it->m_iter = mtbl_source_get_prefix(it->source, ubuf_data(it->key), ubuf_size(it->key));
+	query_init_iterators(it);
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
 
@@ -1056,14 +1131,8 @@ query_init_rdata_ip(struct query_iter *it)
 		increment_key(it->key2, ubuf_size(it->key2) - 1);
 	}
 
-	if (it->key2 == NULL) {
-		it->m_iter = mtbl_source_get_prefix(it->source,
-						    ubuf_data(it->key), ubuf_size(it->key));
-	} else {
-		it->m_iter = mtbl_source_get_range(it->source,
-						   ubuf_data(it->key), ubuf_size(it->key),
-						   ubuf_data(it->key2), ubuf_size(it->key2));
-	}
+	query_init_iterators(it);
+
 	return dnstable_iter_init(query_iter_next_ip, query_iter_free, it);
 }
 
@@ -1079,14 +1148,12 @@ query_init_rdata_raw(struct query_iter *it)
 	ubuf_append(it->key, it->query->rdata, it->query->len_rdata);
 
 	/*
-	 * Note: even though this function does not use
-	 * it->query->do_rrtype nor call add_rrtype_to_key(), in the
-	 * post-query filter processing in dnstable_query_filter(), if
-	 * do_rrtype is set then the results will be filtered by
-	 * rrtype.
+	 * Note: even though this function does not use it->query->do_rrtype
+	 * or call add_rrtype_to_key(), in the post-query filter processing
+	 * in dnstable_query_filter(), if do_rrtype is set then the results
+	 * will be filtered by rrtype.
 	 */
-
-	it->m_iter = mtbl_source_get_prefix(it->source, ubuf_data(it->key), ubuf_size(it->key));
+	query_init_iterators(it);
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
 
@@ -1110,13 +1177,12 @@ query_init_version(struct query_iter *it)
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
 
-struct dnstable_iter *
-dnstable_query_iter(struct dnstable_query *q, const struct mtbl_source *source)
+static struct dnstable_iter *
+dnstable_query_iter_common(struct query_iter *it)
 {
 	struct dnstable_iter *d_it;
-	struct query_iter *it = my_calloc(1, sizeof(*it));
-	it->query = q;
-	it->source = source;
+	struct dnstable_query *q = it->query;
+
 	if (q->q_type == DNSTABLE_QUERY_TYPE_RRSET) {
 		d_it = query_init_rrset(it);
 	} else if (q->q_type == DNSTABLE_QUERY_TYPE_RDATA_NAME) {
@@ -1135,4 +1201,181 @@ dnstable_query_iter(struct dnstable_query *q, const struct mtbl_source *source)
 	if (d_it == NULL)
 		query_iter_free(it);
 	return (d_it);
+}
+
+struct dnstable_iter *
+dnstable_query_iter(struct dnstable_query *q, const struct mtbl_source *source)
+{
+	struct query_iter *it = my_calloc(1, sizeof(*it));
+
+	it->query = q;
+	it->source = source;
+	it->source_index = source;
+	return dnstable_query_iter_common(it);
+}
+
+/*
+ * dnstable_dupsort_func is used to sort the entries with duplicate
+ * keys during the merge process based on their data.  The dnstable
+ * data is a triplet of variable-length integers, so (in theory) the
+ * byte comparison used for keys would not suffice.  This is mostly of
+ * interest with a NULL merge function, although it could be used to
+ * enforce some order of merges with a non-NULL merge function.
+ *
+ * This sorts first by time_first, then by time_last if time_first is the same.
+ */
+static int
+dnstable_dupsort_func(void *clos,
+		      const uint8_t *key, size_t len_key,
+		      const uint8_t *val0, size_t len_val0,
+		      const uint8_t *val1, size_t len_val1)
+{
+	uint64_t time_first0, time_last0, count0;
+	uint64_t time_first1, time_last1, count1;
+
+	if (len_key && (key[0] == ENTRY_TYPE_RRSET ||
+			key[0] == ENTRY_TYPE_RDATA))
+	{
+		assert(len_val0 && len_val1);
+		dnstable_res res;
+
+		res = triplet_unpack(val0, len_val0, &time_first0, &time_last0, &count0);
+		assert(res == dnstable_res_success);
+		res = triplet_unpack(val1, len_val1, &time_first1, &time_last1, &count1);
+		assert(res == dnstable_res_success);
+
+		if (time_first0 < time_first1)
+			return -1;
+		if (time_first0 > time_first1)
+			return 1;
+		if (time_last0 < time_last1)
+			return -1;
+		if (time_last0 > time_last1)
+			return 1;
+		return 0;
+	} else
+		return 0;
+}
+
+static bool
+reader_time_filter(struct mtbl_reader *r, void *clos)
+{
+	struct dnstable_query *q = clos;
+	struct dnstable_query *tr_q = dnstable_query_init(DNSTABLE_QUERY_TYPE_TIME_RANGE);
+	struct dnstable_iter *tr_it = dnstable_query_iter(tr_q, mtbl_reader_source(r));
+	struct dnstable_entry *tr_e = NULL;
+	uint64_t min_time_first, max_time_last;
+	bool res = true;
+
+	if (tr_it == NULL) goto out;
+
+	if (dnstable_iter_next(tr_it, &tr_e) != dnstable_res_success) {
+		goto out;
+	}
+
+	if ((dnstable_entry_get_time_first(tr_e, &min_time_first) != dnstable_res_success) ||
+	    (dnstable_entry_get_time_last(tr_e, &max_time_last) != dnstable_res_success)) {
+		goto out;
+	}
+
+	/*
+	 * #1. If the current reader has only data observed before our
+	 * time_first_after cutoff, the resulting merged entries will
+	 * fail our time_first_after filter. Ignore for the filter pass.
+	 */
+	if (q->do_time_first_after && (q->time_first_after > max_time_last))
+		res = false;
+
+	/*
+	 * #2. If the current reader has no data with time_last after our
+	 * time_last_after cutoff, it will not cause any merged results
+	 * to pass our time_last_after filter. Ignore for the filter pass.
+	 */
+	if (q->do_time_last_after && (q->time_last_after > max_time_last))
+		res = false;
+
+	/*
+	 * #3. Like with time_first_after (#1), if the current reader has only
+	 * data observed after the time_last_before cutoff, the resulting merged
+	 * entries will fail our time_last_before filter. Ignore for the filter
+	 * pass.
+	 */
+	if (q->do_time_last_before && (q->time_last_before < min_time_first))
+		res = false;
+
+	/*
+	 * #4. If the current reader contains no data with time_first before
+	 * our time_first_before cutoff, it will not cause any merged
+	 * entries to match our time_first_before filter. Ignore for the
+	 * filter pass UNLESS a time_last_after filter needs the data.
+	 *
+	 * Note that the time_first_after (#1) and time_last_before (#3)
+	 * tests above exclude readers whose data is sufficient to show
+	 * an entry does not match the respective test, and thus will not
+	 * match the combined time filter.
+	 *
+	 * In contrast, the time_last_after (#2) and time_first_before (#4)
+	 * tests exclude readers whose data will not establish a match for
+	 * the respective test, but may be needed to establish a match for
+	 * the other test. Thus, if both tests are active, we choose one
+	 * to use to exclude readers for the filter pass.
+	 */
+	if (q->do_time_first_before && !q->do_time_last_after &&
+	    (q->time_first_before < min_time_first))
+		res = false;
+
+out:
+	dnstable_entry_destroy(&tr_e);
+	dnstable_iter_destroy(&tr_it);
+	dnstable_query_destroy(&tr_q);
+	return res;
+}
+
+struct dnstable_iter *
+dnstable_query_iter_fileset(struct dnstable_query *q, struct mtbl_fileset *fs)
+{
+	struct query_iter *it = my_calloc(1, sizeof(*it));
+	struct mtbl_fileset_options *fopt;
+
+	it->query = q;
+	it->source = mtbl_fileset_source(fs);
+	it->source_index = it->source;
+
+	fopt = mtbl_fileset_options_init();
+	mtbl_fileset_options_set_merge_func(fopt, dnstable_merge_func, NULL);
+
+	/*
+	 * For queries with time filtering, we create a filtered fileset
+	 * containing only the set of files in which matching entries or parts
+	 * of matching entries will be present. We use this fileset for index
+	 * (indirect) queries and to filter candidates for direct queries.
+	 */
+	if (q->do_time_first_before || q->do_time_first_after ||
+	    q->do_time_last_before || q->do_time_last_after) {
+		mtbl_fileset_options_set_reader_filter_func(fopt, reader_time_filter, q);
+		it->fs_filter = mtbl_fileset_dup(fs, fopt);
+		it->source_index = mtbl_fileset_source(it->fs_filter);
+		it->source_filter = it->source_index;
+	}
+
+	/*
+	 * If the query requests unaggregated results, we create a fileset
+	 * with no merge function and use it as the source for final results.
+	 * The merged index fileset source remains in place to avoid duplicate
+	 * results for queries involving indexes.
+	 *
+	 * If combined with time filtering, the unaggregated fileset will also
+	 * be time filtered, which takes the place of the filtered source.
+	 */
+	if (!q->aggregated) {
+		/* Note the reader_filter_func set above remains in effect here. */
+		mtbl_fileset_options_set_merge_func(fopt, NULL, NULL);
+		mtbl_fileset_options_set_dupsort_func(fopt, dnstable_dupsort_func, NULL);
+		it->fs_no_merge = mtbl_fileset_dup(fs, fopt);
+		it->source = mtbl_fileset_source(it->fs_no_merge);
+		it->source_filter = NULL;
+	}
+
+	mtbl_fileset_options_destroy(&fopt);
+	return dnstable_query_iter_common(it);
 }

@@ -106,8 +106,8 @@ bytes_compare(const uint8_t *a, size_t len_a,
 	return (ret);
 }
 
-bool
-dnstable_query_is_aggregated(const struct dnstable_query *);
+struct dnstable_iter *
+dnstable_query_iter_fileset(struct dnstable_query *, struct mtbl_fileset *);
 
 /*
  * The maximum number of rrtypes that can be in an rrtype bitmap index.
