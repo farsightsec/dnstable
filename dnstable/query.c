@@ -561,8 +561,7 @@ query_iter_next_filtered(struct query_iter *it, const struct timespec *expiry)
 	/*
 	 * When operating with a time filtered fileset, m_iter2 iterates over a
 	 * subset of the keys of m_iter. Thus, we can seek m_iter to a key from
-	 * m_iter2 and know that the next mtbl_iter_next call will return the
-	 * same key.
+	 * m_iter2 and the next mtbl_iter_next call will return the same key.
 	 */
 
 	if (mtbl_iter_seek(it->m_iter, key, len_key) != mtbl_res_success)
@@ -661,9 +660,8 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 			continue;
 
 		/*
-		 * it->key2 != NULL implies an IP prefix/range search, for which
-		 * we can perform a special optimization to skip past irrelevant
-		 * entries.
+		 *  it->key2 != NULL implies an IP prefix/range search, which we
+		 *  can optimize to skip past irrelevant entries.
 		 */
 		if (it->query->do_rrtype && it->key2 != NULL) {
 			/* Get the rrtype of the decoded entry. */
@@ -760,18 +758,14 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 				 */
 				assert(ubuf_size(new_key) == ubuf_size(it->key));
 
-				/*
-				 * Seek to the newly generated key.
-				 */
+				/* Seek to the newly generated key. */
 				if (mtbl_iter_seek(it->m_iter, ubuf_data(new_key), ubuf_size(new_key)) != mtbl_res_success) {
 					ubuf_destroy(&new_key);
 					return (dnstable_res_failure);
 				}
 				ubuf_destroy(&new_key);
 
-				/*
-				 * Restart processing starting from the new key.
-				 */
+				/* Restart processing starting from the new key. */
 				continue;
 			}
 		}
@@ -1136,11 +1130,10 @@ query_init_rdata_raw(struct query_iter *it)
 	ubuf_append(it->key, it->query->rdata, it->query->len_rdata);
 
 	/*
-	 * Note: even though this function does not use
-	 * it->query->do_rrtype nor call add_rrtype_to_key(), in the
-	 * post-query filter processing in dnstable_query_filter(), if
-	 * do_rrtype is set then the results will be filtered by
-	 * rrtype.
+	 * Note: even though this function does not use it->query->do_rrtype
+	 * or call add_rrtype_to_key(), in the post-query filter processing
+	 * in dnstable_query_filter(), if do_rrtype is set then the results
+	 * will be filtered by rrtype.
 	 */
 	query_init_iterators(it);
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
@@ -1335,10 +1328,9 @@ dnstable_query_iter_fileset(struct dnstable_query *q, struct mtbl_fileset *fs)
 
 	/*
 	 * For queries with time filtering, we create a filtered fileset
-	 * containing only the set of files in which matching entries
-	 * or parts of matching entries will be present. We use this fileset
-	 * for index (indirect) queries and to filter candidates for direct
-	 * queries.
+	 * containing only the set of files in which matching entries or parts
+	 * of matching entries will be present. We use this fileset for index
+	 * (indirect) queries and to filter candidates for direct queries.
 	 */
 	if (q->do_time_first_before || q->do_time_first_after ||
 	    q->do_time_last_before || q->do_time_last_after) {
@@ -1358,10 +1350,7 @@ dnstable_query_iter_fileset(struct dnstable_query *q, struct mtbl_fileset *fs)
 	 * be time filtered, which takes the place of the filtered source.
 	 */
 	if (!q->aggregated) {
-		/*
-		 * Note that the reader_filter_func setting above remains in
-		 * effect for this fileset.
-		 */
+		/* Note the reader_filter_func set above remains in effect here. */
 		mtbl_fileset_options_set_merge_func(fopt, NULL, NULL);
 		mtbl_fileset_options_set_dupsort_func(fopt, dnstable_dupsort_func, NULL);
 		it->fs_no_merge = mtbl_fileset_dup(fs, fopt);
