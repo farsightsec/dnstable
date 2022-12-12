@@ -8,12 +8,15 @@ MERGEDFILE=@abs_top_srcdir@/tests/test-timefilter/dns-merged.mtbl
 unset DNSTABLE_FNAME
 unset DNSTABLE_SETFILE
 TEST_OUT=${TMPDIR:-/tmp}/test-out.$$
+TEST_OUT_UNAGGR=${TMPDIR:-/tmp}/test-out-unaggr.$$
 CHECK_OUT=${TMPDIR:-/tmp}/check-out.$$
+CHECK_NTF_OUT=${TMPDIR:-/tmp}/check-ntf-out.$$
+CHECK_MERGED_OUT=${TMPDIR:-/tmp}/check-merged-out.$$
 
 RESULT=0
 
 cleanup() {
-	rm -f $TEST_OUT $CHECK_OUT
+	rm -f $TEST_OUT $TEST_OUT_UNAGGR $CHECK_OUT $CHECK_NTF_OUT $CHECK_MERGED_OUT
 }
 
 trap "rm -f $FSOUT $MOUT" 0 1 2 15
@@ -31,20 +34,39 @@ test_merged() {
 	env DNSTABLE_FNAME=${MERGEDFILE} $@
 }
 
+# 2 pairs of tests:
+# 1. test that dnstable_lookup on fileset and merged mtbl produce identical results
+# 2. test that dnstable_lookup -u on fileset and NTF fileset produce identical results
 test_cmp() {
-	test_fileset $@ > $TEST_OUT 2>/dev/null
-	if [ $2 = "-u" ]; then
-		test_fileset_ntf $@ > $CHECK_OUT 2>/dev/null
-	else
-		test_merged $@ > $CHECK_OUT 2>/dev/null
-	fi
-	if cmp $TEST_OUT $CHECK_OUT; then
+	test_fileset $DNSTQ $@ > $TEST_OUT 2>/dev/null
+	test_fileset $DNSTQ -u $@ > $TEST_OUT_UNAGGR 2>/dev/null
+	test_fileset_ntf $DNSTQ -u $@ > $CHECK_NTF_OUT 2>/dev/null
+	test_merged $DNSTQ $@ > $CHECK_MERGED_OUT 2>/dev/null
+	if cmp $TEST_OUT $CHECK_MERGED_OUT; then
 		echo PASS: $@
-		return
+		if cmp $TEST_OUT_UNAGGR $CHECK_NTF_OUT; then
+			echo PASS: $@
+			return
+		fi
+		echo "FAIL $*"
+		diff $TEST_OUT_UNAGGR $CHECK_NTF_OUT
+	else
+		echo "FAIL $*"
+		diff $TEST_OUT $CHECK_MERGED_OUT
 	fi
-	echo "FAIL $*"
-	diff $CHECK_OUT $TEST_OUT
 	RESULT=1
+}
+
+# Call test_cmp() but also make sure that no unaggregated query produced any results.
+test_cmp_empty() {
+	test_cmp $@
+	if [ -s $TEST_OUT_UNAGGR ]; then
+		echo "FAIL non-empty unaggregated fileset query: $*"
+		RESULT=1
+	elif [ -s $CHECK_NTF_OUT ]; then
+		echo "FAIL non-empty unaggregated NTF fileset query: $*"
+		RESULT=1
+	fi
 }
 
 for q in "rrset \*.example.com" \
@@ -59,72 +81,113 @@ for q in "rrset \*.example.com" \
 # Note that we only test certain combinations of time filters below,
 # since:
 #
-# 	-a (time_first_after) after -B (time_first_before), and
-# 	-A (time_last_after) after -b (time_last_before)
+#	a value passed to -a (time_first_after) that is after the value passed to -B (time_first_before)
+# 	a value passed to -A (time_last_after) that is after the value passed to -b (time_last_before)
 #
 # will match no entries, and
 #
-#	-a (time_first_after) after -A (time_last_after)
-#	-b (time_last_before) before -B (time_first_before)
+#	a value passed to -a (time_first_after) that is after the value passed to -A (time_last_after)
+#	a value passed to -b (time_last_before) that is before the value passed to -B (time_first_before)
 #
 # are equivalent to a later -A or earlier -B, respectively.
-# The -A and -B timestamps have no restrictions on their order
-# with respect to each other.
 #
+# The -A and -B timestamps have no restrictions on their order with respect to each other.
+#
+#
+# For queries on fileset sources with time fence filters set, dnstable limits
+# its search to the results of an initial "filter" search on a pruned subset of
+# the fileset, where the pruning is based whether or not each file's time range
+# metadata is compatible with the time filters. These integration tests compare
+# the results of time filtered queries run against a test fileset to results
+# obtained from a source with is "known to be good": a merged mtbl in the case
+# of aggregated queries, or for unaggregated queries, a fileset consisting of
+# individual dnstable files with specially crafted entries causing this pruning
+# mechanism to be bypassed.
+#
+# The tests below effectively fall into two categories: those of aggregated and
+# unaggregated queries. The corpus of observations is a small collection of
+# automatically generated "daily" dnstable files that each straddle two
+# successive days. Some of the entries were first/last seen just before
+# midnight on the first day, some were first/last seen just after midnight
+# on the second day, and others were seen first before midnight and last after
+# midnight, spanning two days in total. These dnstable files are all tracked
+# in dns-test.fileset ($SETFILE), and also MERGED into dns-merged.mtbl, or
+# $MERGEDFILE.
+#
+# The NTF, or "no time filtering" dnstable files contain the substring "-ntf-"
+# in their filenames, are the same as the base dnstable files, except they
+# each include a dummy entry with a time fence spanning from the first to the
+# last day of the YEAR. These are all all tracked in dns-test-ntf.fileset,
+# or $SETFILE_NTF.
+#
+# For example,
+# $ dnstable_dump -t test-timefilter/dns-2022-11-11.mtbl
+#	;; Earliest time_first: 2022-11-10 23:00:00 -0000
+#	;; Latest time_last: 2022-11-11 00:00:01 -0000
+# $ dnstable_dump -t test-timefilter/dns-ntf-2022-11-11.mtbl
+#	;; Earliest time_first: 2022-01-01 00:00:00 -0000
+#	;; Latest time_last: 2022-12-31 00:00:00 -0000
+#
+# So for any test query, the test_cmp() function makes sure that an AGGREGATED
+# lookup produces the exact same results on both the regular fileset and its
+# resulting merged dnstable file, and also that an UNAGGREGATED lookup produces
+# the exact same results for both the NTF and non-NTF ("regular") filesets. This
+# three-way comparison is necessary because `dnstable_lookup -u` only works on
+# filesets and not dnstable files. Additionally, some of the queries are not
+# expected to produce any results at all because of the time fencing
+# constraints, and in these cases the script instead calls test_cmp_empty(),
+# which performs an additional check to make sure these `dnstable_lookup -u`
+# produce zero results.
+#
+# Because all of the "NTF" dnstable files span a period of time far greater
+# than the time fence query values in question, none of these will be excluded
+# from the fileset by the reader_time_filter() filter function - effectively
+# bypassing all fileset pruning.
+#
+# Therefore, as our various test queries below succeed, we can be confident
+# that aggregated time fenced dnstable lookups behave identically on both
+# corresponding fileset and merged .mtbl targets, and that unaggregated queries
+# ("gravel") return the same results from the NTF and non-NTF filesets, even
+# though the dummy records in the NTF filesets cause the logic associated with
+# pruning the "filtered" fileset to be skipped, while the same logic is NOT
+# skipped in the "regular" (non-NTF) fileset.
+#
+#
+# NOTE that the NTF unit tests here do not really verify that the "filtered"
+# fileset calculation is behaving exactly as expected - merely that the final
+# query results seem to be correct. If there were some debug information or
+# stats keeping related to filtered fileset contents, this might be possible -
+# but no such mechanism exists.
 
 # Test with no time fencing
-test_cmp $DNSTQ $q
+test_cmp $q
 
 # single time filter
-test_cmp $DNSTQ -a 2022-11-11 $q
-test_cmp $DNSTQ -A 2022-11-11 $q
-test_cmp $DNSTQ -b 2022-11-11 $q
-test_cmp $DNSTQ -B 2022-11-11 $q
-
-# single time filter, unaggregated
-test_cmp $DNSTQ -u -a 2022-11-11 $q
-test_cmp $DNSTQ -u -A 2022-11-11 $q
-test_cmp $DNSTQ -u -b 2022-11-11 $q
-test_cmp $DNSTQ -u -B 2022-11-11 $q
+test_cmp -a 2022-11-11 $q
+test_cmp -A 2022-11-11 $q
+test_cmp -b 2022-11-11 $q
+test_cmp -B 2022-11-11 $q
 
 # all pairs of time filters which make sense
-test_cmp $DNSTQ -a 2022-11-11 -A 2022-11-13 $q
-test_cmp $DNSTQ -a 2022-11-11 -B 2022-11-13 $q
-test_cmp $DNSTQ -a 2022-11-11 -b 2022-11-13 $q
-test_cmp $DNSTQ -A 2022-11-11 -B 2022-11-13 $q
-test_cmp $DNSTQ -A 2022-11-11 -b 2022-11-13 $q
-test_cmp $DNSTQ -B 2022-11-11 -A 2022-11-13 $q
-test_cmp $DNSTQ -B 2022-11-11 -b 2022-11-13 $q
-
-# all pairs of time filters which make sense, unaggregated
-# (Removed -B 2022-11-11 -A 2022-11-13, no results expected)
-test_cmp $DNSTQ -u -a 2022-11-11 -A 2022-11-13 $q
-test_cmp $DNSTQ -u -a 2022-11-11 -B 2022-11-13 $q
-test_cmp $DNSTQ -u -a 2022-11-11 -b 2022-11-13 $q
-test_cmp $DNSTQ -u -A 2022-11-11 -B 2022-11-13 $q
-test_cmp $DNSTQ -u -A 2022-11-11 -b 2022-11-13 $q
-test_cmp $DNSTQ -u -B 2022-11-11 -b 2022-11-13 $q
+test_cmp -a 2022-11-11 -A 2022-11-13 $q
+test_cmp -a 2022-11-11 -B 2022-11-13 $q
+test_cmp -a 2022-11-11 -b 2022-11-13 $q
+test_cmp -A 2022-11-11 -B 2022-11-13 $q
+test_cmp -A 2022-11-11 -b 2022-11-13 $q
+test_cmp_empty -B 2022-11-11 -A 2022-11-13 $q
+test_cmp -B 2022-11-11 -b 2022-11-13 $q
 
 # all triples of time filters which make sense
-test_cmp $DNSTQ -a 2022-11-11 -A 2022-11-13 -B 2022-11-15 $q
-test_cmp $DNSTQ -a 2022-11-11 -A 2022-11-13 -b 2022-11-15 $q
-test_cmp $DNSTQ -a 2022-11-11 -B 2022-11-13 -A 2022-11-15 $q
-test_cmp $DNSTQ -a 2022-11-11 -B 2022-11-13 -b 2022-11-15 $q
-test_cmp $DNSTQ -A 2022-11-11 -B 2022-11-13 -b 2022-11-15 $q
-test_cmp $DNSTQ -B 2022-11-11 -A 2022-11-13 -b 2022-11-15 $q
-
-# all triples of time filters which make sense, unaggregated
-test_cmp $DNSTQ -u -a 2022-11-11 -A 2022-11-13 -B 2022-11-15 $q
-test_cmp $DNSTQ -u -a 2022-11-11 -A 2022-11-13 -b 2022-11-15 $q
-test_cmp $DNSTQ -u -a 2022-11-11 -B 2022-11-13 -b 2022-11-15 $q
-test_cmp $DNSTQ -u -A 2022-11-11 -B 2022-11-13 -b 2022-11-15 $q
+test_cmp -a 2022-11-11 -A 2022-11-13 -B 2022-11-15 $q
+test_cmp -a 2022-11-11 -A 2022-11-13 -b 2022-11-15 $q
+test_cmp_empty -a 2022-11-11 -B 2022-11-13 -A 2022-11-15 $q
+test_cmp -a 2022-11-11 -B 2022-11-13 -b 2022-11-15 $q
+test_cmp -A 2022-11-11 -B 2022-11-13 -b 2022-11-15 $q
+test_cmp_empty -B 2022-11-11 -A 2022-11-13 -b 2022-11-15 $q
 
 # Both combinations of all time filters which make sense
-test_cmp $DNSTQ -a 2022-11-11 -B 2022-11-13 -A 2022-11-15 -b 2022-11-17 $q
-test_cmp $DNSTQ -a 2022-11-11 -A 2022-11-13 -B 2022-11-15 -b 2022-11-17 $q
-
-# The one combination of all time filters which make sense, unaggregated
-test_cmp $DNSTQ -u -a 2022-11-11 -A 2022-11-13 -B 2022-11-15 -b 2022-11-17 $q
+test_cmp_empty -a 2022-11-11 -B 2022-11-13 -A 2022-11-15 -b 2022-11-17 $q
+test_cmp -a 2022-11-11 -A 2022-11-13 -B 2022-11-15 -b 2022-11-17 $q
 
 done
 
