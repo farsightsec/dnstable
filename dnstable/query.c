@@ -905,6 +905,25 @@ query_iter_next_rdata_name_rev(void *clos, struct dnstable_entry **ent)
 	return query_iter_next_name_indirect(clos, ent, ENTRY_TYPE_RDATA);
 }
 
+static struct mtbl_iter *
+query_get_iterator(struct query_iter *it, const struct mtbl_source *s)
+{
+	if (it->key2 != NULL)
+		return mtbl_source_get_range(s, ubuf_data(it->key), ubuf_size(it->key),
+					        ubuf_data(it->key2), ubuf_size(it->key2));
+
+	return mtbl_source_get_prefix(s, ubuf_data(it->key), ubuf_size(it->key));
+}
+
+static void
+query_init_iterators(struct query_iter *it)
+{
+	if (it->source_filter != NULL)
+		it->m_iter2 = query_get_iterator(it, it->source_filter);
+
+	it->m_iter = query_get_iterator(it, it->source);
+}
+
 static struct dnstable_iter *
 query_init_rrset_right_wildcard(struct query_iter *it)
 {
@@ -936,12 +955,7 @@ query_init_rrset_left_wildcard(struct query_iter *it)
 		return (NULL);
 	ubuf_append(it->key, name, len - 1);
 
-	if (it->source_filter != NULL)
-		it->m_iter2 = mtbl_source_get_prefix(it->source_filter,
-						     ubuf_data(it->key),
-						     ubuf_size(it->key));
-
-	it->m_iter = mtbl_source_get_prefix(it->source, ubuf_data(it->key), ubuf_size(it->key));
+	query_init_iterators(it);
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
 
@@ -1009,11 +1023,7 @@ query_init_rrset(struct query_iter *it)
 		}
 	}
 
-	if (it->source_filter!= NULL)
-		it->m_iter2 = mtbl_source_get_prefix(it->source_filter,
-				ubuf_data(it->key), ubuf_size(it->key));
-
-	it->m_iter = mtbl_source_get_prefix(it->source, ubuf_data(it->key), ubuf_size(it->key));
+	query_init_iterators(it);
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
 
@@ -1026,12 +1036,7 @@ query_init_rdata_right_wildcard(struct query_iter *it)
 	/* key: rdata name, less trailing "\x01\x2a\x00" */
 	ubuf_append(it->key, it->query->name.data, it->query->name.len - 3);
 
-	if (it->source_filter != NULL)
-		it->m_iter2 = mtbl_source_get_prefix(it->source_filter,
-						     ubuf_data(it->key),
-						     ubuf_size(it->key));
-
-	it->m_iter = mtbl_source_get_prefix(it->source, ubuf_data(it->key), ubuf_size(it->key));
+	query_init_iterators(it);
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
 
@@ -1085,11 +1090,7 @@ query_init_rdata_name(struct query_iter *it)
 		}
 	}
 
-	if (it->source_filter != NULL)
-		it->m_iter2 = mtbl_source_get_prefix(it->source_filter,
-				ubuf_data(it->key), ubuf_size(it->key));
-
-	it->m_iter = mtbl_source_get_prefix(it->source, ubuf_data(it->key), ubuf_size(it->key));
+	query_init_iterators(it);
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
 
@@ -1118,21 +1119,8 @@ query_init_rdata_ip(struct query_iter *it)
 		increment_key(it->key2, ubuf_size(it->key2) - 1);
 	}
 
-	if (it->key2 == NULL) {
-		if (it->source_filter != NULL)
-			it->m_iter2 = mtbl_source_get_prefix(it->source_filter,
-					ubuf_data(it->key), ubuf_size(it->key));
-		it->m_iter = mtbl_source_get_prefix(it->source,
-						    ubuf_data(it->key), ubuf_size(it->key));
-	} else {
-		if (it->source_filter != NULL)
-			it->m_iter2 = mtbl_source_get_range(it->source_filter,
-					ubuf_data(it->key), ubuf_size(it->key),
-					ubuf_data(it->key2), ubuf_size(it->key2));
-		it->m_iter = mtbl_source_get_range(it->source,
-						   ubuf_data(it->key), ubuf_size(it->key),
-						   ubuf_data(it->key2), ubuf_size(it->key2));
-	}
+	query_init_iterators(it);
+
 	return dnstable_iter_init(query_iter_next_ip, query_iter_free, it);
 }
 
@@ -1154,11 +1142,7 @@ query_init_rdata_raw(struct query_iter *it)
 	 * do_rrtype is set then the results will be filtered by
 	 * rrtype.
 	 */
-	if (it->source_filter != NULL)
-		it->m_iter2 = mtbl_source_get_prefix(it->source_filter,
-				ubuf_data(it->key), ubuf_size(it->key));
-
-	it->m_iter = mtbl_source_get_prefix(it->source, ubuf_data(it->key), ubuf_size(it->key));
+	query_init_iterators(it);
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
 
