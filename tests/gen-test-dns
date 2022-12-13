@@ -21,10 +21,16 @@ convert $* <<EOF
 # avoid breaking existing tests.
 #
 #	dns:	*.example.com   	core tests
+#		*.next_ip.dom		next_ip tests
+#		*.next_ip		next_ip tests
 #
 #	ip4:	198.51.100.0/24 	core tests
+#		192.168.1.0/24		next_ip tests
+#		255.255.255.255/32	next_ip tests
 #
 #	ip6:	2001:c00::/23   	core tests
+#		c0a8:0100::/24		next_ip tests
+#		ffff:ffff:0100::/40	next_ip tests
 #
 #	SRV,MX pref: 	  10		core tests
 #
@@ -172,4 +178,347 @@ convert $* <<EOF
     ]
   }
 }
+
+# -----------------
+# next_ip test data
+# -----------------
+#
+# These will generate rdata entries with address 192.168.1.1
+# and 192.168.1.2, as well as a number of IPv6 addresses
+# whose rdata encoding matches the IPv4 address rdata encodings
+# for various prefix lengths.
+#
+# Exercise search for A 192.168.1.0/24 prefix, with
+# a number of IPv6 addresses to appear in the initial
+# search results.
+#
+{
+  "time": "2021-10-06 21:34:53.214812000",
+  "vname": "SIE",
+  "mname": "dnsdedupe",
+  "message": {
+    "type": "EXPIRATION",
+    "count": 1,
+    "time_first": "2018-03-27 10:43:28",
+    "time_last": "2018-03-27 10:43:28",
+    "bailiwick": "next_ip.dom.",
+    "rrname": "a.next_ip.dom.",
+    "rrclass": "IN",
+    "rrtype": "A",
+    "rdata": [
+      "192.168.1.1"
+    ]
+  }
+}
+#
+# Same address, longer owner TLD to sort after
+# record with "." owner.
+#
+{
+  "time": "2021-10-06 21:34:53.214812000",
+  "vname": "SIE",
+  "mname": "dnsdedupe",
+  "message": {
+    "type": "EXPIRATION",
+    "count": 1,
+    "time_first": "2018-03-27 10:43:28",
+    "time_last": "2018-03-27 10:43:28",
+    "bailiwick": "next_ip",
+    "rrname": "a.next_ip",
+    "rrclass": "IN",
+    "rrtype": "A",
+    "rdata": [
+      "192.168.1.1"
+    ]
+  }
+}
+#
+# Next address up, to sort after record with
+# invalid first "label"
+#
+{
+  "time": "2021-10-06 21:34:53.214812000",
+  "vname": "SIE",
+  "mname": "dnsdedupe",
+  "message": {
+    "type": "EXPIRATION",
+    "count": 1,
+    "time_first": "2018-03-27 10:43:28",
+    "time_last": "2018-03-27 10:43:28",
+    "bailiwick": "next_ip.dom.",
+    "rrname": "b.next_ip.dom.",
+    "rrclass": "IN",
+    "rrtype": "A",
+    "rdata": [
+      "192.168.1.2"
+    ]
+  }
+}
+#
+# All-ones A record. The coresponding rdata
+# record will sort after the AAAA rdata
+# record for ffff:ffff:0100::, due to the latter's
+# trailing zeros.
+#
+{
+  "time": "2021-10-06 21:34:53.214812000",
+  "vname": "SIE",
+  "mname": "dnsdedupe",
+  "message": {
+    "type": "EXPIRATION",
+    "count": 1,
+    "time_first": "2018-03-27 10:43:28",
+    "time_last": "2018-03-27 10:43:28",
+    "bailiwick": "next_ip.dom.",
+    "rrname": "c.next_ip.dom.",
+    "rrclass": "IN",
+    "rrtype": "A",
+    "rdata": [
+      "255.255.255.255"
+    ]
+  }
+}
+#
+# The rdata AAAA record below matches the A rdata
+# record 192.168.1.1 for four bytes, followed by zeroes.
+# Tests original version of skip ahead logic in releases
+# predating this test.
+#
+{
+  "time": "2021-10-06 21:34:53.214812000",
+  "vname": "SIE",
+  "mname": "dnsdedupe",
+  "message": {
+    "type": "EXPIRATION",
+    "count": 1,
+    "time_first": "2018-03-27 10:43:28",
+    "time_last": "2018-03-27 10:43:28",
+    "bailiwick": "next_ip.dom.",
+    "rrname": "aaaa-0.next_ip.dom.",
+    "rrclass": "IN",
+    "rrtype": "AAAA",
+    "rdata": [
+      "c0a8:0101::"
+    ]
+  }
+}
+#
+# This rdata AAAA record matches the 192.168.1.1 A
+# rdata record through the rrtype, followed by zeroes.
+#
+{
+  "time": "2021-10-06 21:34:53.214812000",
+  "vname": "SIE",
+  "mname": "dnsdedupe",
+  "message": {
+    "type": "EXPIRATION",
+    "count": 1,
+    "time_first": "2018-03-27 10:43:28",
+    "time_last": "2018-03-27 10:43:28",
+    "bailiwick": "next_ip.dom.",
+    "rrname": "aaaa-2.next_ip.dom.",
+    "rrclass": "IN",
+    "rrtype": "AAAA",
+    "rdata": [
+      "c0a8:0101:0100::"
+    ]
+  }
+}
+#
+# This rdata AAAA record matches the 192.168.1.1 A
+# record through the rrtype and includes an
+# rdata length, followed by zeroes. This will
+# sort before the A record, and should be skipped.
+#
+{
+  "time": "2021-10-06 21:34:53.214812000",
+  "vname": "SIE",
+  "mname": "dnsdedupe",
+  "message": {
+    "type": "EXPIRATION",
+    "count": 1,
+    "time_first": "2018-03-27 10:43:28",
+    "time_last": "2018-03-27 10:43:28",
+    "bailiwick": "next_ip.dom.",
+    "rrname": "aaaa-3.next_ip.dom.",
+    "rrclass": "IN",
+    "rrtype": "AAAA",
+    "rdata": [
+      "c0a8:0101:0100:0400::"
+    ]
+  }
+}
+#
+# This rdata AAAA record matches the 192.168.1.1 A
+# record through the rrtype and includes a
+# label for "com", which should sort before the
+# above A record's "dom".
+#
+{
+  "time": "2021-10-06 21:34:53.214812000",
+  "vname": "SIE",
+  "mname": "dnsdedupe",
+  "message": {
+    "type": "EXPIRATION",
+    "count": 1,
+    "time_first": "2018-03-27 10:43:28",
+    "time_last": "2018-03-27 10:43:28",
+    "bailiwick": "next_ip.dom.",
+    "rrname": "aaaa-4.next_ip.dom.",
+    "rrclass": "IN",
+    "rrtype": "AAAA",
+    "rdata": [
+      "c0a8:0101:0103:636f:6d00::"
+    ]
+  }
+}
+#
+# This rdata AAAA record matches the 192.168.1.1 A
+# record through the rrtype and includes a
+# label for "dom", which should be skipped by
+# incrementing the terminal empty label.
+#
+{
+  "time": "2021-10-06 21:34:53.214812000",
+  "vname": "SIE",
+  "mname": "dnsdedupe",
+  "message": {
+    "type": "EXPIRATION",
+    "count": 1,
+    "time_first": "2018-03-27 10:43:28",
+    "time_last": "2018-03-27 10:43:28",
+    "bailiwick": "next_ip.dom.",
+    "rrname": "aaaa-5.next_ip.dom.",
+    "rrclass": "IN",
+    "rrtype": "AAAA",
+    "rdata": [
+      "c0a8:0101:0103:646f:6d00::"
+    ]
+  }
+}
+#
+# This rdata AAAA record matches the 192.168.1.1 A
+# record through the rrtype and includes a
+# label for "dom", with an overly-long label replacing
+# the terminal empty label.
+#
+{
+  "time": "2021-10-06 21:34:53.214812000",
+  "vname": "SIE",
+  "mname": "dnsdedupe",
+  "message": {
+    "type": "EXPIRATION",
+    "count": 1,
+    "time_first": "2018-03-27 10:43:28",
+    "time_last": "2018-03-27 10:43:28",
+    "bailiwick": "next_ip.dom.",
+    "rrname": "aaaa-6.next_ip.dom.",
+    "rrclass": "IN",
+    "rrtype": "AAAA",
+    "rdata": [
+      "c0a8:0101:0103:646f:6d20::"
+    ]
+  }
+}
+#
+# This rdata AAAA record matches the 192.168.1.1 A
+# record through the rrtype and includes a
+# label for "dom", with an invalid label replacing
+# the terminal empty label.
+#
+{
+  "time": "2021-10-06 21:34:53.214812000",
+  "vname": "SIE",
+  "mname": "dnsdedupe",
+  "message": {
+    "type": "EXPIRATION",
+    "count": 1,
+    "time_first": "2018-03-27 10:43:28",
+    "time_last": "2018-03-27 10:43:28",
+    "bailiwick": "next_ip.dom.",
+    "rrname": "aaaa-7.next_ip.dom.",
+    "rrclass": "IN",
+    "rrtype": "AAAA",
+    "rdata": [
+      "c0a8:0101:0103:646f:6d80::"
+    ]
+  }
+}
+#
+# This AAAA record's rdata entry encoding will resemble
+# an all-ones A record's encoding up to the rrtype, and
+# sort before the all-ones A record due to its trailing
+# zeroes.
+#
+{
+  "time": "2021-10-06 21:34:53.214812000",
+  "vname": "SIE",
+  "mname": "dnsdedupe",
+  "message": {
+    "type": "EXPIRATION",
+    "count": 1,
+    "time_first": "2018-03-27 10:43:28",
+    "time_last": "2018-03-27 10:43:28",
+    "bailiwick": "next_ip.dom.",
+    "rrname": "aaaa-8.next_ip.dom.",
+    "rrclass": "IN",
+    "rrtype": "AAAA",
+    "rdata": [
+      "ffff:ffff:0100::"
+    ]
+  }
+}
+#
+# This AAAA record's rdata entry encoding will resemble
+# an all-ones A record's encoding up to the rrtype, but
+# is followed by an invalid label byte. This will test
+# incrementing the all-ones IP address, which should end
+# the iteration.
+#
+{
+  "time": "2021-10-06 21:34:53.214812000",
+  "vname": "SIE",
+  "mname": "dnsdedupe",
+  "message": {
+    "type": "EXPIRATION",
+    "count": 1,
+    "time_first": "2018-03-27 10:43:28",
+    "time_last": "2018-03-27 10:43:28",
+    "bailiwick": "next_ip.dom.",
+    "rrname": "aaaa-8.next_ip.dom.",
+    "rrclass": "IN",
+    "rrtype": "AAAA",
+    "rdata": [
+      "ffff:ffff:01ff::"
+    ]
+  }
+}
+#
+# Short record test. Rdata entry must be
+# less than 1 + 16 + 1 => 19 bytes in length,
+# including 1 type byte and 2 byte rdlen.
+# 19 - 3 = 16, "next_ip." = 9 bytes, giving
+# 5 bytes to work with. We need to match
+# "c0 a8 01" as the first three bytes for
+# the IPv6 prefix search.
+#
+{
+  "time": "2021-10-06 21:34:53.214812000",
+  "vname": "SIE",
+  "mname": "dnsdedupe",
+  "message": {
+    "type": "EXPIRATION",
+    "count": 1,
+    "time_first": "2018-03-27 10:43:28",
+    "time_last": "2018-03-27 10:43:28",
+    "bailiwick": "next_ip.",
+    "rrname": "next_ip.",
+    "rrclass": "IN",
+    "rrtype": "TYPE127",
+    "rdata": [
+      "\\\\# 03 c0 a8 01"
+    ]
+  }
+}
+
 EOF
