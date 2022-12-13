@@ -538,57 +538,6 @@ increment_key(ubuf *key, size_t pos)
 }
 
 static dnstable_res
-query_iter_next_filtered(struct query_iter *it, const struct timespec *expiry)
-{
-	const uint8_t *key, *val;
-	size_t len_key, len_val;
-
-	if (it->m_iter2 == NULL)
-		return (dnstable_res_success);
-
-	for (;;) {
-		if (mtbl_iter_next(it->m_iter2, &key, &len_key, &val, &len_val) != mtbl_res_success)
-			return (dnstable_res_failure);
-
-		if (it->query->do_rrtype) {
-			struct dnstable_entry *e;
-			dnstable_res res;
-			uint16_t rrtype;
-			struct timespec now = {0};
-
-			e = dnstable_entry_decode(key, len_key, val, len_val);
-			if (e == NULL)
-				continue;
-
-			res = dnstable_entry_get_rrtype(e, &rrtype);
-			dnstable_entry_destroy(&e);
-
-			if ((res == dnstable_res_success) && (rrtype == it->query->rrtype))
-				break;
-
-			if (it->query->do_timeout) {
-				my_gettime(DNSTABLE__CLOCK_MONOTONIC, &now);
-				if (my_timespec_cmp(&now, expiry) >= 0)
-					return (dnstable_res_timeout);
-			}
-			continue;
-		}
-		break;
-	}
-
-	/*
-	 * When operating with a time filtered fileset, m_iter2 iterates over a
-	 * subset of the keys of m_iter. Thus, we can seek m_iter to a key from
-	 * m_iter2 and the next mtbl_iter_next call will return the same key.
-	 */
-
-	if (mtbl_iter_seek(it->m_iter, key, len_key) != mtbl_res_success)
-		return (dnstable_res_failure);
-
-	return (dnstable_res_success);
-}
-
-static dnstable_res
 query_iter_next(void *clos, struct dnstable_entry **ent)
 {
 	struct query_iter *it = (struct query_iter *) clos;
@@ -612,9 +561,32 @@ query_iter_next(void *clos, struct dnstable_entry **ent)
 				return (dnstable_res_timeout);
 		}
 
-		res = query_iter_next_filtered(it, &expiry);
-		if (res != dnstable_res_success)
-			return res;
+		if (it->source_filter != NULL) {
+			if (mtbl_iter_next(it->m_iter2, &key, &len_key, &val, &len_val) != mtbl_res_success) {
+				return (dnstable_res_failure);
+			}
+			if (it->query->do_rrtype) {
+				uint16_t rrtype;
+				struct dnstable_entry *e = dnstable_entry_decode(key, len_key, val, len_val);
+
+				if (e == NULL)
+					continue;
+
+				res = dnstable_entry_get_rrtype(e, &rrtype);
+				dnstable_entry_destroy(&e);
+
+				if ((res != dnstable_res_success) || (rrtype != it->query->rrtype))
+					continue;
+			}
+			/*
+			 * When operating with a time filtered fileset, m_iter2 iterates over a
+			 * subset of the keys of m_iter. Thus, we can seek m_iter to a key from
+			 * m_iter2 and the next mtbl_iter_next call will return the same key.
+			 */
+			if (mtbl_iter_seek(it->m_iter, key, len_key) != mtbl_res_success) {
+				return (dnstable_res_failure);
+			}
+		}
 
 		if (mtbl_iter_next(it->m_iter, &key, &len_key, &val, &len_val) != mtbl_res_success)
 			return (dnstable_res_failure);
@@ -669,9 +641,19 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 				return (dnstable_res_timeout);
 		}
 
-		res = query_iter_next_filtered(it, &expiry);
-		if (res != dnstable_res_success)
-			return res;
+		if (it->source_filter != NULL) {
+			if (mtbl_iter_next(it->m_iter2, &key, &len_key, &val, &len_val) != mtbl_res_success) {
+				return (dnstable_res_failure);
+			}
+			/*
+			 * When operating with a time filtered fileset, m_iter2 iterates over a
+			 * subset of the keys of m_iter. Thus, we can seek m_iter to a key from
+			 * m_iter2 and the next mtbl_iter_next call will return the same key.
+			 */
+			if (mtbl_iter_seek(it->m_iter, key, len_key) != mtbl_res_success) {
+				return (dnstable_res_failure);
+			}
+		}
 
 		if (mtbl_iter_next(it->m_iter, &key, &len_key, &val, &len_val) != mtbl_res_success) {
 			return (dnstable_res_failure);
