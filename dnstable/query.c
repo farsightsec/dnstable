@@ -901,7 +901,13 @@ seek:
 		/*
 		 * Seek to the newly generated key.
 		 */
-		if (mtbl_iter_seek(it->m_iter,
+		if (it->source_filter != NULL) {
+			if (mtbl_iter_seek(it->m_iter2,
+					   ubuf_data(seek_key),
+				           ubuf_size(seek_key)) != mtbl_res_success) {
+				return (dnstable_res_failure);
+			}
+		} else if (mtbl_iter_seek(it->m_iter,
 				   ubuf_data(seek_key),
 				   ubuf_size(seek_key)) != mtbl_res_success) {
 			return (dnstable_res_failure);
