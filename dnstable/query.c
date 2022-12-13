@@ -863,7 +863,6 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 			/* Append both the label length + data to seek key. */
 			ubuf_reserve(seek_key, llen + 1 + ubuf_size(seek_key));
 			ubuf_add(seek_key, llen);
-			key_prefix_len = ubuf_size(seek_key);
 			ubuf_append(seek_key, &key[ubuf_size(seek_key)], llen);
 		}
 
