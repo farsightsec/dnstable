@@ -706,9 +706,9 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 			 */
 			ubuf_reserve(seek_key, key_prefix_len);
 			ubuf_append(seek_key, key, len_key);
-			ubuf_advance(seek_key, key_prefix_len - len_key);
 			memset(ubuf_data(seek_key) + len_key, 0,
 			       key_prefix_len - len_key);
+			ubuf_advance(seek_key, key_prefix_len - len_key);
 			add_rrtype_to_key(seek_key, it->query->rrtype);
 
 			goto seek;
