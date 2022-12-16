@@ -687,6 +687,8 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 		 * This is helpful when the query rrtype is AAAA (28), which
 		 * comes numerically after many common rrtypes.
 		 */
+
+		/* Prefix/range queries don't need key2 again after init. */
 		if (it->key2 == NULL) {
 			it->key2 = ubuf_init(ubuf_size(it->key));
 		}
@@ -699,10 +701,8 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 		if (len_key < key_prefix_len) {
 			/*
 			 * If current key is shorter than a complete address
-			 * rdata prefix, fill the remaining address bytes with
-			 * zero and append the rrtype. Any subsequent address
-			 * rdata entry will sort after this zero-extended
-			 * address, so we have a usable start key.
+			 * rdata prefix, then the next possible start key is
+			 * the zero-extended rdata address, followed by rrtype.
 			 */
 			ubuf_reserve(seek_key, key_prefix_len);
 			ubuf_append(seek_key, key, len_key);
@@ -744,14 +744,34 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 		 * the bytes corresponding to the rrtype match the desired
 		 * rrtype, but it is not a record of the desired rrtype.
 		 *
-		 * Records of the desired rrtype for the corresponding address
-		 * may exist. These will have a prefix of our current start
-		 * key (up to the rrtype), followed by a sequence of domain
-		 * name labels ending with an empty label.
+		 * It might seem logical simply to increment the rdata address
+		 * portion of the current key and seek to it, but that results
+		 * in buggy behavior.
 		 *
-		 * We copy more bytes from the current key to extend our start
-		 * key with a series of DNS labels that sort at or before any
-		 * valid address rdata entry which sorts after the current key.
+		 * Imagine that an rdata IP range traversal has been invoked
+		 * for 192.168.1.0/24, and the CURRENT key is an IPv6 entry
+		 * for c0a8:101:100::, the first 4 bytes of which match the
+		 * address 192.168.1.1 (and the final byte of which matches
+		 * the A rrtype byte). We cannot simply seek to the first
+		 * subsequent rdata entry for 192.168.1.2 because there still
+		 * may be 192.168.1.1 entries between the CURRENT key and
+		 * where a seek to 192.168.1.2 would take us.
+		 *
+		 * Thus it is not safe simply to seek to the "next IP", but nor
+		 * do we want to iterate needlessly to the next IP via the next
+		 * MTBL key, which may take us through a very large collection
+		 * of keys similar to our CURRENT key (most likely either many
+		 * different IPv6 addresses which share the same first four
+		 * bytes, or many records with an identical IPv6 address and
+		 * different rrowner values).
+		 *
+		 * The solution is to determine the next possible start key
+		 * for the current key, AS IF the current key were the correct
+		 * rrtype. This means interpreting the bytes of the current key
+		 * after the rrtype value as a potential rrowner name (even
+		 * though they are something else). We can then increment the
+		 * last "good" label value in order to derive the next valid
+		 * theoretical start key.
 		 */
 
 		if (len_key == ubuf_size(seek_key)) {
@@ -759,9 +779,18 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 			continue;
 		}
 
+		/* Special case handling if the first byte is a bad label len */
+		if (key[ubuf_size(seek_key)] > 63) {
+			/* Get rid of trailing rrtype and increment address. */
+			if (it->query->rrtype == WDNS_TYPE_A ||
+			    it->query->rrtype == WDNS_TYPE_AAAA) {
+				ubuf_clip(seek_key, key_prefix_len);
+				goto increment;
+			}
+		}
+
 		for (;;) {
 			uint8_t llen = key[ubuf_size(seek_key)];
-			uint16_t rdlen;
 
 			/*
 			 * Note: the ENTRY_TYPE_RDATA has 5 fields. We enter
@@ -773,31 +802,14 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 
 			if (llen > 63) {
 				/*
-				 * We have found an invalid label length, and
-				 * thus are no longer following a sequence of
-				 * labels. If we arrived here via a previous
-				 * label length, we continue our search by
-				 * incrementing the previous label's last byte.
-				 *
-				 * If this is the rrname's first byte, we can
-				 * further increment the key's address portion.
+				 * We hit an invalid label length; if we found
+				 * a good label previously, we should increment
+				 * its last byte and seek to it.
 				 */
-				switch (it->query->rrtype) {
-				case WDNS_TYPE_A:
-					if (ubuf_size(seek_key) == 1 + 4 + 1)
-						ubuf_clip(seek_key, ubuf_size(seek_key)-1);
-					break;
-				case WDNS_TYPE_AAAA:
-					if (ubuf_size(seek_key) == 1 + 16 + 1)
-						ubuf_clip(seek_key, ubuf_size(seek_key)-1);
-					break;
-				}
-
 				key_prefix_len = ubuf_size(seek_key);
 				goto increment;
-			}
-
-			if (llen == 0) {
+			} else if (llen == 0) {
+				uint16_t rdlen;
 				/*
 				 * Our byte sequence looks like a series of DNS
 				 * labels with llen being the terminating empty
@@ -828,14 +840,10 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 				}
 
 				/*
-				 * Otherwise, we have established that there
-				 * are no address rdata entries with the same
-				 * address and hostname as our entry, as such
-				 * an entry would sort before the current key.
-				 * We clip off the rdata length and increment
-				 * the final empty label to search for any
-				 * rdata entries with the current address but
-				 * later-sorting hostnames.
+				 * There are no rdata entries with the same
+				 * rdata address and rrowner after the current
+				 * key. We trim the rdlen to increment the final
+				 * label to seek to later-sorting rrowner vals.
 				 */
 				ubuf_clip(seek_key, ubuf_size(seek_key)
 							- sizeof(rdlen));
