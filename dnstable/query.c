@@ -667,7 +667,7 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 		res = dnstable_entry_get_rrtype(*ent, &rrtype);
 		if (res != dnstable_res_success) {
 			dnstable_entry_destroy(ent);
-			return (res);
+			continue;
 		}
 
 		if (rrtype == it->query->rrtype) {
