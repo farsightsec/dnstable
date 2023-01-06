@@ -70,7 +70,8 @@ test_cmp_empty() {
 }
 
 for q in "rrset \*.example.com" \
-         "rdata name \*.example.net" \
+	 "rrset \*.example.com NS" \
+	 "rdata name \*.example.net" \
 	 "rdata ip 10.0.0.0/21" \
 	 "rrset test-full.*" \
 	 "rrset test-first.*" \
