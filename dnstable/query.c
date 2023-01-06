@@ -634,6 +634,8 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 		ubuf *seek_key;
 		int ret;
 
+		const uint8_t max_llen = 63;	/* RFC 1035 maximum label length in an uncompressed name. */
+
 		if (it->query->do_timeout) {
 			struct timespec now;
 			my_gettime(DNSTABLE__CLOCK_MONOTONIC, &now);
@@ -780,7 +782,7 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 		}
 
 		/* Special case handling if the first byte is a bad label len */
-		if (key[ubuf_size(seek_key)] > 63) {
+		if (key[ubuf_size(seek_key)] > max_llen) {
 			/* Get rid of trailing rrtype and increment address. */
 			if (it->query->rrtype == WDNS_TYPE_A ||
 			    it->query->rrtype == WDNS_TYPE_AAAA) {
@@ -800,7 +802,7 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 			 * length (16 bit fixed width).
 			 */
 
-			if (llen > 63) {
+			if (llen > max_llen) {
 				/*
 				 * We hit an invalid label length; if we found
 				 * a good label previously, we should increment
