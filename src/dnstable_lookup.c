@@ -146,14 +146,14 @@ static void
 usage(void)
 {
 	fprintf(stderr, "Usage:\n");
-	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-R] [-u] [-O #] rrset <OWNER NAME> [<RRTYPE> [<BAILIWICK>]]\n");
-	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-R] [-u] [-O #] rdata ip <ADDRESS | RANGE | PREFIX>\n");
-	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-R] [-u] [-O #] rdata raw <HEX STRING> [<RRTYPE>]\n");
-	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-R] [-u] [-O #] rdata name <RDATA NAME> [<RRTYPE>]\n");
-	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-u] [-O #] version [type]\n");
-	fprintf(stderr, "\tdnstable_lookup [-j] [-J] [-u] [-O #] time_range\n");
+	fprintf(stderr, "\tdnstable_lookup [options] rrset <OWNER NAME> [<RRTYPE> [<BAILIWICK>]]\n");
+	fprintf(stderr, "\tdnstable_lookup [options] rdata ip <ADDRESS | RANGE | PREFIX>\n");
+	fprintf(stderr, "\tdnstable_lookup [options] rdata raw <HEX STRING> [<RRTYPE>]\n");
+	fprintf(stderr, "\tdnstable_lookup [options] rdata name <RDATA NAME> [<RRTYPE>]\n");
+	fprintf(stderr, "\tdnstable_lookup [options] version [type]\n");
+	fprintf(stderr, "\tdnstable_lookup [options] time_range\n");
 	fprintf(stderr, "\n");
-	fprintf(stderr, "Flags:\n");
+	fprintf(stderr, "Options:\n");
 	fprintf(stderr, "\t-a FIRST_AFTER: select results with time_first after FIRST_AFTER.\n");
 	fprintf(stderr, "\t-A LAST_AFTER: select results with time_last after LAST_AFTER.\n");
 	fprintf(stderr, "\t-b LAST_BEFORE: select results with time_last before LAST_BEFORE.\n");
@@ -195,23 +195,31 @@ main(int argc, char **argv)
 		switch (ch) {
 		case 'a':
 			time_first_after = parse_time(optarg);
-			if (time_first_after == 0)
+			if (time_first_after == 0) {
+				fprintf(stderr, "Invalid time '%s'\n\n", optarg);
 				usage();
+			}
 			break;
 		case 'A':
 			time_last_after = parse_time(optarg);
-			if (time_last_after == 0)
+			if (time_last_after == 0) {
+				fprintf(stderr, "Invalid time '%s'\n\n", optarg);
 				usage();
+			}
 			break;
 		case 'b':
 			time_last_before = parse_time(optarg);
-			if (time_last_before == 0)
+			if (time_last_before == 0) {
+				fprintf(stderr, "Invalid time '%s'\n\n", optarg);
 				usage();
+			}
 			break;
 		case 'B':
 			time_first_before = parse_time(optarg);
-			if (time_first_before == 0)
+			if (time_first_before == 0) {
+				fprintf(stderr, "Invalid time '%s'\n\n", optarg);
 				usage();
+			}
 			break;
 		case 'c':
 			time_strict = true;
