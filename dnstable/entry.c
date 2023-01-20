@@ -759,6 +759,7 @@ decode_rdata(struct dnstable_entry *e, const uint8_t *buf, size_t len_buf)
 	/* data length */
 	memcpy(&len_data, end - sizeof(uint16_t), sizeof(uint16_t));
 	end = buf + len_buf - sizeof(uint16_t);
+	len_data = le16toh(len_data);
 
 	/* data */
 	data = p;
