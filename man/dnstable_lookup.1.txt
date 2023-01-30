@@ -6,22 +6,24 @@ dnstable_lookup - lookup individual records in a dnstable data file or set of da
 
 == SYNOPSIS ==
 
-^dnstable_lookup^ [^-R^] [^-j^] [^-J^] [^-u^] [^-O #^] ^rrset^ <OWNER> [<RRTYPE> [<BAILIWICK>]]
+^dnstable_lookup^ [^-cjJRu^] [^-aAbB datetime^] [^-O #^] ^rrset^ <OWNER> [<RRTYPE> [<BAILIWICK>]]
 
-^dnstable_lookup^ [^-R^] [^-j^] [^-J^] [^-u^] [^-O #^] ^rdata ip^ <ADDRESS | RANGE | PREFIX>
+^dnstable_lookup^ [^-cjJRu^] [^-aAbB datetime^] [^-O #^] ^rdata ip^ <ADDRESS | RANGE | PREFIX>
 
-^dnstable_lookup^ [^-R^] [^-j^] [^-J^] [^-u^] [^-O #^] ^rdata raw^ <HEX STRING> [<RRTYPE>]
+^dnstable_lookup^ [^-cjJRu^] [^-aAbB datetime^] [^-O #^] ^rdata raw^ <HEX STRING> [<RRTYPE>]
 
-^dnstable_lookup^ [^-R^] [^-j^] [^-J^] [^-u^] [^-O #^] ^rdata name^ <RDATA NAME> [<RRTYPE>]
+^dnstable_lookup^ [^-cjJRu^] [^-aAbB datetime^] [^-O #^] ^rdata name^ <RDATA NAME> [<RRTYPE>]
 
-^dnstable_lookup^ [^-j^] [^-J^] [^-u^] [^-O #^] ^time_range^
+^dnstable_lookup^ [^-jJu^] [^-O #^] ^time_range^
 
-^dnstable_lookup^ [^-j^] [^-J^] [^-u^] [^-O #^] ^version^ [<ETYPE>]
+^dnstable_lookup^ [^-jJu^] [^-O #^] ^version^ [<ETYPE>]
 
 == DESCRIPTION ==
 
 Looks up records in a dnstable data file or fileset. Results are printed to stdout
 in an ad-hoc text format or in JSON format if ^-j^ or ^-J^ are given.
+The matching may be done based on the date and time the DNS record
+was first and/or last observed.
 
 ^dnstable_lookup rrset^ returns RRsets matching the specified owner name
 (wildcards permitted). A resource record type and bailiwick domain name can
@@ -45,9 +47,30 @@ can be used to request a specific type's version. ^ETYPE^ may be one of ^rrset^,
 
 == OPTIONS ==
 
-^-R^, ^--raw^::
-    When using a JSON format for output, add a hex representation of the
-    raw rdata and the rrtype.
+^-a^ 'datetime'::
+    Select results with recorded first seen after this 'datetime'.
+    See the DATE TIME SPECIFICATION section below for details.
+
+^-A^ 'datetime'::
+    Select results with recorded last seen after this 'datetime'.
+    See the DATE TIME SPECIFICATION section below for details.
+
+^-b^ 'datetime'::
+    Select results with recorded last seen before this 'datetime'.
+    See the DATE TIME SPECIFICATION section below for details.
+
+^-B^ 'datetime'::
+    Select results with recorded first seen before this 'datetime'.
+    See the DATE TIME SPECIFICATION section below for details.
+
+^-c^::
+    This enables complete (strict) matching semantics so no entries with
+    a first or last observed time outside the provided ^-a^, ^-A^, ^-b^,
+    and/or ^-B^ time range will be matched.
+    By default, time-based matching will have results if any of the
+    time is within the range (even if some are outside the range).
+    The ^-c^ means it will not output the entry if it was also
+    seen outside the time range.
 
 ^-j^::
     Use JSON format for output, with timestamps in epoch time (seconds since epoch).
@@ -59,8 +82,13 @@ can be used to request a specific type's version. ^ETYPE^ may be one of ^rrset^,
     Default is 'dig' presentation format.
     One JSON-formatted entry per line will be printed.
 
+^-R^, ^--raw^::
+    When using a JSON format for output, add a hex representation of the
+    raw rdata and the rrtype.
+
 ^-u^::
     Output unaggregated results; default is aggregated results.
+    This is only valid with a setfile.
 
 ^-O #^::
     Offset (e.g. skip) the first # results.
@@ -78,6 +106,41 @@ specify the dnstable data file(s) to query.
     Path to a "set file", a text file containing a newline separated list of
     dnstable data files on the filesystem. Results from all of the data files
     will be merged.
+
+== DATE TIME SPECIFICATION ==
+
+The ^-a^, ^-A^, ^-b^, and ^-B^ options support various date or time formats.
+
+The date may be represented using
+^strptime(3)^ ISO 8601 date formats:
+%Y-%m-%d,
+%Y-%m-%d %H:%M:%S (space separated),
+%Y-%m-%dT%H:%M:%S ("T" separated),
+and
+%Y-%m-%dT%H:%M:%SZ ("T" separated with trailing "Z" for Zulu timezone).
+
+The date may be represented using
+absolute Unix epoch time in seconds, e.g.,
+1577880000 for January 1, 2020 noon.
+
+The date may be represented using
+negative relative numeric time in seconds
+such as "-300" is 5 minutes ago.
+
+The date may be represented using
+timing mnenomics relative to current time:
+W for weeks,
+D for days,
+H for hours,
+M for minutes,
+and S for seconds.
+For example, "52w3d" would be one year and three days before the current
+date (to the second);
+and "4H30M" is four and a half hours before the current time.
+(The letters are case insensitive.)
+
+Due to the parser design, it won't accept a value of zero
+or "1970-01-01T00:00:00Z" or earlier.
 
 == EXAMPLES ==
 
@@ -104,3 +167,5 @@ $ dnstable_lookup -O 10 rdata ip 2001:db8::/32
 $ dnstable_lookup rdata raw c00505f1
 
 $ dnstable_lookup rdata name BLACKHOLE-1.IANA.ORG
+
+$ dnstable_lookup -B "2022-11-09 22:59:59" rrset example.com
