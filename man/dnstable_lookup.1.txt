@@ -128,7 +128,7 @@ negative relative numeric time in seconds
 such as "-300" is 5 minutes ago.
 
 The date may be represented using
-timing mnenomics relative to current time:
+timing mnemonics relative to current time:
 W for weeks,
 D for days,
 H for hours,
