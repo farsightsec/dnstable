@@ -65,10 +65,11 @@ can be used to request a specific type's version. ^ETYPE^ may be one of ^rrset^,
 
 ^-c^::
     This enables complete (strict) matching semantics so no entries with
-    a first or last observed time outside the provided ^-a^, ^-A^, ^-b^,
-    and/or ^-B^ time range will be matched.
-    By default, time-based matching will have results if any of the
-    time is within the range (even if some are outside the range).
+    a first or last observed time outside the provided time range will
+    be matched.
+    By default, time-based filtering with ^-A^ and ^-B^ will select
+    results if any of the time is within the range (even if some are
+    outside the range).
     The ^-c^ means it will not output the entry if it was also
     seen outside the time range.
 

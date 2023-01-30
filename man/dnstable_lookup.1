@@ -85,12 +85,11 @@ Select results with recorded first seen before this
 .PP
 \fB\-c\fR
 .RS 4
-This enables complete (strict) matching semantics so no entries with a first or last observed time outside the provided
-\fB\-a\fR,
-\fB\-A\fR,
-\fB\-b\fR, and/or
+This enables complete (strict) matching semantics so no entries with a first or last observed time outside the provided time range will be matched\&. By default, time\-based filtering with
+\fB\-A\fR
+and
 \fB\-B\fR
-time range will be matched\&. By default, time\-based matching will have results if any of the time is within the range (even if some are outside the range)\&. The
+will select results if any of the time is within the range (even if some are outside the range)\&. The
 \fB\-c\fR
 means it will not output the entry if it was also seen outside the time range\&.
 .RE
