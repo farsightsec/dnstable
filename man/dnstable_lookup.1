@@ -1,13 +1,13 @@
 '\" t
 .\"     Title: dnstable_lookup
-.\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
-.\" Generator: DocBook XSL Stylesheets v1.79.1 <http://docbook.sf.net/>
-.\"      Date: 10/12/2021
+.\"    Author: [FIXME: author] [see http://www.docbook.org/tdg5/en/html/author]
+.\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
+.\"      Date: 01/30/2023
 .\"    Manual: \ \&
 .\"    Source: \ \&
 .\"  Language: English
 .\"
-.TH "DNSTABLE_LOOKUP" "1" "10/12/2021" "\ \&" "\ \&"
+.TH "DNSTABLE_LOOKUP" "1" "01/30/2023" "\ \&" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -31,20 +31,20 @@
 dnstable_lookup \- lookup individual records in a dnstable data file or set of data files
 .SH "SYNOPSIS"
 .sp
-\fBdnstable_lookup\fR [\fB\-R\fR] [\fB\-j\fR] [\fB\-J\fR] [\fB\-u\fR] [\fB\-O #\fR] \fBrrset\fR <OWNER> [<RRTYPE> [<BAILIWICK>]]
+\fBdnstable_lookup\fR [\fB\-cjJRu\fR] [\fB\-aAbB datetime\fR] [\fB\-O #\fR] \fBrrset\fR <OWNER> [<RRTYPE> [<BAILIWICK>]]
 .sp
-\fBdnstable_lookup\fR [\fB\-R\fR] [\fB\-j\fR] [\fB\-J\fR] [\fB\-u\fR] [\fB\-O #\fR] \fBrdata ip\fR <ADDRESS | RANGE | PREFIX>
+\fBdnstable_lookup\fR [\fB\-cjJRu\fR] [\fB\-aAbB datetime\fR] [\fB\-O #\fR] \fBrdata ip\fR <ADDRESS | RANGE | PREFIX>
 .sp
-\fBdnstable_lookup\fR [\fB\-R\fR] [\fB\-j\fR] [\fB\-J\fR] [\fB\-u\fR] [\fB\-O #\fR] \fBrdata raw\fR <HEX STRING> [<RRTYPE>]
+\fBdnstable_lookup\fR [\fB\-cjJRu\fR] [\fB\-aAbB datetime\fR] [\fB\-O #\fR] \fBrdata raw\fR <HEX STRING> [<RRTYPE>]
 .sp
-\fBdnstable_lookup\fR [\fB\-R\fR] [\fB\-j\fR] [\fB\-J\fR] [\fB\-u\fR] [\fB\-O #\fR] \fBrdata name\fR <RDATA NAME> [<RRTYPE>]
+\fBdnstable_lookup\fR [\fB\-cjJRu\fR] [\fB\-aAbB datetime\fR] [\fB\-O #\fR] \fBrdata name\fR <RDATA NAME> [<RRTYPE>]
 .sp
-\fBdnstable_lookup\fR [\fB\-j\fR] [\fB\-J\fR] [\fB\-u\fR] [\fB\-O #\fR] \fBtime_range\fR
+\fBdnstable_lookup\fR [\fB\-jJu\fR] [\fB\-O #\fR] \fBtime_range\fR
 .sp
-\fBdnstable_lookup\fR [\fB\-j\fR] [\fB\-J\fR] [\fB\-u\fR] [\fB\-O #\fR] \fBversion\fR [<ETYPE>]
+\fBdnstable_lookup\fR [\fB\-jJu\fR] [\fB\-O #\fR] \fBversion\fR [<ETYPE>]
 .SH "DESCRIPTION"
 .sp
-Looks up records in a dnstable data file or fileset\&. Results are printed to stdout in an ad\-hoc text format or in JSON format if \fB\-j\fR or \fB\-J\fR are given\&.
+Looks up records in a dnstable data file or fileset\&. Results are printed to stdout in an ad\-hoc text format or in JSON format if \fB\-j\fR or \fB\-J\fR are given\&. The matching may be done based on the date and time the DNS record was first and/or last observed\&.
 .sp
 \fBdnstable_lookup rrset\fR returns RRsets matching the specified owner name (wildcards permitted)\&. A resource record type and bailiwick domain name can optionally be specified\&.
 .sp
@@ -59,9 +59,40 @@ Looks up records in a dnstable data file or fileset\&. Results are printed to st
 \fBdnstable_lookup version\fR returns version entries\&. The optional \fBETYPE\fR parameter can be used to request a specific type\(cqs version\&. \fBETYPE\fR may be one of \fBrrset\fR, \fBrrset_name\fR, \fBrdata\fR, or \fBrdata_name\fR
 .SH "OPTIONS"
 .PP
-\fB\-R\fR, \fB\-\-raw\fR
+\fB\-a\fR \fIdatetime\fR
 .RS 4
-When using a JSON format for output, add a hex representation of the raw rdata and the rrtype\&.
+Select results with recorded first seen after this
+\fIdatetime\fR\&. See the DATE TIME SPECIFICATION section below for details\&.
+.RE
+.PP
+\fB\-A\fR \fIdatetime\fR
+.RS 4
+Select results with recorded last seen after this
+\fIdatetime\fR\&. See the DATE TIME SPECIFICATION section below for details\&.
+.RE
+.PP
+\fB\-b\fR \fIdatetime\fR
+.RS 4
+Select results with recorded last seen before this
+\fIdatetime\fR\&. See the DATE TIME SPECIFICATION section below for details\&.
+.RE
+.PP
+\fB\-B\fR \fIdatetime\fR
+.RS 4
+Select results with recorded first seen before this
+\fIdatetime\fR\&. See the DATE TIME SPECIFICATION section below for details\&.
+.RE
+.PP
+\fB\-c\fR
+.RS 4
+This enables complete (strict) matching semantics so no entries with a first or last observed time outside the provided
+\fB\-a\fR,
+\fB\-A\fR,
+\fB\-b\fR, and/or
+\fB\-B\fR
+time range will be matched\&. By default, time\-based matching will have results if any of the time is within the range (even if some are outside the range)\&. The
+\fB\-c\fR
+means it will not output the entry if it was also seen outside the time range\&.
 .RE
 .PP
 \fB\-j\fR
@@ -78,9 +109,14 @@ Use JSON format for output, with timestamps in human time (RFC3339 format)\&. De
 presentation format\&. One JSON\-formatted entry per line will be printed\&.
 .RE
 .PP
+\fB\-R\fR, \fB\-\-raw\fR
+.RS 4
+When using a JSON format for output, add a hex representation of the raw rdata and the rrtype\&.
+.RE
+.PP
 \fB\-u\fR
 .RS 4
-Output unaggregated results; default is aggregated results\&.
+Output unaggregated results; default is aggregated results\&. This is only valid with a setfile\&.
 .RE
 .PP
 \fB\-O #\fR
@@ -100,6 +136,19 @@ Path to a single dnstable data file\&.
 .RS 4
 Path to a "set file", a text file containing a newline separated list of dnstable data files on the filesystem\&. Results from all of the data files will be merged\&.
 .RE
+.SH "DATE TIME SPECIFICATION"
+.sp
+The \fB\-a\fR, \fB\-A\fR, \fB\-b\fR, and \fB\-B\fR options support various date or time formats\&.
+.sp
+The date may be represented using \fBstrptime(3)\fR ISO 8601 date formats: %Y\-%m\-%d, %Y\-%m\-%d %H:%M:%S (space separated), %Y\-%m\-%dT%H:%M:%S ("T" separated), and %Y\-%m\-%dT%H:%M:%SZ ("T" separated with trailing "Z" for Zulu timezone)\&.
+.sp
+The date may be represented using absolute Unix epoch time in seconds, e\&.g\&., 1577880000 for January 1, 2020 noon\&.
+.sp
+The date may be represented using negative relative numeric time in seconds such as "\-300" is 5 minutes ago\&.
+.sp
+The date may be represented using timing mnenomics relative to current time: W for weeks, D for days, H for hours, M for minutes, and S for seconds\&. For example, "52w3d" would be one year and three days before the current date (to the second); and "4H30M" is four and a half hours before the current time\&. (The letters are case insensitive\&.)
+.sp
+Due to the parser design, it won\(cqt accept a value of zero or "1970\-01\-01T00:00:00Z" or earlier\&.
 .SH "EXAMPLES"
 .sp
 $ export DNSTABLE_FNAME=/path/to/dns\&.mtbl
@@ -125,3 +174,5 @@ $ dnstable_lookup \-O 10 rdata ip 2001:db8::/32
 $ dnstable_lookup rdata raw c00505f1
 .sp
 $ dnstable_lookup rdata name BLACKHOLE\-1\&.IANA\&.ORG
+.sp
+$ dnstable_lookup \-B "2022\-11\-09 22:59:59" rrset example\&.com
