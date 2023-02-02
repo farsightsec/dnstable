@@ -1226,17 +1226,6 @@ rrtype_test(dnstable_entry_type e_type, uint16_t rrtype, const uint8_t *rrtype_m
 		 * For RDATA_NAME_REV, we index rrtypes NS, CNAME, SOA, PTR, MX, SRV, DNAME, SVCB, and HTTPS.
 		 */
 
-/*
- * Define SVCB and HTTPS types if we are compiling against a version
- * of wdns without them.
- */
-#ifndef WDNS_TYPE_SVCB
-#define WDNS_TYPE_SVCB	64
-#endif
-#ifndef WDNS_TYPE_HTTPS
-#define WDNS_TYPE_HTTPS	65
-#endif
-
 		static const uint16_t all_rrtypes_for_RDATA_NAME_REV[] = {
 			WDNS_TYPE_NS, WDNS_TYPE_CNAME, WDNS_TYPE_SOA, WDNS_TYPE_PTR, WDNS_TYPE_MX,
 			WDNS_TYPE_SRV, WDNS_TYPE_DNAME, WDNS_TYPE_SVCB, WDNS_TYPE_HTTPS
