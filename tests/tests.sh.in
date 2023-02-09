@@ -54,8 +54,8 @@ encoding: 000142
 EOF
 
 test_bitmap matches -d 000142 << EOF
-rrtype = 1 = A
-rrtype = 6 = SOA
+alpha decoding: A SOA
+numeric decoding: 1 6
 EOF
 
 test_bitmap matches -e 'A SOA TYPE65534' << EOF
@@ -67,15 +67,15 @@ encoding: 0401
 EOF
 
 test_bitmap matches -d '0401' << EOF
-rrtype = 260 = (not assigned)
+alpha decoding: TYPE260
+numeric decoding: 260
 EOF
 
 test_bitmap fails -e 'A,TYPE260'
 
 test_bitmap matches -d 000142ff200000000000000000000000000000000000000000000000000000000000000002 << EOF
-rrtype = 1 = A
-rrtype = 6 = SOA
-rrtype = 65534 = (not assigned)
+alpha decoding: A SOA TYPE65534
+numeric decoding: 1 6 65534
 EOF
 
 test_bitmap fails -d ff200000000000000000000000000000000000000000000000000000000000000002000142
@@ -241,6 +241,93 @@ test_lookup fails -O 10 time_range
 test_lookup fails -R time_range
 test_lookup fails -R rrset www.example.com A
 test_lookup fails rdata ip ThisIsNotAnIP
+
+# query_iter_next_ip tests
+#
+# Note that the following tests verify the correction of previously broken
+# behavior that would cause the incorrect traversal of entries with the same
+# rdata address that were interspersed with other rdata entries of different
+# rrtypes.
+#
+# test-dns.mtbl, which is the target of these tests, includes the following
+# entries, identified by the order # in which they appear:
+#
+#  12  "\x02\xc0\xa8\x01\x01\x00\x00\x00\x00\x00... c0a8:101::                 AAAA    aaaa-0.next_ip.dom.
+#  13  "\x02\xc0\xa8\x01\x01\x01\x00\x00\x00\x00... c0a8:101:100::             AAAA    aaaa-2.next_ip.dom.
+#  14  "\x02\xc0\xa8\x01\x01\x01\x00\x04\x00\x00... c0a8:101:100:400::         AAAA    aaaa-3.next_ip.dom.
+#  15  "\x02\xc0\xa8\x01\x01\x01\x03com\x00\x00...  c0a8:101:103:636f:6d00::   AAAA    aaaa-4.next_ip.dom.
+#  16  "\x02\xc0\xa8\x01\x01\x01\x03dom\x00\x00...  c0a8:101:103:646f:6d00::   AAAA    aaaa-5.next_ip.dom.
+#  17  "\x02\xc0\xa8\x01\x01\x01\x03dom\x07next...  192.168.1.1                A       a.next_ip.dom.
+#  18  "\x02\xc0\xa8\x01\x01\x01\x03dom\x00\x00...  c0a8:101:103:646f:6d20::   AAAA    aaaa-6.next_ip.dom.
+#  19  "\x02\xc0\xa8\x01\x01\x01\x03dom\x80\x00...  c0a8:101:103:646f:6d80::   AAAA    aaaa-7.next_ip.dom.
+#  20  "\x02\xc0\xa8\x01\x01\x01\x07next_ip\x01a... 192.168.1.1                A       a.next_ip.
+#  21  "\x02\xc0\xa8\x01\x02\x01\x03dom\x07next...  192.168.1.2                A       b.next_ip.dom.
+#  22  "\x02\xc0\xa8\x01\x7f\x07next_ip...          \# 3 c0 a8 01              TYPE127 next_ip.
+#  23  "\x02\xc63d\x03\x01\x03com\x07example...     198.51.100.3               A       www.example.com.
+#  24  "\x02\xc63d\x04\x01\x03com\x07example...     198.51.100.4               A       www.example.com.
+#  25  "\x02\xff\xff\xff\xff\x01\x00\x00...         ffff:ffff:100::            AAAA    aaaa-8.next_ip.dom.
+#  26  "\x02\xff\xff\xff\xff\x01\x03dom...          255.255.255.255            A       c.next_ip.dom.
+#  27  "\x02\xff\xff\xff\xff\x01\xff\x00...         ffff:ffff:1ff::            AAAA    aaaa-8.next_ip.dom.
+#
+# The difference between how the old (buggy) and new (fixed) code can be seen as follows:
+#
+# $ old_dnstable_lookup -j rdata ip 255.255.255.255/32
+# [no output]
+# $ new_dnstable_lookup -j rdata ip 255.255.255.255/32
+# {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"c.next_ip.dom.","rrtype":"A","rdata":"255.255.255.255"}
+#
+# In this case, the buggy code initially formed the seek key “\x02\xff\xff\xff\xff\x01”
+# and seeked to #25; saw the incorrect rrtype (AAAA, not A), and then after an
+# address increment, ended up to seeking after #27 (missing #26).
+#
+# Or this test below:
+#
+# $ old_dnstable_lookup -j rdata ip 192.168.1.0/24
+# {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"b.next_ip.dom.","rrtype":"A","rdata":"192.168.1.2"}
+# $ new_dnstable_lookup -j rdata ip 192.168.1.0/24
+# {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"a.next_ip.dom.","rrtype":"A","rdata":"192.168.1.1"}
+# {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"a.next_ip.","rrtype":"A","rdata":"192.168.1.1"}
+# {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"b.next_ip.dom.","rrtype":"A","rdata":"192.168.1.2"}
+#
+# Here the buggy code formed the seek key “\x02\xc0\xa8\x01\x00\0x1” and seeked
+# to #12; saw the incorrect rrtype (AAAA, not A); formed the next next seek key
+# of “\x02\xc0\xa8\x01\x02” and seeked to #21, skipping over both #17 and #20.
+#
+#
+test_lookup matches -j rdata ip 192.168.1.0/24 <<EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"a.next_ip.dom.","rrtype":"A","rdata":"192.168.1.1"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"a.next_ip.","rrtype":"A","rdata":"192.168.1.1"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"b.next_ip.dom.","rrtype":"A","rdata":"192.168.1.2"}
+EOF
+
+test_lookup matches -j rdata ip 192.168.1.1 <<EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"a.next_ip.dom.","rrtype":"A","rdata":"192.168.1.1"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"a.next_ip.","rrtype":"A","rdata":"192.168.1.1"}
+EOF
+
+test_lookup matches -j rdata ip 192.168.1.2 <<EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"b.next_ip.dom.","rrtype":"A","rdata":"192.168.1.2"}
+EOF
+
+# query for IPv6 prefix to exercise short skip case.
+test_lookup matches -j rdata ip c0a8:0100::/24 <<EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"aaaa-0.next_ip.dom.","rrtype":"AAAA","rdata":"c0a8:101::"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"aaaa-2.next_ip.dom.","rrtype":"AAAA","rdata":"c0a8:101:100::"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"aaaa-3.next_ip.dom.","rrtype":"AAAA","rdata":"c0a8:101:100:400::"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"aaaa-4.next_ip.dom.","rrtype":"AAAA","rdata":"c0a8:101:103:636f:6d00::"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"aaaa-5.next_ip.dom.","rrtype":"AAAA","rdata":"c0a8:101:103:646f:6d00::"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"aaaa-6.next_ip.dom.","rrtype":"AAAA","rdata":"c0a8:101:103:646f:6d20::"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"aaaa-7.next_ip.dom.","rrtype":"AAAA","rdata":"c0a8:101:103:646f:6d80::"}
+EOF
+
+# all-ones address query, both prefix and point form.
+test_lookup matches -j rdata ip 255.255.255.255 <<EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"c.next_ip.dom.","rrtype":"A","rdata":"255.255.255.255"}
+EOF
+
+test_lookup matches -j rdata ip 255.255.255.255/32 <<EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"c.next_ip.dom.","rrtype":"A","rdata":"255.255.255.255"}
+EOF
 
 #####################
 

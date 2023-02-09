@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2023 DomainTools LLC
  * Copyright (c) 2021 by Farsight Security, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,13 +40,17 @@ usage(void)
 		"\ttest-bitmaps [-e RRtypes] [-d hex-pairs]\n"
 		"\n"
 		"Flags:\n"
-		"\t-d: hex pairs of digits to treat as a bitmap to decode.\n"
+		"\t-d: hex pairs of digits to decode.\n"
 		"\t    If two digits (one byte) then it is a one byte RRtype.\n"
 		"\t    If four digits (two bytes) then it is a two byte RRtype\n"
 		"\t    in little-endian order.\n"
-		"\t    Otherwise, then it is a RFC4034 4.1.2 bitmap.\n"
+		"\t    Otherwise, then it is interpreted as a RFC4034 4.1.2 bitmap.\n"
 		"\t    Embedded space and puncuation are ignored.\n"
-		"\t-e: space separated list of RRtypes to encode\n"
+		"\n"
+		"\t-e: space separated list of RRtypes to encode.\n"
+		"\t    If one type and the value is <= 255, output as one byte.\n"
+		"\t    If one type and the value is > 255, output as two LE bytes.\n"
+		"\t    Otherwise output as a RFC4034 4.1.2 bitmap.\n"
 		"\n"
 		"One of -e or -d is required\n");
 
@@ -67,10 +72,25 @@ static int decode_test(uint8_t *decode_this, size_t decode_len)
 		return EXIT_FAILURE;
 	}
 
+	printf("alpha decoding: ");
 	for (int i = 0; i < num_rrtypes; i++) {
 		const char *s_rtype = wdns_rrtype_to_str(result_rrtypes.rrtypes[i]);
-		printf("rrtype = %d = %s\n", result_rrtypes.rrtypes[i], s_rtype != NULL ? s_rtype : "(not assigned)");
+		if (s_rtype != NULL)
+			printf("%s", s_rtype);
+		else
+			printf("TYPE%d", result_rrtypes.rrtypes[i]);
+		if (i + 1 < num_rrtypes)
+			printf(" ");
 	}
+
+	printf("\nnumeric decoding: ");
+	for (int i = 0; i < num_rrtypes; i++) {
+		printf("%d", result_rrtypes.rrtypes[i]);
+		if (i + 1 < num_rrtypes)
+			printf(" ");
+	}
+	printf("\n");
+
 	return EXIT_SUCCESS;
 }
 

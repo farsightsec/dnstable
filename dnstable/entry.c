@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2023 DomainTools LLC
  * Copyright (c) 2012, 2014-2016, 2019-2021 by Farsight Security, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -759,6 +760,7 @@ decode_rdata(struct dnstable_entry *e, const uint8_t *buf, size_t len_buf)
 	/* data length */
 	memcpy(&len_data, end - sizeof(uint16_t), sizeof(uint16_t));
 	end = buf + len_buf - sizeof(uint16_t);
+	len_data = le16toh(len_data);
 
 	/* data */
 	data = p;
@@ -1029,7 +1031,8 @@ dnstable_res
 dnstable_entry_get_time_first(struct dnstable_entry *e, uint64_t *v)
 {
 	if (e->e_type == DNSTABLE_ENTRY_TYPE_RRSET ||
-	    e->e_type == DNSTABLE_ENTRY_TYPE_RDATA)
+	    e->e_type == DNSTABLE_ENTRY_TYPE_RDATA ||
+	    e->e_type == DNSTABLE_ENTRY_TYPE_TIME_RANGE)
 	{
 		*v = e->time_first;
 		return (dnstable_res_success);
@@ -1041,7 +1044,8 @@ dnstable_res
 dnstable_entry_get_time_last(struct dnstable_entry *e, uint64_t *v)
 {
 	if (e->e_type == DNSTABLE_ENTRY_TYPE_RRSET ||
-	    e->e_type == DNSTABLE_ENTRY_TYPE_RDATA)
+	    e->e_type == DNSTABLE_ENTRY_TYPE_RDATA ||
+	    e->e_type == DNSTABLE_ENTRY_TYPE_TIME_RANGE)
 	{
 		*v = e->time_last;
 		return (dnstable_res_success);
@@ -1222,17 +1226,6 @@ rrtype_test(dnstable_entry_type e_type, uint16_t rrtype, const uint8_t *rrtype_m
 		 *
 		 * For RDATA_NAME_REV, we index rrtypes NS, CNAME, SOA, PTR, MX, SRV, DNAME, SVCB, and HTTPS.
 		 */
-
-/*
- * Define SVCB and HTTPS types if we are compiling against a version
- * of wdns without them.
- */
-#ifndef WDNS_TYPE_SVCB
-#define WDNS_TYPE_SVCB	64
-#endif
-#ifndef WDNS_TYPE_HTTPS
-#define WDNS_TYPE_HTTPS	65
-#endif
 
 		static const uint16_t all_rrtypes_for_RDATA_NAME_REV[] = {
 			WDNS_TYPE_NS, WDNS_TYPE_CNAME, WDNS_TYPE_SOA, WDNS_TYPE_PTR, WDNS_TYPE_MX,

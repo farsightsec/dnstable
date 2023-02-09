@@ -12,6 +12,8 @@
 #        excludes (contains no lines from test-output)
 #	 fails (command exits with nonzero status
 #
+# WARNING: the test output may NOT contain trailing spaces or the test will FAIL.
+#
 test_command() {
 	local name test prog args cmd result rcode
 	name=$1; shift

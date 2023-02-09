@@ -1,6 +1,6 @@
 AC_PREREQ(2.64)
 AC_INIT([dnstable],
-        [0.12.0],
+        [0.13.0],
         [https://github.com/farsightsec/dnstable/issues],
         [dnstable],
         [https://github.com/farsightsec/dnstable])
@@ -25,6 +25,7 @@ AC_SUBST([my_CFLAGS])
 AC_CONFIG_HEADERS(config.h)
 AC_CONFIG_FILES([Makefile dnstable/libdnstable.pc])
 AC_CONFIG_FILES([tests/tests.sh], [chmod +x tests/tests.sh])
+AC_CONFIG_FILES([tests/test_timefilter.sh], [chmod +x tests/test_timefilter.sh])
 
 PKG_PROG_PKG_CONFIG
 if test -n "$PKG_CONFIG"; then
@@ -43,8 +44,8 @@ AC_CHECK_FUNCS([clock_gettime])
 
 AC_CHECK_HEADERS([sys/endian.h endian.h])
 
-PKG_CHECK_MODULES([libmtbl], [libmtbl >= 1.3.0])
-PKG_CHECK_MODULES([libwdns], [libwdns >= 0.6.0])
+PKG_CHECK_MODULES([libmtbl], [libmtbl >= 1.5.0])
+PKG_CHECK_MODULES([libwdns], [libwdns >= 0.11.0])
 PKG_CHECK_MODULES([libyajl], [yajl >= 2], [], [MY_CHECK_YAJL_1])
 
 AX_PTHREAD([

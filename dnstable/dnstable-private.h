@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2023 DomainTools LLC
  * Copyright (c) 2012, 2014, 2015, 2018, 2019, 2021 by Farsight Security, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -106,8 +107,8 @@ bytes_compare(const uint8_t *a, size_t len_a,
 	return (ret);
 }
 
-bool
-dnstable_query_is_aggregated(const struct dnstable_query *);
+struct dnstable_iter *
+dnstable_query_iter_fileset(struct dnstable_query *, struct mtbl_fileset *);
 
 /*
  * The maximum number of rrtypes that can be in an rrtype bitmap index.
