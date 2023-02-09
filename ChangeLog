@@ -1,3 +1,15 @@
+dnstable (0.13.0)
+
+  * Update dnstable to 0.13.0 version
+  * Updated dependency to libwdns 0.11.0
+  * Updated dependency to libmtbl 1.5.0
+  * dnstable_lookup: add new command-line options -A, -a, -B, -b, and -c for time-fenced lookups.
+  * Optimize time filtered searches on fileset sources with a filtering query using the subset of files which may contribute to matching results.
+  * Fix duplication of results in unaggregated name prefix or rdata name suffix searches.
+  * Fix improper skipping of results in IP range or prefix searches.
+  * Fix return of non-name results in rdata name searches.
+  * Fix decode_rdata() rdata length for Big Endian.
+
 dnstable (0.12.0)
 
   * Implement indexing using RRtypes for ENTRY_TYPE_RRSET_NAME_FWD
