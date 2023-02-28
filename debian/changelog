@@ -1,3 +1,9 @@
+dnstable (0.13.1-1) debian-fsi; urgency=medium
+
+  * Add RP, NXT, and NSEC to rdata name type list for matching rdata names.
+
+ -- Farsight Security, Inc. <software@farsightsecurity.com>  Tue, 28 Feb 2023 20:33:14 -0300
+
 dnstable (0.13.0-1) debian-fsi; urgency=medium
 
   * Update dnstable to 0.13.0 version
