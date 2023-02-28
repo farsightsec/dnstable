@@ -456,6 +456,8 @@ dnstable_query_filter(struct dnstable_query *q, struct dnstable_entry *e, bool *
 		case WDNS_TYPE_SVCB:
 		case WDNS_TYPE_HTTPS:
 		case WDNS_TYPE_NSEC:
+		case WDNS_TYPE_RP:
+		case WDNS_TYPE_NXT:
 			break;
 		default:
 			goto fail;
