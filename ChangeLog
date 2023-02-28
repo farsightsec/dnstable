@@ -1,3 +1,7 @@
+dnstable (0.13.1)
+
+  * Add RP, NXT, and NSEC to rdata name type list for matching rdata names.
+
 dnstable (0.13.0)
 
   * Update dnstable to 0.13.0 version
