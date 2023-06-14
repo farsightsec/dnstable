@@ -34,8 +34,10 @@ struct dnstable_query {
 	wdns_name_t		name, bailiwick;
 	uint32_t		rrtype;
 	bool			aggregated;
-	size_t			len_rdata, len_rdata2;
-	uint8_t			*rdata, *rdata2;
+	uint8_t			len_ip1, len_ip2;
+	uint8_t			ip1[16], ip2[16];
+	size_t			len_rdata;
+	uint8_t			*rdata;
 	struct timespec		timeout;
 	uint64_t		time_first_before, time_first_after;
 	uint64_t		time_last_before, time_last_after;
@@ -78,19 +80,14 @@ query_load_name(struct dnstable_query *q, wdns_name_t *name, const char *s_name)
 }
 
 static dnstable_res
-query_load_address(struct dnstable_query *q, const char *data, uint8_t **addr, size_t *len_addr)
+query_load_address(struct dnstable_query *q, const char *data, uint8_t addr[16], uint8_t *len_addr)
 {
-	uint8_t buf[16];
-	my_free(*addr);
-	if (inet_pton(AF_INET, data, buf)) {
+	*len_addr = 0;
+	if (inet_pton(AF_INET, data, addr) == 1) {
 		*len_addr = 4;
-		*addr = my_malloc(4);
-		memcpy(*addr, buf, 4);
 		return (dnstable_res_success);
-	} else if (inet_pton(AF_INET6, data, buf)) {
+	} else if (inet_pton(AF_INET6, data, addr) == 1) {
 		*len_addr = 16;
-		*addr = my_malloc(16);
-		memcpy(*addr, buf, 16);
 		return (dnstable_res_success);
 	}
 	query_set_err(q, "inet_pton() failed");
@@ -117,7 +114,6 @@ dnstable_query_destroy(struct dnstable_query **q)
 {
 	if (*q) {
 		my_free((*q)->rdata);
-		my_free((*q)->rdata2);
 		my_free((*q)->name.data);
 		my_free((*q)->bailiwick.data);
 		my_free((*q)->err);
@@ -176,16 +172,16 @@ query_set_data_rdata_ip_range(struct dnstable_query *q, const char *data)
 	if ((addr2 = strtok_r(NULL, "-", &saveptr)) == NULL) goto out;
 	if (strtok_r(NULL, "-", &saveptr) != NULL) goto out;
 
-	if (!query_load_address(q, addr1, &q->rdata, &q->len_rdata)) goto out;
-	if (!query_load_address(q, addr2, &q->rdata2, &q->len_rdata2)) goto out;
-	if (q->len_rdata != q->len_rdata2) {
+	if (!query_load_address(q, addr1, q->ip1, &q->len_ip1)) goto out;
+	if (!query_load_address(q, addr2, q->ip2, &q->len_ip2)) goto out;
+	if (q->len_ip1 != q->len_ip2) {
 		query_set_err(q, "address family mismatch in IP range");
 		goto out;
 	}
 	q->do_rrtype = true;
-	if (q->len_rdata == 4) {
+	if (q->len_ip1 == 4) {
 		q->rrtype = WDNS_TYPE_A;
-	} else if (q->len_rdata == 16) {
+	} else if (q->len_ip1 == 16) {
 		q->rrtype = WDNS_TYPE_AAAA;
 	}
 	res = dnstable_res_success;
@@ -199,8 +195,8 @@ query_set_data_rdata_ip_prefix(struct dnstable_query *q, const char *data)
 {
 	dnstable_res res = dnstable_res_failure;
 	char *s = NULL;
-	uint8_t *ip = NULL;
-	size_t len_ip;
+	uint8_t ip[16];
+	uint8_t len_ip;
 	char *address, *prefix_length;
 	char *saveptr, *endptr;
 	long plen;
@@ -211,7 +207,7 @@ query_set_data_rdata_ip_prefix(struct dnstable_query *q, const char *data)
 	if ((prefix_length = strtok_r(NULL, "/", &saveptr)) == NULL) goto out;
 	if (strtok_r(NULL, "/", &saveptr) != NULL) goto out;
 
-	if (!query_load_address(q, address, &ip, &len_ip)) goto out;
+	if (!query_load_address(q, address, ip, &len_ip)) goto out;
 
 	errno = 0;
 	plen = strtol(prefix_length, &endptr, 10);
@@ -228,34 +224,25 @@ query_set_data_rdata_ip_prefix(struct dnstable_query *q, const char *data)
 		q->do_rrtype = true;
 		q->rrtype = WDNS_TYPE_A;
 
-		q->len_rdata = len_ip;
-		q->len_rdata2 = len_ip;
-		my_free(q->rdata);
-		my_free(q->rdata2);
-		q->rdata = my_malloc(len_ip);
-		q->rdata2 = my_malloc(len_ip);
-		ip4_lower(ip, plen, q->rdata);
-		ip4_upper(ip, plen, q->rdata2);
+		q->len_ip1 = len_ip;
+		q->len_ip2 = len_ip;
+		ip4_lower(ip, plen, q->ip1);
+		ip4_upper(ip, plen, q->ip2);
 		res = dnstable_res_success;
 	} else if (len_ip == 16) {
 		q->do_rrtype = true;
 		q->rrtype = WDNS_TYPE_AAAA;
 
-		q->len_rdata = len_ip;
-		q->len_rdata2 = len_ip;
-		my_free(q->rdata);
-		my_free(q->rdata2);
-		q->rdata = my_malloc(len_ip);
-		q->rdata2 = my_malloc(len_ip);
-		ip6_lower(ip, plen, q->rdata);
-		ip6_upper(ip, plen, q->rdata2);
+		q->len_ip1 = len_ip;
+		q->len_ip2 = len_ip;
+		ip6_lower(ip, plen, q->ip1);
+		ip6_upper(ip, plen, q->ip2);
 		res = dnstable_res_success;
 	}
 
 out:
 	if (res != dnstable_res_success)
 		query_set_err(q, "unable to parse IP prefix");
-	my_free(ip);
 	my_free(s);
 	return (res);
 }
@@ -263,13 +250,13 @@ out:
 static dnstable_res
 query_set_data_rdata_ip_address(struct dnstable_query *q, const char *data)
 {
-	my_free(q->rdata2);
-	if (!query_load_address(q, data, &q->rdata, &q->len_rdata))
+	q->len_ip2 = 0;
+	if (!query_load_address(q, data, q->ip1, &q->len_ip1))
 		return (dnstable_res_failure);
 	q->do_rrtype = true;
-	if (q->len_rdata == 4)
+	if (q->len_ip1 == 4)
 		q->rrtype = WDNS_TYPE_A;
-	else if (q->len_rdata == 16)
+	else if (q->len_ip1 == 16)
 		q->rrtype = WDNS_TYPE_AAAA;
 	return (dnstable_res_success);
 }
@@ -278,8 +265,8 @@ static dnstable_res
 query_set_data_rdata_ip(struct dnstable_query *q, const char *data)
 {
 	if (data == NULL) {
-		my_free(q->rdata);
-		my_free(q->rdata2);
+		q->len_ip1 = 0;
+		q->len_ip2 = 0;
 		return (dnstable_res_success);
 	}
 
@@ -1230,21 +1217,21 @@ static struct dnstable_iter *
 query_init_rdata_ip(struct query_iter *it)
 {
 	assert(it->query->do_rrtype);
-	assert(it->query->rdata != NULL);
+	assert(it->query->len_ip1 > 0);
 
 	it->key = ubuf_init(64);
 
 	/* key: type byte, rdata, rrtype */
 	ubuf_add(it->key, ENTRY_TYPE_RDATA);
-	ubuf_append(it->key, it->query->rdata, it->query->len_rdata);
+	ubuf_append(it->key, it->query->ip1, it->query->len_ip1);
 	add_rrtype_to_key(it->key, it->query->rrtype);
 
-	if (it->query->rdata2 != NULL) {
+	if (it->query->len_ip2 > 0) {
 		it->key2 = ubuf_init(64);
 
 		/* key2: type byte, rdata2, rrtype */
 		ubuf_add(it->key2, ENTRY_TYPE_RDATA);
-		ubuf_append(it->key2, it->query->rdata2, it->query->len_rdata2);
+		ubuf_append(it->key2, it->query->ip2, it->query->len_ip2);
 		add_rrtype_to_key(it->key2, it->query->rrtype);
 
 		/* increment key2 starting from the last byte */
