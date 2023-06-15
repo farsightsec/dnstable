@@ -88,7 +88,7 @@ EXTRA_DIST += dnstable/libdnstable.sym
 EXTRA_DIST += src/dnstable_merge.sh.in
 bin_SCRIPTS = src/dnstable_merge
 CLEANFILES += $(bin_SCRIPTS)
-src/dnstable_merge:
+src/dnstable_merge: dnstable/libdnstable.la
 	dlname=`sed -n "s/^dlname='\(.*\)'/\1/p" dnstable/libdnstable.la` ; \
 	sed -e "s/@LIBDNSTABLE_DLNAME@/$$dlname/" ${srcdir}/src/dnstable_merge.sh.in >$@
 	chmod +x $@
