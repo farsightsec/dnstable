@@ -35,6 +35,7 @@ documentation for libdnstable.
 [ -x configure ] || autoreconf -fvi
 %configure
 make %{?_smp_mflags}
+cat dnstable/libdnstable.la
 
 
 %install
