@@ -118,14 +118,14 @@ static int encode_test(const char *encode_this)
 			printf("encoding: %02x\n", rrtype & 0xff);
 	} else {
 		/*
-		 * The "1 1 0 - 00 %s " is an NSEC3 rdata value, as a string.
-		 * Given encode_this = "A", this will result in
-		 * 01-01-00-00-00-02-00-00-00-01-40
-		 * where the trailing 00-01-40 is the rrtype bitmap.
-		 * so we extract starting from index 8 in the returned value.
+		 * The "1 1 0 - 0 %s " is an NSEC3 rdata value, as a string.
+		 * Given encode_this = "A SOA", this will result in
+		 * 01-01-00-00-00-00-00-01-42
+		 * where the trailing 00-01-42 is the rrtype bitmap.
+		 * so we extract starting from index 6 in the returned value.
 		 * Note: the trailing space is important, otherwise there will be a parse error.
 		 */
-		assert((unsigned)snprintf(buf, sizeof(buf) - 1, "1 1 0 - 00 %s ", encode_this) < sizeof(buf));
+		assert((unsigned)snprintf(buf, sizeof(buf) - 1, "1 1 0 - 0 %s ", encode_this) < sizeof(buf));
 		w_res = wdns_str_to_rdata(buf, WDNS_TYPE_NSEC3, WDNS_CLASS_IN, (uint8_t **) &encoding, &len);
 		if (w_res == wdns_res_parse_error) {
 			fprintf(stderr, "wdns_str_to_rdata returned a wdns_res_parse_error -- are the RRtypes all valid?\n");
@@ -136,7 +136,7 @@ static int encode_test(const char *encode_this)
 		}
 
 		printf("encoding: ");
-		for (size_t i = 8; i < len; i++) {
+		for (size_t i = 6; i < len; i++) {
 			printf("%02x", encoding[i]);
 		}
 		printf("\n");
