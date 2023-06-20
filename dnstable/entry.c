@@ -22,9 +22,6 @@ VECTOR_GENERATE(rdata_vec, wdns_rdata_t *);
 /* Append a string-literal. */
 #define ubuf_add_cstr_lit(u, s)	ubuf_append(u, (const uint8_t*) s, sizeof(s) - 1)
 
-/* Append data without concern for any prior traiing NUL. */
-#define ubuf_append_cstr(u, s, l)	ubuf_append(u, (const uint8_t*) s, l)
-
 #define add_yajl_string(g, s) do {                                              \
 	yajl_gen_status g_status;                                               \
 	g_status = yajl_gen_string(g, (const unsigned  char *) s, strlen(s));   \
@@ -61,7 +58,7 @@ fmt_uint64(ubuf *u, uint64_t v)
 {
 	char s[sizeof("18,446,744,073,709,551,615")];
 	int ret = snprintf(s, sizeof(s), "%'" PRIu64, v);
-	ubuf_append_cstr(u, s, ret);
+	ubuf_append(u, (const uint8_t*) s, ret);
 }
 
 
@@ -84,7 +81,7 @@ fmt_time(ubuf *u, uint64_t v)
 
 	r = gmtime_r(&tm, &gm);
 	if ((r != NULL) && ((len = strftime(s, sizeof(s), "%Y-%m-%d %H:%M:%S -0000", r)) > 0))
-		ubuf_append_cstr(u, s, len);
+		ubuf_append(u, (const uint8_t*) s, len);
 }
 
 static void
@@ -97,7 +94,7 @@ fmt_rfc3339_time(ubuf *u, uint64_t v)
 
 	r = gmtime_r(&tm, &gm);
 	if ((r != NULL) && ((len = strftime(s, sizeof(s), "%Y-%m-%dT%H:%M:%SZ", r)) > 0))
-		ubuf_append_cstr(u, s, len);
+		ubuf_append(u, (const uint8_t*) s, len);
 }
 
 static yajl_gen_status
@@ -128,7 +125,7 @@ fmt_hex_str(ubuf *u, uint8_t *s, size_t len_s)
 	for (size_t c = 0; c < len_s; c++) {
 		char hexbuf[3];
 		snprintf(hexbuf, sizeof(hexbuf), "%02x", s[c]);
-		ubuf_append_cstr(u, hexbuf, 2);
+		ubuf_append(u, (const uint8_t*) hexbuf, 2);
 	}
 }
 
@@ -141,7 +138,7 @@ fmt_rrtype(ubuf *u, uint16_t rrtype)
 		ubuf_add_cstr(u, s_rrtype);
 	} else {
 		int ret = snprintf(s, sizeof(s), "TYPE%hu", rrtype);
-		ubuf_append_cstr(u, s, ret);
+		ubuf_append(u, (const uint8_t*) s, ret);
 	}
 }
 
@@ -307,7 +304,7 @@ dnstable_entry_to_text_fmt(const struct dnstable_entry *e, dnstable_date_format_
 		else
 			ret = snprintf(buf, sizeof(buf), ";; Version type %s: %u\n",
 				vtype, (unsigned)e->version);
-		ubuf_append_cstr(u, buf, ret);
+		ubuf_append(u, (const uint8_t*) buf, ret);
 
 	}
 
@@ -504,7 +501,6 @@ dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
 				assert(status == yajl_gen_status_ok);
 			}
 
-			/* SRK: TODO: Easy optimization here (string -> hex-string). */
 			ubuf *rbuf = ubuf_init(2 * rdata->len + 1);
 			uint8_t *rbuf_as_str = NULL;
 			size_t rbuf_as_str_len = 0;
