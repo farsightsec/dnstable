@@ -19,6 +19,12 @@
 
 VECTOR_GENERATE(rdata_vec, wdns_rdata_t *);
 
+/* Append a string-literal. */
+#define ubuf_add_cstr_lit(u, s)	ubuf_append(u, (const uint8_t*) s, sizeof(s) - 1)
+
+/* Append data without concern for any prior traiing NUL. */
+#define ubuf_append_cstr(u, s, l)	ubuf_append(u, (const uint8_t*) s, l)
+
 #define add_yajl_string(g, s) do {                                              \
 	yajl_gen_status g_status;                                               \
 	g_status = yajl_gen_string(g, (const unsigned  char *) s, strlen(s));   \
@@ -54,8 +60,8 @@ static void
 fmt_uint64(ubuf *u, uint64_t v)
 {
 	char s[sizeof("18,446,744,073,709,551,615")];
-	snprintf(s, sizeof(s), "%'" PRIu64, v);
-	ubuf_add_cstr(u, s);
+	int ret = snprintf(s, sizeof(s), "%'" PRIu64, v);
+	ubuf_append_cstr(u, s, ret);
 }
 
 
@@ -74,9 +80,11 @@ fmt_time(ubuf *u, uint64_t v)
 	struct tm gm, *r;
 	time_t tm = v;
 	char s[sizeof("4294967295-12-31 23:59:59 -0000")];
+	size_t len;
+
 	r = gmtime_r(&tm, &gm);
-	if ((r != NULL) && (strftime(s, sizeof(s), "%Y-%m-%d %H:%M:%S -0000", r) > 0))
-		ubuf_add_cstr(u, s);
+	if ((r != NULL) && ((len = strftime(s, sizeof(s), "%Y-%m-%d %H:%M:%S -0000", r)) > 0))
+		ubuf_append_cstr(u, s, len);
 }
 
 static void
@@ -85,10 +93,11 @@ fmt_rfc3339_time(ubuf *u, uint64_t v)
 	struct tm gm, *r;
 	time_t tm = v;
 	char s[sizeof("4294967295-12-31T23:59:59Z")];
+	size_t len;
 
 	r = gmtime_r(&tm, &gm);
-	if ((r != NULL) && (strftime(s, sizeof(s), "%Y-%m-%dT%H:%M:%SZ", r) > 0))
-		ubuf_add_cstr(u, s);
+	if ((r != NULL) && ((len = strftime(s, sizeof(s), "%Y-%m-%dT%H:%M:%SZ", r)) > 0))
+		ubuf_append_cstr(u, s, len);
 }
 
 static yajl_gen_status
@@ -96,7 +105,7 @@ fmt_rfc3339_time_json(yajl_gen g, uint64_t v)
 {
 	struct tm gm, *r;
 	time_t tm = v;
-	int ret;
+	size_t ret;
 	char ts[sizeof("4294967295-12-31T23:59:59Z")];
 
 	r = gmtime_r(&tm, &gm);
@@ -119,7 +128,7 @@ fmt_hex_str(ubuf *u, uint8_t *s, size_t len_s)
 	for (size_t c = 0; c < len_s; c++) {
 		char hexbuf[3];
 		snprintf(hexbuf, sizeof(hexbuf), "%02x", s[c]);
-		ubuf_add_cstr(u, hexbuf);
+		ubuf_append_cstr(u, hexbuf, 2);
 	}
 }
 
@@ -131,8 +140,8 @@ fmt_rrtype(ubuf *u, uint16_t rrtype)
 	if (s_rrtype) {
 		ubuf_add_cstr(u, s_rrtype);
 	} else {
-		snprintf(s, sizeof(s), "TYPE%hu", rrtype);
-		ubuf_add_cstr(u, s);
+		int ret = snprintf(s, sizeof(s), "TYPE%hu", rrtype);
+		ubuf_append_cstr(u, s, ret);
 	}
 }
 
@@ -154,24 +163,24 @@ fmt_rrtype_json(yajl_gen g, uint16_t rrtype)
 static void
 fmt_rrtypes_union(ubuf *u, const struct dnstable_entry *e)
 {
-	ubuf_add_cstr(u, " RRtypes=[");
+	ubuf_add_cstr_lit(u, " RRtypes=[");
 
 	if (e->rrtype_map != NULL) {
 		rrtype_unpacked_set rrtype_set;
 		int n_rrtypes = rrtype_union_unpack(ubuf_data(e->rrtype_map), ubuf_size(e->rrtype_map), &rrtype_set);
 
 		if (n_rrtypes == -1)
-			ubuf_add_cstr(u, "<failure>");
+			ubuf_add_cstr_lit(u, "<failure>");
 		else {
 			for (int n = 0; n < n_rrtypes; n++) {
 				fmt_rrtype(u, rrtype_set.rrtypes[n]);
 
 				if (n + 1 < n_rrtypes)
-					ubuf_add_cstr(u, " ");
+					ubuf_add_cstr_lit(u, " ");
 			}
 		}
 	}
-	ubuf_add_cstr(u, "] ");
+	ubuf_add_cstr_lit(u, "] ");
 }
 
 static void
@@ -220,25 +229,25 @@ dnstable_entry_to_text_fmt(const struct dnstable_entry *e, dnstable_date_format_
 	if (e->e_type == DNSTABLE_ENTRY_TYPE_RRSET) {
 		/* bailiwick */
 		wdns_domain_to_str(e->bailiwick.data, e->bailiwick.len, name);
-		ubuf_add_cstr(u, ";;  bailiwick: ");
+		ubuf_add_cstr_lit(u, ";;  bailiwick: ");
 		ubuf_add_cstr(u, name);
 
 		/* count */
-		ubuf_add_cstr(u, "\n;;      count: ");
+		ubuf_add_cstr_lit(u, "\n;;      count: ");
 		fmt_uint64(u, e->count);
 
 		/* first seen */
 		if (e->iszone)
-			ubuf_add_cstr(u, "\n;; first seen in zone file: ");
+			ubuf_add_cstr_lit(u, "\n;; first seen in zone file: ");
 		else
-			ubuf_add_cstr(u, "\n;; first seen: ");
+			ubuf_add_cstr_lit(u, "\n;; first seen: ");
 		time_formatter(u, e->time_first);
 
 		/* last seen */
 		if (e->iszone)
-			ubuf_add_cstr(u, "\n;;  last seen in zone file: ");
+			ubuf_add_cstr_lit(u, "\n;;  last seen in zone file: ");
 		else
-			ubuf_add_cstr(u, "\n;;  last seen: ");
+			ubuf_add_cstr_lit(u, "\n;;  last seen: ");
 		time_formatter(u, e->time_last);
 		ubuf_add(u, '\n');
 
@@ -249,7 +258,7 @@ dnstable_entry_to_text_fmt(const struct dnstable_entry *e, dnstable_date_format_
 			char *data = wdns_rdata_to_str(rdata->data, rdata->len,
 						       e->rrtype, WDNS_CLASS_IN);
 			ubuf_add_cstr(u, name);
-			ubuf_add_cstr(u, " IN ");
+			ubuf_add_cstr_lit(u, " IN ");
 			fmt_rrtype(u, e->rrtype);
 			ubuf_add(u, ' ');
 			ubuf_add_cstr(u, data);
@@ -265,7 +274,7 @@ dnstable_entry_to_text_fmt(const struct dnstable_entry *e, dnstable_date_format_
 		char *data = wdns_rdata_to_str(rdata->data, rdata->len,
 					       e->rrtype, WDNS_CLASS_IN);
 		ubuf_add_cstr(u, name);
-		ubuf_add_cstr(u, " IN ");
+		ubuf_add_cstr_lit(u, " IN ");
 		fmt_rrtype(u, e->rrtype);
 		ubuf_add(u, ' ');
 		ubuf_add_cstr(u, data);
@@ -275,26 +284,30 @@ dnstable_entry_to_text_fmt(const struct dnstable_entry *e, dnstable_date_format_
 		wdns_domain_to_str(e->name.data, e->name.len, name);
 		ubuf_add_cstr(u, name);
 		fmt_rrtypes_union(u, e);
-		ubuf_add_cstr(u, " ;; rrset name fwd\n");
+		ubuf_add_cstr_lit(u, " ;; rrset name fwd\n");
 	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV) {
 		wdns_domain_to_str(e->name.data, e->name.len, name);
 		ubuf_add_cstr(u, name);
 		fmt_rrtypes_union(u, e);
-		ubuf_add_cstr(u, " ;; rdata name rev\n");
+		ubuf_add_cstr_lit(u, " ;; rdata name rev\n");
 	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_TIME_RANGE) {
-		ubuf_add_cstr(u, ";; Earliest time_first: ");
+		ubuf_add_cstr_lit(u, ";; Earliest time_first: ");
 		time_formatter(u, e->time_first);
-		ubuf_add_cstr(u, "\n;; Latest time_last: ");
+		ubuf_add_cstr_lit(u, "\n;; Latest time_last: ");
 		time_formatter(u, e->time_last);
 		ubuf_add(u, '\n');
 	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_VERSION) {
+		char buf[128];
 		const char *vtype = dnstable_entry_type_to_string(e->v_type);
+		int ret;
+
 		if (vtype == NULL)
-			ubuf_add_fmt(u, ";; Version type %u: %u\n",
+			ret = snprintf(buf, sizeof(buf), ";; Version type %u: %u\n",
 				(unsigned)e->v_type, (unsigned)e->version);
 		else
-			ubuf_add_fmt(u, ";; Version type %s: %u\n",
+			ret = snprintf(buf, sizeof(buf), ";; Version type %s: %u\n",
 				vtype, (unsigned)e->version);
+		ubuf_append_cstr(u, buf, ret);
 
 	}
 
@@ -491,6 +504,7 @@ dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
 				assert(status == yajl_gen_status_ok);
 			}
 
+			/* SRK: TODO: Easy optimization here (string -> hex-string). */
 			ubuf *rbuf = ubuf_init(2 * rdata->len + 1);
 			uint8_t *rbuf_as_str = NULL;
 			size_t rbuf_as_str_len = 0;
