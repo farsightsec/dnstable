@@ -233,6 +233,30 @@ convert $* <<EOF
   }
 }
 #
+# Short rrname: "\x07next_ip\x00" is exactly 9 bytes
+# so that 4 IPv4 address bytes + 1 byte rrtype +
+# 9 byte owner name + 2 byte rdata length exactly fills
+# 16 bytes.
+#
+{
+  "time": "2021-10-06 21:34:53.214812000",
+  "vname": "SIE",
+  "mname": "dnsdedupe",
+  "message": {
+    "type": "EXPIRATION",
+    "count": 1,
+    "time_first": "2018-03-27 10:43:28",
+    "time_last": "2018-03-27 10:43:28",
+    "bailiwick": "next_ip.",
+    "rrname": "next_ip.",
+    "rrclass": "IN",
+    "rrtype": "A",
+    "rdata": [
+      "192.168.1.1"
+    ]
+  }
+}
+#
 # Next address up, to sort after record with
 # invalid first "label"
 #

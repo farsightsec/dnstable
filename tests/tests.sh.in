@@ -260,14 +260,15 @@ test_lookup fails rdata ip ThisIsNotAnIP
 #  17  "\x02\xc0\xa8\x01\x01\x01\x03dom\x07next...  192.168.1.1                A       a.next_ip.dom.
 #  18  "\x02\xc0\xa8\x01\x01\x01\x03dom\x00\x00...  c0a8:101:103:646f:6d20::   AAAA    aaaa-6.next_ip.dom.
 #  19  "\x02\xc0\xa8\x01\x01\x01\x03dom\x80\x00...  c0a8:101:103:646f:6d80::   AAAA    aaaa-7.next_ip.dom.
-#  20  "\x02\xc0\xa8\x01\x01\x01\x07next_ip\x01a... 192.168.1.1                A       a.next_ip.
-#  21  "\x02\xc0\xa8\x01\x02\x01\x03dom\x07next...  192.168.1.2                A       b.next_ip.dom.
-#  22  "\x02\xc0\xa8\x01\x7f\x07next_ip...          \# 3 c0 a8 01              TYPE127 next_ip.
-#  23  "\x02\xc63d\x03\x01\x03com\x07example...     198.51.100.3               A       www.example.com.
-#  24  "\x02\xc63d\x04\x01\x03com\x07example...     198.51.100.4               A       www.example.com.
-#  25  "\x02\xff\xff\xff\xff\x01\x00\x00...         ffff:ffff:100::            AAAA    aaaa-8.next_ip.dom.
-#  26  "\x02\xff\xff\xff\xff\x01\x03dom...          255.255.255.255            A       c.next_ip.dom.
-#  27  "\x02\xff\xff\xff\xff\x01\xff\x00...         ffff:ffff:1ff::            AAAA    aaaa-8.next_ip.dom.
+#  20  "\x02\xc0\xa8\x01\x01\x01\x07next_ip\x00..   192.168.1.1                A       next_ip.
+#  21  "\x02\xc0\xa8\x01\x01\x01\x07next_ip\x01a... 192.168.1.1                A       a.next_ip.
+#  22  "\x02\xc0\xa8\x01\x02\x01\x03dom\x07next...  192.168.1.2                A       b.next_ip.dom.
+#  23  "\x02\xc0\xa8\x01\x7f\x07next_ip...          \# 3 c0 a8 01              TYPE127 next_ip.
+#  24  "\x02\xc63d\x03\x01\x03com\x07example...     198.51.100.3               A       www.example.com.
+#  25  "\x02\xc63d\x04\x01\x03com\x07example...     198.51.100.4               A       www.example.com.
+#  26  "\x02\xff\xff\xff\xff\x01\x00\x00...         ffff:ffff:100::            AAAA    aaaa-8.next_ip.dom.
+#  27  "\x02\xff\xff\xff\xff\x01\x03dom...          255.255.255.255            A       c.next_ip.dom.
+#  28  "\x02\xff\xff\xff\xff\x01\xff\x00...         ffff:ffff:1ff::            AAAA    aaaa-8.next_ip.dom.
 #
 # The difference between how the old (buggy) and new (fixed) code can be seen as follows:
 #
@@ -277,8 +278,8 @@ test_lookup fails rdata ip ThisIsNotAnIP
 # {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"c.next_ip.dom.","rrtype":"A","rdata":"255.255.255.255"}
 #
 # In this case, the buggy code initially formed the seek key “\x02\xff\xff\xff\xff\x01”
-# and seeked to #25; saw the incorrect rrtype (AAAA, not A), and then after an
-# address increment, ended up to seeking after #27 (missing #26).
+# and seeked to #26; saw the incorrect rrtype (AAAA, not A), and then after an
+# address increment, ended up to seeking after #28 (missing #27).
 #
 # Or this test below:
 #
@@ -290,18 +291,20 @@ test_lookup fails rdata ip ThisIsNotAnIP
 # {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"b.next_ip.dom.","rrtype":"A","rdata":"192.168.1.2"}
 #
 # Here the buggy code formed the seek key “\x02\xc0\xa8\x01\x00\0x1” and seeked
-# to #12; saw the incorrect rrtype (AAAA, not A); formed the next next seek key
-# of “\x02\xc0\xa8\x01\x02” and seeked to #21, skipping over both #17 and #20.
+# to #12; saw the incorrect rrtype (AAAA, not A); formed the next seek key
+# of “\x02\xc0\xa8\x01\x02” and seeked to #22, skipping over #17, #20, and #21.
 #
 #
 test_lookup matches -j rdata ip 192.168.1.0/24 <<EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"a.next_ip.dom.","rrtype":"A","rdata":"192.168.1.1"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"next_ip.","rrtype":"A","rdata":"192.168.1.1"}
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"a.next_ip.","rrtype":"A","rdata":"192.168.1.1"}
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"b.next_ip.dom.","rrtype":"A","rdata":"192.168.1.2"}
 EOF
 
 test_lookup matches -j rdata ip 192.168.1.1 <<EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"a.next_ip.dom.","rrtype":"A","rdata":"192.168.1.1"}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"next_ip.","rrtype":"A","rdata":"192.168.1.1"}
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"a.next_ip.","rrtype":"A","rdata":"192.168.1.1"}
 EOF
 
