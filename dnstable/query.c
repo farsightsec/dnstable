@@ -767,7 +767,7 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 		 * theoretical start key.
 		 */
 
-		if (len_key == ubuf_size(seek_key)) {
+		if (len_key <= ubuf_size(seek_key)) {
 			/* There's no more key data to copy. Move to next key. */
 			continue;
 		}
