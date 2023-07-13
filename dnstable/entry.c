@@ -130,8 +130,8 @@ fmt_rfc3339_time_json(yajl_gen g, uint64_t v)
 	fmt_rfc3339(r, ts);
 
 	/*
- 	 * fmt_rfc3339 will completely fill the ts array, so sizeof can be used to compute the string length
- 	 */
+	 * fmt_rfc3339 will completely fill the ts array, so sizeof can be used to compute the string length
+	 */
 	return yajl_gen_string(g, (const unsigned char *)ts, sizeof(ts) - 1);
 }
 
