@@ -54,8 +54,8 @@ static void
 fmt_uint64(ubuf *u, uint64_t v)
 {
 	char s[sizeof("18,446,744,073,709,551,615")];
-	snprintf(s, sizeof(s), "%'" PRIu64, v);
-	ubuf_add_cstr(u, s);
+	int ret = snprintf(s, sizeof(s), "%'" PRIu64, v);
+	ubuf_append(u, (const uint8_t*) s, ret);
 }
 
 
