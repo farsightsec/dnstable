@@ -54,6 +54,7 @@
 #include "libmy/my_time.h"
 #include "libmy/ubuf.h"
 #include "libmy/my_byteorder.h"
+#include "libmy/my_format.h"
 
 #define ENTRY_TYPE_RRSET			((uint8_t)0)
 #define ENTRY_TYPE_RRSET_NAME_FWD		((uint8_t)1)

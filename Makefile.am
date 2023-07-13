@@ -68,6 +68,8 @@ dnstable_libdnstable_la_SOURCES = \
 	libmy/print_string.h \
 	libmy/vector.h \
 	libmy/ubuf.h \
+	libmy/my_format.c \
+	libmy/my_format.h \
 	libmy/my_byteorder.h
 
 dnstable_libdnstable_la_LIBADD = \
@@ -166,7 +168,7 @@ tests_test_dnstable_CPPFLAGS = -DSRCDIR="\"$(abs_srcdir)\"" $(AM_CPPFLAGS)
 tests_test_dnstable_LDADD = \
 	dnstable/libdnstable.la \
 	$(libmtbl_LIBS)
-tests_test_dnstable_SOURCES = tests/test-dnstable.c tests/errors.h
+tests_test_dnstable_SOURCES = tests/test-dnstable.c tests/errors.h libmy/my_format.c libmy/my_format.h
 
 check_PROGRAMS += tests/test-bitmaps
 tests_test_bitmaps_CPPFLAGS = -DSRCDIR="\"$(abs_srcdir)\"" $(AM_CPPFLAGS)
@@ -177,7 +179,7 @@ tests_test_bitmaps_LDADD = \
 	$(libyajl_LIBS) \
 	$(libmtbl_LIBS) \
 	$(libwdns_LIBS)
-tests_test_bitmaps_SOURCES = tests/test-bitmaps.c
+tests_test_bitmaps_SOURCES = tests/test-bitmaps.c libmy/my_format.c libmy/my_format.h
 
 if BUILD_MAN
 SUFFIXES = .1.txt .3.txt .5.txt .7.txt .1 .3 .5 .7
