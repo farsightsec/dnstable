@@ -44,6 +44,7 @@ struct dnstable_query {
 	uint64_t		offset;
 	bool			has_v_type;
 	uint8_t			v_type;
+	bool			dq_wildplus;		/* '+' wildcard? */
 };
 
 struct query_iter {
@@ -528,6 +529,123 @@ increment_key(ubuf *key, size_t pos)
 	return (dnstable_res_failure);
 }
 
+#define SL_MATCHES	0		/* Label matches. */
+#define SL_NOMATCH	1		/* Not a match. */
+#define SL_FAILURE	2		/* Error detected. */
+
+/*
+ * Used with a "single label" wildcard search to determine the action to take
+ * for a given matching key.
+ * Either:
+ *  + Matches  -- One and only one extra label.
+ *  + No match -- Restart search.
+ *  + Failure  -- Some error.
+ *
+ * Return-value indicates the action to take.
+ */
+static int
+key_label_check(struct query_iter *it, const uint8_t *key, size_t len_key, bool seek_iter2)
+{
+	size_t qks, next_len;
+
+	/*
+	 * The "key" in the query is label-reversed, and the wildcard char is removed.
+	 * e.g. For rrset "+.example.com", the key will be:
+	 *   \x00\x03com\x07example
+	 *
+	 * The key that has been found (and is being checked here) will start with these
+	 * same bytes, and should have at the very least a trailing length-byte as well.
+	 */
+	qks = ubuf_size(it->key);		/* Byte-size of original key. */
+
+	if (qks >= len_key)
+		return (SL_NOMATCH);
+
+	/*
+	 * No more labels on this key.
+	 *   \x00\x03com\x07example\x00
+	 */
+	if (key[qks] == '\0') {
+		ubuf *seek_key;
+
+		/*
+		 * Now skip all keys where the leading-part is the same as this key.
+		 * e.g. seek to key
+		 *   \x00\x03com\x07example\x01
+		 */
+
+		/* Create a new key. */
+		if (it->key2 == NULL)
+			it->key2 = ubuf_init(qks + 1);
+		seek_key = it->key2;
+		ubuf_clip(seek_key, 0);
+
+		ubuf_reserve(seek_key, qks + 1);
+		ubuf_append(seek_key, key, qks);
+		ubuf_add(seek_key, '\1');
+
+		/* Seek to the newly generated key. */
+		if (mtbl_iter_seek(seek_iter2 ? it->m_iter2 : it->m_iter,
+					ubuf_data(seek_key),
+					ubuf_size(seek_key)) != mtbl_res_success)
+			return (SL_FAILURE);
+
+		/* Restart processing starting from the new key. */
+		return (SL_NOMATCH);
+	}
+
+	/* From here, there is at least one more label. */
+
+	/* The position of the "length" byte after the first extra label. */
+	next_len = qks + key[qks] + 1;
+
+	/*
+	 * If the key is malformed, treat it as if there are no more labels.
+	 *
+	 * Bad: \x00\x03com\x07example\x03ns
+	 */
+	if (next_len >= len_key)
+		return (SL_NOMATCH);
+
+	/*
+	 * Key has one or more additional labels.
+	 * If more than one, then skip all keys that have that same first additional label.
+	 *
+	 *  One: \x00\x03com\x07example\x03foo\x00
+	 * Seek: \x00\x03com\x07example\x03foo\x03bar\x00
+	 */
+
+	if (key[next_len] != '\0') {	/* More than 1 additional label. */
+		ubuf *seek_key;
+
+		/*
+		 * Create a new key which includes one extra label.
+		 *   \x00\x03com\x07example\x03foo
+		 */
+		if (it->key2 == NULL)
+			it->key2 = ubuf_init(next_len);
+		seek_key = it->key2;
+		ubuf_clip(seek_key, 0);
+
+		ubuf_reserve(seek_key, next_len);
+		ubuf_append(seek_key, key, next_len);
+
+		/* Advance the last byte of the new key. */
+		increment_key(seek_key, next_len - 1);
+
+		/* Seek to the newly generated key. */
+		if (mtbl_iter_seek(seek_iter2 ? it->m_iter2 : it->m_iter,
+					ubuf_data(seek_key),
+					ubuf_size(seek_key)) != mtbl_res_success)
+				return (SL_FAILURE);
+
+		/* Restart processing starting from the new key. */
+		return (SL_NOMATCH);
+	}
+
+	return (SL_MATCHES);
+}
+
 static dnstable_res
 query_iter_next(void *clos, struct dnstable_entry **ent)
 {
@@ -556,6 +674,18 @@ query_iter_next(void *clos, struct dnstable_entry **ent)
 			if (mtbl_iter_next(it->m_iter2, &key, &len_key, &val, &len_val) != mtbl_res_success) {
 				return (dnstable_res_failure);
 			}
+
+			/* Check the "single label". */
+			if (it->query->dq_wildplus) {
+				int sl_ret = key_label_check(it, key, len_key, true);
+
+				if (sl_ret == SL_NOMATCH)
+					continue;
+
+				if (sl_ret == SL_FAILURE)
+					return (dnstable_res_failure);
+			}
+
 			if (it->query->do_rrtype) {
 				uint16_t rrtype;
 				struct dnstable_entry *e = dnstable_entry_decode(key, len_key, val, len_val);
@@ -582,6 +712,17 @@ query_iter_next(void *clos, struct dnstable_entry **ent)
 		if (mtbl_iter_next(it->m_iter, &key, &len_key, &val, &len_val) != mtbl_res_success)
 			return (dnstable_res_failure);
 
+		/* Check the "single label", if not done above. */
+		if (it->query->dq_wildplus && it->source_filter == NULL) {
+			int sl_ret = key_label_check(it, key, len_key, false);
+
+			if (sl_ret == SL_NOMATCH)
+				continue;
+
+			if (sl_ret == SL_FAILURE)
+				return (dnstable_res_failure);
+		}
+
 		*ent = dnstable_entry_decode(key, len_key, val, len_val);
 		if (*ent == NULL)
 			continue;
@@ -597,11 +738,11 @@ query_iter_next(void *clos, struct dnstable_entry **ent)
 			}
 
 			return (dnstable_res_success);
-		} else {
-			dnstable_entry_destroy(ent);
-			continue;
 		}
+
+		dnstable_entry_destroy(ent);
 	}
+
 	return (dnstable_res_failure);
 }
 
@@ -941,6 +1082,7 @@ query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t t
 
 		if (it->m_iter == NULL) {
 			uint16_t wanted_rrtype = it->query->rrtype;
+			ubuf *full_key;
 
 			if (mtbl_iter_next(it->m_iter2,
 					   &key, &len_key,
@@ -953,16 +1095,36 @@ query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t t
 			if (it->query->do_rrtype && !rrtype_test(type_byte, wanted_rrtype, val, len_val))
 				continue;
 
-			ubuf_clip(it->key, 0);
-			ubuf_reserve(it->key, len_key + mtbl_varint_length(wanted_rrtype));
-			ubuf_add(it->key, type_byte);
-			if (wdns_reverse_name(key + 1, len_key - 1, ubuf_ptr(it->key))
-			    != wdns_res_success)
+			if (it->query->dq_wildplus) {
+				int sl_ret = key_label_check(it, key, len_key, true);
+
+				if (sl_ret == SL_NOMATCH)
+					continue;
+
+				if (sl_ret == SL_FAILURE)
+					return (dnstable_res_failure);
+			}
+
+			/* Use the index to create the key for the full data. */
+			if (it->key2 == NULL)
+				it->key2 = ubuf_init(len_key + 12);
+			full_key = it->key2;
+
+			ubuf_clip(full_key, 0);
+			/* mtbl_varint_length() is max 12 bytes */
+			ubuf_reserve(full_key, len_key + 12);
+			ubuf_add(full_key, type_byte);
+
+			/* Skip type-byte in index, reverse the forward-name. */
+			if (wdns_reverse_name(key + 1, len_key - 1, ubuf_ptr(full_key)) != wdns_res_success)
 				return (dnstable_res_failure);
-			ubuf_advance(it->key, len_key - 1);
+
+			ubuf_advance(full_key, len_key - 1);
+
+			/* Add rrtype to new search-key. */
 			if (it->query->do_rrtype &&
 				(type_byte == ENTRY_TYPE_RRSET))
-				add_rrtype_to_key(it->key, wanted_rrtype);
+				add_rrtype_to_key(full_key, wanted_rrtype);
 			else if (it->query->do_rrtype) {
 				switch(wanted_rrtype) {
 				case WDNS_TYPE_NS:
@@ -971,15 +1133,17 @@ query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t t
 				case WDNS_TYPE_PTR:
 				case WDNS_TYPE_MX:
 				case WDNS_TYPE_SRV:
-					add_rrtype_to_key(it->key, wanted_rrtype);
+					add_rrtype_to_key(full_key, wanted_rrtype);
 				}
 			}
+
 			it->m_iter = mtbl_source_get_prefix(it->source,
-							    ubuf_data(it->key),
-							    ubuf_size(it->key));
+							    ubuf_data(full_key),
+							    ubuf_size(full_key));
 			if (it->m_iter == NULL)
 				continue;
 		}
+
 		assert(it->m_iter != NULL);
 		if (mtbl_iter_next(it->m_iter,
 				   &key, &len_key,
@@ -1078,25 +1242,33 @@ query_init_rrset_left_wildcard(struct query_iter *it)
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
 
+/* Lookup with wildcard on right-hand-side: "n.example.*" or "n.example.+" */
 static inline bool
-is_right_wildcard(wdns_name_t *name)
+is_right_wildcard(struct dnstable_query *q)
 {
+	const wdns_name_t *name = &q->name;
+
 	if (name->len >= 3 &&
 	    name->data[name->len - 3] == '\x01' &&
-	    name->data[name->len - 2] == '*')
+	    (name->data[name->len - 2] == '*' || name->data[name->len - 2] == '+'))
 	{
+		q->dq_wildplus = name->data[name->len - 2] == '+';
 		return (true);
 	}
 	return (false);
 }
 
+/* Lookup with wildcard on left-hand-side: "*.example.com" or "+.example.com" */
 static inline bool
-is_left_wildcard(wdns_name_t *name)
+is_left_wildcard(struct dnstable_query *q)
 {
+	const wdns_name_t *name = &q->name;
+
 	if (name->len >= 3 &&
 	    name->data[0] == '\x01' &&
-	    name->data[1] == '*')
+	    (name->data[1] == '*' || name->data[1] == '+'))
 	{
+		q->dq_wildplus = name->data[1] == '+';
 		return (true);
 	}
 	return (false);
@@ -1106,10 +1278,11 @@ static struct dnstable_iter *
 query_init_rrset(struct query_iter *it)
 {
 	uint8_t name[WDNS_MAXLEN_NAME];
+
 	it->key = ubuf_init(64);
-	if (is_left_wildcard(&it->query->name))
+	if (is_left_wildcard(it->query))
 		return query_init_rrset_left_wildcard(it);
-	if (is_right_wildcard(&it->query->name))
+	if (is_right_wildcard(it->query))
 		return query_init_rrset_right_wildcard(it);
 
 	/* key: type byte */
@@ -1184,10 +1357,9 @@ static struct dnstable_iter *
 query_init_rdata_name(struct query_iter *it)
 {
 	it->key = ubuf_init(64);
-
-	if (is_right_wildcard(&it->query->name))
+	if (is_right_wildcard(it->query))
 		return query_init_rdata_right_wildcard(it);
-	if (is_left_wildcard(&it->query->name))
+	if (is_left_wildcard(it->query))
 		return query_init_rdata_left_wildcard(it);
 
 	/* key: type byte */
@@ -1461,8 +1633,8 @@ dnstable_query_iter_fileset(struct dnstable_query *q, struct mtbl_fileset *fs)
 	    q->do_time_last_before || q->do_time_last_after) {
 		mtbl_fileset_options_set_reader_filter_func(fopt, reader_time_filter, q);
 		it->fs_filter = mtbl_fileset_dup(fs, fopt);
-		it->source_index = mtbl_fileset_source(it->fs_filter);
-		it->source_filter = it->source_index;
+		it->source_filter = mtbl_fileset_source(it->fs_filter);
+		it->source_index = it->source_filter;
 	}
 
 	/*
