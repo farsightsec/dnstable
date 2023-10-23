@@ -1,7 +1,7 @@
 #!/usr/bin/make -f
 
 %:
-	dh $@ --with autoreconf
+	dh $@
 
 override_dh_strip:
 	dh_strip -p libdnstable0 --dbg-package=libdnstable0-dbg
