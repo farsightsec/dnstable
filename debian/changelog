@@ -1,3 +1,10 @@
+dnstable (0.13.2-1) debian-fsi; urgency=medium
+
+  * Fix bug handling short rdata entry keys in IPv6 range queries.
+  * Efficiency improvements in string handling code and IP range queries.
+
+ -- Farsight Security, Inc. <software@farsightsecurity.com>  Mon, 23 Oct 2023 16:13:57 +0000
+
 dnstable (0.13.1-1) debian-fsi; urgency=medium
 
   * Add RP, NXT, and NSEC to rdata name type list for matching rdata names.
