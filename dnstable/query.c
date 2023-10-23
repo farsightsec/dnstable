@@ -55,6 +55,10 @@ struct query_iter {
 	struct ljoin_mtbl	*ljoin;
 	struct mtbl_fileset	*fs_filter;
 	struct mtbl_fileset	*fs_no_merge;
+	struct timespec		deadline;
+	jmp_buf			to_env;
+	struct timeout_mtbl	*timeout;
+	struct timeout_mtbl	*timeout_index;
 	struct mtbl_iter	*m_iter, *m_iter2;
 	ubuf			*key, *key2;
 };
@@ -515,6 +519,8 @@ query_iter_free(void *clos)
 	mtbl_fileset_destroy(&it->fs_filter);
 	mtbl_fileset_destroy(&it->fs_no_merge);
 	mtbl_merger_destroy(&it->fill_merger);
+	timeout_mtbl_destroy(&it->timeout);
+	timeout_mtbl_destroy(&it->timeout_index);
 	ubuf_destroy(&it->key);
 	ubuf_destroy(&it->key2);
 	my_free(it);
@@ -655,11 +661,12 @@ static dnstable_res
 query_iter_next(void *clos, struct dnstable_entry **ent)
 {
 	struct query_iter *it = (struct query_iter *) clos;
-	struct timespec expiry = {0};
 
 	if (it->query->do_timeout) {
-		my_gettime(DNSTABLE__CLOCK_MONOTONIC, &expiry);
-		my_timespec_add(&it->query->timeout, &expiry);
+		my_gettime(DNSTABLE__CLOCK_MONOTONIC, &it->deadline);
+		my_timespec_add(&it->query->timeout, &it->deadline);
+		if (setjmp(it->to_env) != 0)
+			return (dnstable_res_timeout);
 	}
 
 	for (;;) {
@@ -667,13 +674,6 @@ query_iter_next(void *clos, struct dnstable_entry **ent)
 		dnstable_res res;
 		const uint8_t *key, *val;
 		size_t len_key, len_val;
-		struct timespec now = {0};
-
-		if (it->query->do_timeout) {
-			my_gettime(DNSTABLE__CLOCK_MONOTONIC, &now);
-			if (my_timespec_cmp(&now, &expiry) >= 0)
-				return (dnstable_res_timeout);
-		}
 
 		if (mtbl_iter_next(it->m_iter, &key, &len_key, &val, &len_val) != mtbl_res_success)
 			return (dnstable_res_failure);
@@ -716,11 +716,12 @@ static dnstable_res
 query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 {
 	struct query_iter *it = (struct query_iter *) clos;
-	struct timespec expiry = {0};
 
 	if (it->query->do_timeout) {
-		my_gettime(DNSTABLE__CLOCK_MONOTONIC, &expiry);
-		my_timespec_add(&(it->query->timeout), &expiry);
+		my_gettime(DNSTABLE__CLOCK_MONOTONIC, &it->deadline);
+		my_timespec_add(&it->query->timeout, &it->deadline);
+		if (setjmp(it->to_env) != 0)
+			return (dnstable_res_timeout);
 	}
 
 	for (;;) {
@@ -733,13 +734,6 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 		int ret;
 
 		const uint8_t max_llen = 63;	/* RFC 1035 maximum label length in an uncompressed name. */
-
-		if (it->query->do_timeout) {
-			struct timespec now;
-			my_gettime(DNSTABLE__CLOCK_MONOTONIC, &now);
-			if (my_timespec_cmp(&now, &expiry) >= 0)
-				return (dnstable_res_timeout);
-		}
 
 		if (mtbl_iter_next(it->m_iter, &key, &len_key, &val, &len_val) != mtbl_res_success) {
 			return (dnstable_res_failure);
@@ -1010,21 +1004,15 @@ query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t t
 	size_t len_key, len_val;
 	bool pass = false;
 	dnstable_res res;
-	struct timespec expiry = {0};
 
 	if (it->query->do_timeout) {
-		my_gettime(DNSTABLE__CLOCK_MONOTONIC, &expiry);
-		my_timespec_add(&(it->query->timeout), &expiry);
+		my_gettime(DNSTABLE__CLOCK_MONOTONIC, &it->deadline);
+		my_timespec_add(&(it->query->timeout), &it->deadline);
+		if (setjmp(it->to_env) != 0)
+			return (dnstable_res_timeout);
 	}
 
 	for (;;) {
-		struct timespec now = {0};
-
-		if (it->query->do_timeout) {
-			my_gettime(DNSTABLE__CLOCK_MONOTONIC, &now);
-			if (my_timespec_cmp(&now, &expiry) >= 0)
-				return (dnstable_res_timeout);
-		}
 
 		if (it->m_iter == NULL) {
 			uint16_t wanted_rrtype = it->query->rrtype;
@@ -1404,6 +1392,13 @@ dnstable_query_iter_common(struct query_iter *it)
 {
 	struct dnstable_iter *d_it;
 	struct dnstable_query *q = it->query;
+
+	if (q->do_timeout) {
+		it->timeout = timeout_mtbl_init(it->source, &it->deadline, &it->to_env);
+		it->source = timeout_mtbl_source(it->timeout);
+		it->timeout_index = timeout_mtbl_init(it->source_index, &it->deadline, &it->to_env);
+		it->source_index = timeout_mtbl_source(it->timeout_index);
+	}
 
 	if (q->q_type == DNSTABLE_QUERY_TYPE_RRSET) {
 		d_it = query_init_rrset(it);
