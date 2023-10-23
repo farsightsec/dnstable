@@ -1,3 +1,8 @@
+dnstable (0.13.2)
+
+  * Fix bug handling short rdata entry keys in IPv6 range queries.
+  * Efficiency improvements in string handling code and IP range queries.
+
 dnstable (0.13.1)
 
   * Add RP, NXT, and NSEC to rdata name type list for matching rdata names.
