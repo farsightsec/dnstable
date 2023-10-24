@@ -1122,21 +1122,8 @@ query_iter_next_rdata_name_rev(void *clos, struct dnstable_entry **ent)
 	return query_iter_next_name_indirect(clos, ent, ENTRY_TYPE_RDATA);
 }
 
-static struct mtbl_iter *
-query_get_iterator(struct query_iter *it, const struct mtbl_source *s)
-{
-	if (it->key2 != NULL)
-		return mtbl_source_get_range(s, ubuf_data(it->key), ubuf_size(it->key),
-					        ubuf_data(it->key2), ubuf_size(it->key2));
 
-	return mtbl_source_get_prefix(s, ubuf_data(it->key), ubuf_size(it->key));
-}
 
-static void
-query_init_iterators(struct query_iter *it)
-{
-	it->m_iter = query_get_iterator(it, it->source);
-}
 
 static struct dnstable_iter *
 query_init_rrset_right_wildcard(struct query_iter *it)
@@ -1169,7 +1156,6 @@ query_init_rrset_left_wildcard(struct query_iter *it)
 		return (NULL);
 	ubuf_append(it->key, name, len - 1);
 
-	query_init_iterators(it);
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
 
@@ -1246,7 +1232,6 @@ query_init_rrset(struct query_iter *it)
 		}
 	}
 
-	query_init_iterators(it);
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
 
@@ -1259,7 +1244,6 @@ query_init_rdata_right_wildcard(struct query_iter *it)
 	/* key: rdata name, less trailing "\x01\x2a\x00" */
 	ubuf_append(it->key, it->query->name.data, it->query->name.len - 3);
 
-	query_init_iterators(it);
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
 
@@ -1312,7 +1296,6 @@ query_init_rdata_name(struct query_iter *it)
 		}
 	}
 
-	query_init_iterators(it);
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
 
@@ -1341,8 +1324,6 @@ query_init_rdata_ip(struct query_iter *it)
 		increment_key(it->key2, ubuf_size(it->key2) - 1);
 	}
 
-	query_init_iterators(it);
-
 	return dnstable_iter_init(query_iter_next_ip, query_iter_free, it);
 }
 
@@ -1363,7 +1344,6 @@ query_init_rdata_raw(struct query_iter *it)
 	 * in dnstable_query_filter(), if do_rrtype is set then the results
 	 * will be filtered by rrtype.
 	 */
-	query_init_iterators(it);
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
 
@@ -1415,8 +1395,29 @@ dnstable_query_iter_common(struct query_iter *it)
 	} else {
 		assert(0);
 	}
-	if (d_it == NULL)
+
+	if (d_it == NULL) {
 		query_iter_free(it);
+		return (NULL);
+	}
+
+	if (it->fill_merger != NULL) {
+		it->ljoin = ljoin_mtbl_init(it->source,
+					    mtbl_merger_source(it->fill_merger),
+					    dnstable_merge_func, NULL);
+		it->source = ljoin_mtbl_source(it->ljoin);
+	}
+
+	if (it->m_iter2 == NULL) {
+		if (it->key2 != NULL)
+			it->m_iter = mtbl_source_get_range(it->source,
+						           ubuf_data(it->key), ubuf_size(it->key),
+						           ubuf_data(it->key2), ubuf_size(it->key2));
+		else
+			it->m_iter = mtbl_source_get_prefix(it->source,
+							    ubuf_data(it->key), ubuf_size(it->key));
+	}
+
 	return (d_it);
 }
 
@@ -1547,7 +1548,7 @@ out:
 	dnstable_iter_destroy(&tr_it);
 	dnstable_query_destroy(&tr_q);
 
-	if (!res)
+	if (!res && (it->fill_merger != NULL))
 		mtbl_merger_add_source(it->fill_merger, mtbl_reader_source(r));
 	return res;
 }
@@ -1583,10 +1584,7 @@ dnstable_query_iter_fileset(struct dnstable_query *q, struct mtbl_fileset *fs)
 		mtbl_fileset_options_set_reader_filter_func(fopt, reader_time_filter, it);
 		it->fs_filter = mtbl_fileset_dup(fs, fopt);
 		it->source_index = mtbl_fileset_source(it->fs_filter);
-		it->ljoin = ljoin_mtbl_init(mtbl_fileset_source(it->fs_filter),
-					    mtbl_merger_source(it->fill_merger),
-					    dnstable_merge_func, NULL);
-		it->source = ljoin_mtbl_source(it->ljoin);
+		it->source = mtbl_fileset_source(it->fs_filter);
 	}
 
 	/*
@@ -1604,6 +1602,8 @@ dnstable_query_iter_fileset(struct dnstable_query *q, struct mtbl_fileset *fs)
 		mtbl_fileset_options_set_dupsort_func(fopt, dnstable_dupsort_func, NULL);
 		it->fs_no_merge = mtbl_fileset_dup(fs, fopt);
 		it->source = mtbl_fileset_source(it->fs_no_merge);
+		/* fill_merger is unused for non-aggregated queries */
+		mtbl_merger_destroy(&it->fill_merger);
 	}
 
 	mtbl_fileset_options_destroy(&fopt);
