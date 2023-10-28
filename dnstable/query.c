@@ -33,7 +33,7 @@ struct dnstable_query {
 	char			*err;
 	wdns_name_t		name, bailiwick;
 	uint32_t		rrtype;
-	bool			aggregated;
+	bool			aggregated, case_sensitive;
 	uint8_t			len_ip1, len_ip2;
 	uint8_t			ip1[16], ip2[16];
 	size_t			len_rdata;
@@ -71,11 +71,12 @@ query_load_name(struct dnstable_query *q, wdns_name_t *name, const char *s_name)
 	name->len = 0;
 	if (s_name == NULL)
 		return (dnstable_res_success);
-	if (wdns_str_to_name(s_name, name) != wdns_res_success) {
+	if (wdns_str_to_name_case(s_name, name) != wdns_res_success) {
 		query_set_err(q, "wdns_str_to_name() failed");
 		return (dnstable_res_failure);
 	}
-	wdns_downcase_name(name);
+	if (!q->case_sensitive)
+		wdns_downcase_name(name);
 	return (dnstable_res_success);
 }
 
@@ -106,6 +107,7 @@ dnstable_query_init(dnstable_query_type q_type)
 	struct dnstable_query *q = my_calloc(1, sizeof(*q));
 	q->q_type = q_type;
 	q->aggregated = true;
+	q->case_sensitive = false;
 	return (q);
 }
 
@@ -127,6 +129,12 @@ dnstable_query_get_error(struct dnstable_query *q) {
 		q->err = my_strdup("unknown error");
 	assert(q->err != NULL);
 	return (q->err);
+}
+
+void
+dnstable_query_set_case_sensitive(struct dnstable_query *q, bool case_sensitive)
+{
+	q->case_sensitive = case_sensitive;
 }
 
 dnstable_res

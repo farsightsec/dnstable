@@ -165,6 +165,7 @@ usage(void)
 	fprintf(stderr, "\t-R: add raw rdata representation\n");
 	fprintf(stderr, "\t-u: output unaggregated results; default is aggregated results\n");
 	fprintf(stderr, "\t-O #: offset the first # results (must be a positive number)\n");
+	fprintf(stderr, "\t-C case sensitive lookup\n");
 	fprintf(stderr, "\nUse exactly one of the following environment variables to specify the dnstable\ndata file(s) to query:\n\tDNSTABLE_FNAME - Path to a single dnstable data file, or\n\tDNSTABLE_SETFILE - Path to a \"set file\"\n");
 	exit(EXIT_FAILURE);
 }
@@ -188,11 +189,12 @@ main(int argc, char **argv)
 	uint64_t time_last_after = 0, time_first_after = 0;
 	uint64_t time_first_before = 0, time_last_before = 0;
 	bool time_strict = false;
+	bool case_sensitive = false;
 	dnstable_query_type d_qtype = 0; /* fix lint warning; will always override */
 	dnstable_res res;
 	int ch;
 
-	while ((ch = getopt(argc, argv, "a:A:b:B:cjJRuO:")) != -1) {
+	while ((ch = getopt(argc, argv, "a:A:b:B:cCjJRuO:")) != -1) {
 		switch (ch) {
 		case 'a':
 			time_first_after = parse_time(optarg);
@@ -224,6 +226,9 @@ main(int argc, char **argv)
 			break;
 		case 'c':
 			time_strict = true;
+			break;
+		case 'C':
+			case_sensitive = true;
 			break;
 		case 'j':
 			g_json = true;
@@ -299,19 +304,19 @@ main(int argc, char **argv)
 		usage();
 	}
 
-        // check for certain options that make no sense with version or time_range commands
-        if (d_qtype == DNSTABLE_QUERY_TYPE_VERSION || d_qtype == DNSTABLE_QUERY_TYPE_TIME_RANGE) {
-                if (g_offset != 0) {
-                        fprintf(stderr,
-                                "dnstable_lookup: Offset option makes no sense with version or time_range commands\n");
-                        exit(EXIT_FAILURE);
-                }
-                if (g_add_raw != 0) {
-                        fprintf(stderr,
-                                "dnstable_lookup: Raw option makes no sense with version or time_range commands\n");
-                        exit(EXIT_FAILURE);
-                }
-        }
+	// check for certain options that make no sense with version or time_range commands
+	if (d_qtype == DNSTABLE_QUERY_TYPE_VERSION || d_qtype == DNSTABLE_QUERY_TYPE_TIME_RANGE) {
+		if (g_offset != 0) {
+			fprintf(stderr,
+					"dnstable_lookup: Offset option makes no sense with version or time_range commands\n");
+			exit(EXIT_FAILURE);
+		}
+		if (g_add_raw != 0) {
+			fprintf(stderr,
+					"dnstable_lookup: Raw option makes no sense with version or time_range commands\n");
+			exit(EXIT_FAILURE);
+		}
+	}
 
 	if (g_Json && g_json) {
 		fprintf(stderr, "dnstable_lookup: cannot specify both -j and -J\n");
@@ -346,6 +351,8 @@ main(int argc, char **argv)
 	}
 	assert(d_reader != NULL);
 	d_query = dnstable_query_init(d_qtype);
+
+	dnstable_query_set_case_sensitive(d_query, case_sensitive);
 
 	if (d_qtype == DNSTABLE_QUERY_TYPE_RRSET) {
 		res = dnstable_query_set_data(d_query, arg_owner_name);

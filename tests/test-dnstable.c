@@ -19,9 +19,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <wdns.h>
 
 #include "errors.h"
-
+#include "libmy/my_alloc.h"
 #include "dnstable/dnstable.h"
 
 #define NAME	"test-dnstable"
@@ -549,11 +550,101 @@ test_merger(void)
 	l_return_test_status();
 }
 
+static int do_test_query(struct dnstable_query * query, struct mtbl_reader * mreader, bool case_sensitive, const char * t_rrname, const char * t_rrtype, const char * t_bailiwick)
+{
+	wdns_name_t test;
+	size_t lrrname, lbailiwick;
+	dnstable_res res;
+	uint16_t rrtype;
+	const uint8_t *rrname, *bailiwick;
+	struct timespec ts = {0, 0};
+	struct dnstable_iter *iter;
+	struct dnstable_entry *entry;
+
+	// Set query case sensitivity
+	dnstable_query_set_case_sensitive(query, case_sensitive);
+
+	res = dnstable_query_set_data(query, t_rrname);
+	check_return(res == dnstable_res_success);
+
+	res = dnstable_query_set_rrtype(query, t_rrtype);
+	check_return(res == dnstable_res_success);
+	res = dnstable_query_set_bailiwick(query, t_bailiwick);
+	check_return(res == dnstable_res_success);
+
+	ts.tv_sec = 100;
+	res = dnstable_query_set_timeout(query, &ts);
+
+	iter = dnstable_query_iter(query, mtbl_reader_source(mreader));
+	check_return(iter != NULL);
+
+	// Case sensitive query should not find anything
+	res = dnstable_iter_next(iter, &entry);
+	if (case_sensitive) {
+		check_return(res == dnstable_res_failure);
+		return 0;
+	} else {
+		check_return(res == dnstable_res_success);
+	}
+
+	res = dnstable_entry_get_rrtype(entry, &rrtype);
+	check_return(res == dnstable_res_success);
+	/* rrtype A==1 */
+	check_return(rrtype == 1);
+
+	/* Should have yielded a dot com extension */
+	res = dnstable_entry_get_rrname(entry, &rrname, &lrrname);
+	check_return(res == dnstable_res_success);
+	check_return(lrrname >= 5);
+
+	memset(&test, 0, sizeof(test));
+	check_return(wdns_str_to_name_case(t_rrname + 2, &test) == wdns_res_success);
+	check_return(!strncasecmp((const char*) &rrname[lrrname - test.len], (const char*)  test.data, test.len));
+
+	my_free(test.data);
+	test.len = 0;
+
+	check_return(wdns_str_to_name_case(t_bailiwick, &test) == wdns_res_success);
+
+	res = dnstable_entry_get_bailiwick(entry, &bailiwick, &lbailiwick);
+	check_return(res == dnstable_res_success);
+	check_return(lbailiwick == test.len);
+	check_return(!memcmp(bailiwick, test.data, test.len));
+
+	my_free(test.data);
+	test.len = 0;
+
+	return 0;
+}
+
+static int
+test_query_case(void)
+{
+	struct mtbl_reader *mreader;
+	struct dnstable_reader *reader;
+	struct dnstable_query *query;
+
+	mreader = mtbl_reader_init(SRCDIR "/tests/generic-tests/test.mtbl", NULL);
+	check_return(mreader != NULL);
+	reader = dnstable_reader_init(mtbl_reader_source(mreader));
+	check_return(reader != NULL);
+
+// DNSTABLE_QUERY_TYPE_RRSET, DNSTABLE_QUERY_TYPE_RDATA_NAME, DNSTABLE_QUERY_TYPE_RDATA_IP, DNSTABLE_QUERY_TYPE_RDATA_RAW
+	query = dnstable_query_init(DNSTABLE_QUERY_TYPE_RRSET);
+	check_return(query != NULL);
+
+	check_return(do_test_query(query, mreader, true, "*.COM", "A", "bkk1.cloud.z.com") == 0)
+	check_return(do_test_query(query, mreader, false, "*.COM", "A", "bkk1.cloud.z.com") == 0)
+
+	return 0;
+}
+
 int
 main(void)
 {
 	check_explicit2_display_only(test_basic() == 0, "test-dnstable/ test_basic");
 	check_explicit2_display_only(test_query() == 0, "test-dnstable/ test_query");
+	check_explicit2_display_only(test_query_case() == 0, "test-dnstable/ test_query_case");
 	check_explicit2_display_only(test_cust_iter() == 0, "test-dnstable/ test_cust_iter");
 	check_explicit2_display_only(test_merger() == 0, "test-dnstable/ test_merger");
 
