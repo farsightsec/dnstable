@@ -578,7 +578,7 @@ static int do_test_query(struct dnstable_query * query, struct mtbl_reader * mre
 	iter = dnstable_query_iter(query, mtbl_reader_source(mreader));
 	check_return(iter != NULL);
 
-	// Case sensitive query should not find anything
+	// Case-sensitive query should not find anything
 	res = dnstable_iter_next(iter, &entry);
 	if (case_sensitive) {
 		check_return(res == dnstable_res_failure);
@@ -590,7 +590,7 @@ static int do_test_query(struct dnstable_query * query, struct mtbl_reader * mre
 	res = dnstable_entry_get_rrtype(entry, &rrtype);
 	check_return(res == dnstable_res_success);
 	/* rrtype A==1 */
-	check_return(rrtype == 1);
+	check_return(rrtype == WDNS_TYPE_A);
 
 	/* Should have yielded a dot com extension */
 	res = dnstable_entry_get_rrname(entry, &rrname, &lrrname);
@@ -629,7 +629,6 @@ test_query_case(void)
 	reader = dnstable_reader_init(mtbl_reader_source(mreader));
 	check_return(reader != NULL);
 
-// DNSTABLE_QUERY_TYPE_RRSET, DNSTABLE_QUERY_TYPE_RDATA_NAME, DNSTABLE_QUERY_TYPE_RDATA_IP, DNSTABLE_QUERY_TYPE_RDATA_RAW
 	query = dnstable_query_init(DNSTABLE_QUERY_TYPE_RRSET);
 	check_return(query != NULL);
 
