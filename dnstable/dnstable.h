@@ -107,7 +107,7 @@ dnstable_query_destroy(struct dnstable_query **);
 const char *
 dnstable_query_get_error(struct dnstable_query *);
 
-void
+dnstable_res
 dnstable_query_set_case_sensitive(struct dnstable_query *q, bool case_sensitive);
 
 dnstable_res

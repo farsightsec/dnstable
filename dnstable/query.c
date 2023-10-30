@@ -131,10 +131,11 @@ dnstable_query_get_error(struct dnstable_query *q) {
 	return (q->err);
 }
 
-void
+dnstable_res
 dnstable_query_set_case_sensitive(struct dnstable_query *q, bool case_sensitive)
 {
 	q->case_sensitive = case_sensitive;
+	return (dnstable_res_success);
 }
 
 dnstable_res

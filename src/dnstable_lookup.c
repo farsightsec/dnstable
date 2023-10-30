@@ -307,13 +307,11 @@ main(int argc, char **argv)
 	// check for certain options that make no sense with version or time_range commands
 	if (d_qtype == DNSTABLE_QUERY_TYPE_VERSION || d_qtype == DNSTABLE_QUERY_TYPE_TIME_RANGE) {
 		if (g_offset != 0) {
-			fprintf(stderr,
-					"dnstable_lookup: Offset option makes no sense with version or time_range commands\n");
+			fprintf(stderr, "dnstable_lookup: Offset option makes no sense with version or time_range commands\n");
 			exit(EXIT_FAILURE);
 		}
 		if (g_add_raw != 0) {
-			fprintf(stderr,
-					"dnstable_lookup: Raw option makes no sense with version or time_range commands\n");
+			fprintf(stderr, "dnstable_lookup: Raw option makes no sense with version or time_range commands\n");
 			exit(EXIT_FAILURE);
 		}
 	}
