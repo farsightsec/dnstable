@@ -589,7 +589,6 @@ static int do_test_query(struct dnstable_query * query, struct mtbl_reader * mre
 
 	res = dnstable_entry_get_rrtype(entry, &rrtype);
 	check_return(res == dnstable_res_success);
-	/* rrtype A==1 */
 	check_return(rrtype == WDNS_TYPE_A);
 
 	/* Should have yielded a dot com extension */
