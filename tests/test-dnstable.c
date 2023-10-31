@@ -582,38 +582,41 @@ static int do_test_query(struct dnstable_query * query, struct mtbl_reader * mre
 	res = dnstable_iter_next(iter, &entry);
 	if (case_sensitive) {
 		check_return(res == dnstable_res_failure);
-		return 0;
 	} else {
 		check_return(res == dnstable_res_success);
+
+		res = dnstable_entry_get_rrtype(entry, &rrtype);
+		check_return(res == dnstable_res_success);
+		check_return(rrtype == WDNS_TYPE_A);
+
+		/* Should have yielded a dot com extension */
+		res = dnstable_entry_get_rrname(entry, &rrname, &lrrname);
+		check_return(res == dnstable_res_success);
+		check_return(lrrname >= 5);
+
+		memset(&test, 0, sizeof(test));
+		check_return(wdns_str_to_name_case(t_rrname + 2, &test) == wdns_res_success);
+		check_return(!strncasecmp((const char *) &rrname[lrrname - test.len], (const char *) test.data, test.len));
+
+		my_free(test.data);
+		test.len = 0;
+
+		check_return(wdns_str_to_name_case(t_bailiwick, &test) == wdns_res_success);
+
+		res = dnstable_entry_get_bailiwick(entry, &bailiwick, &lbailiwick);
+		check_return(res == dnstable_res_success);
+		check_return(lbailiwick == test.len);
+		check_return(!memcmp(bailiwick, test.data, test.len));
+
+		my_free(test.data);
+		test.len = 0;
+
+		dnstable_entry_destroy(&entry);
 	}
 
-	res = dnstable_entry_get_rrtype(entry, &rrtype);
-	check_return(res == dnstable_res_success);
-	check_return(rrtype == WDNS_TYPE_A);
+	dnstable_iter_destroy(&iter);
 
-	/* Should have yielded a dot com extension */
-	res = dnstable_entry_get_rrname(entry, &rrname, &lrrname);
-	check_return(res == dnstable_res_success);
-	check_return(lrrname >= 5);
-
-	memset(&test, 0, sizeof(test));
-	check_return(wdns_str_to_name_case(t_rrname + 2, &test) == wdns_res_success);
-	check_return(!strncasecmp((const char*) &rrname[lrrname - test.len], (const char*)  test.data, test.len));
-
-	my_free(test.data);
-	test.len = 0;
-
-	check_return(wdns_str_to_name_case(t_bailiwick, &test) == wdns_res_success);
-
-	res = dnstable_entry_get_bailiwick(entry, &bailiwick, &lbailiwick);
-	check_return(res == dnstable_res_success);
-	check_return(lbailiwick == test.len);
-	check_return(!memcmp(bailiwick, test.data, test.len));
-
-	my_free(test.data);
-	test.len = 0;
-
-	return 0;
+	l_return_test_status();
 }
 
 static int
@@ -634,7 +637,10 @@ test_query_case(void)
 	check_return(do_test_query(query, mreader, true, "*.COM", "A", "bkk1.cloud.z.com") == 0)
 	check_return(do_test_query(query, mreader, false, "*.COM", "A", "bkk1.cloud.z.com") == 0)
 
-	return 0;
+	dnstable_reader_destroy(&reader);
+	dnstable_query_destroy(&query);
+	
+	l_return_test_status();
 }
 
 int
