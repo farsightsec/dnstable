@@ -62,6 +62,7 @@ struct query_iter {
 	struct mtbl_iter	*m_iter, *m_iter2;
 	ubuf			*key, *key2;
 	struct filter_mtbl	*filter_single_label;
+	struct filter_mtbl	*filter_rrtype;
 };
 
 static void
@@ -523,6 +524,7 @@ query_iter_free(void *clos)
 	timeout_mtbl_destroy(&it->timeout);
 	timeout_mtbl_destroy(&it->timeout_index);
 	filter_mtbl_destroy(&it->filter_single_label);
+	filter_mtbl_destroy(&it->filter_rrtype);
 	ubuf_destroy(&it->key);
 	ubuf_destroy(&it->key2);
 	my_free(it);
@@ -646,6 +648,54 @@ seek:
 				ubuf_data(seek_key),
 				ubuf_size(seek_key));
 
+}
+
+static mtbl_res
+filter_rrtype(void *user, struct mtbl_iter *seek_iter,
+	      const uint8_t *key, size_t len_key,
+	      const uint8_t *val, size_t len_val,
+	      bool *match)
+{
+	struct query_iter *it = user;
+	size_t len;
+	uint16_t rdlen;
+	uint32_t rrtype;
+
+	(void)seek_iter;
+	(void)val;
+	(void)len_val;
+
+	*match = false;
+	switch(key[0]) {
+	case ENTRY_TYPE_RRSET:
+		if (wdns_len_uname(&key[1], &key[len_key], &len) != wdns_res_success)
+			return (mtbl_res_success);
+		if (len + 2 >= len_key)
+			return (mtbl_res_success);
+
+		break;
+	case ENTRY_TYPE_RDATA:
+		if (len_key < sizeof(rdlen))
+			return (mtbl_res_success);
+
+		memcpy(&rdlen, &key[len_key - sizeof(rdlen)], sizeof(rdlen));
+		rdlen = le16toh(rdlen);
+		if ((size_t)rdlen + 2 >= len_key)
+			return (mtbl_res_success);
+
+		len = rdlen;
+		break;
+	default:
+		assert(0);
+	}
+
+	if (mtbl_varint_decode32(&key[len+1], &rrtype) == 0)
+		return (mtbl_res_success);
+
+	if (rrtype == it->query->rrtype)
+		*match = true;
+
+	return(mtbl_res_success);
 }
 
 static dnstable_res
@@ -1113,6 +1163,11 @@ query_init_rrset_right_wildcard(struct query_iter *it)
 					     ubuf_data(it->key),
 					     ubuf_size(it->key));
 
+	if (it->query->do_rrtype) {
+		it->filter_rrtype = filter_mtbl_init(it->source, filter_rrtype, it);
+		it->source = filter_mtbl_source(it->filter_rrtype);
+	}
+
 	return dnstable_iter_init(query_iter_next_rrset_name_fwd, query_iter_free, it);
 }
 
@@ -1134,6 +1189,11 @@ query_init_rrset_left_wildcard(struct query_iter *it)
 	if (it->query->dq_wildplus) {
 		it->filter_single_label = filter_mtbl_init(it->source, filter_single_label, it);
 		it->source = filter_mtbl_source(it->filter_single_label);
+	}
+
+	if (it->query->do_rrtype) {
+		it->filter_rrtype = filter_mtbl_init(it->source, filter_rrtype, it);
+		it->source = filter_mtbl_source(it->filter_rrtype);
 	}
 
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
@@ -1261,6 +1321,12 @@ query_init_rdata_left_wildcard(struct query_iter *it)
 static struct dnstable_iter *
 query_init_rdata_name(struct query_iter *it)
 {
+
+	if (it->query->do_rrtype) {
+		it->filter_rrtype = filter_mtbl_init(it->source, filter_rrtype, it);
+		it->source = filter_mtbl_source(it->filter_rrtype);
+	}
+
 	it->key = ubuf_init(64);
 	if (is_right_wildcard(it->query))
 		return query_init_rdata_right_wildcard(it);
@@ -1330,10 +1396,14 @@ query_init_rdata_raw(struct query_iter *it)
 
 	/*
 	 * Note: even though this function does not use it->query->do_rrtype
-	 * or call add_rrtype_to_key(), in the post-query filter processing
-	 * in dnstable_query_filter(), if do_rrtype is set then the results
-	 * will be filtered by rrtype.
+	 * or call add_rrtype_to_key(), if do_rrtype is set then the post-query
+	 * filter processing in it->filter_rrtype will filter the results by rrtype.
 	 */
+	if (it->query->do_rrtype) {
+		it->filter_rrtype = filter_mtbl_init(it->source, filter_rrtype, it);
+		it->source = filter_mtbl_source(it->filter_rrtype);
+	}
+
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
 
