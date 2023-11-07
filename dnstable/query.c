@@ -61,6 +61,7 @@ struct query_iter {
 	struct timeout_mtbl	*timeout_index;
 	struct mtbl_iter	*m_iter, *m_iter2;
 	ubuf			*key, *key2;
+	struct filter_mtbl	*filter_single_label;
 };
 
 static void
@@ -521,6 +522,7 @@ query_iter_free(void *clos)
 	mtbl_merger_destroy(&it->fill_merger);
 	timeout_mtbl_destroy(&it->timeout);
 	timeout_mtbl_destroy(&it->timeout_index);
+	filter_mtbl_destroy(&it->filter_single_label);
 	ubuf_destroy(&it->key);
 	ubuf_destroy(&it->key2);
 	my_free(it);
@@ -547,54 +549,26 @@ increment_key(ubuf *key, size_t pos)
 	return (dnstable_res_failure);
 }
 
-enum sl_seek_result {
-	sl_matches,			/* Label matches. */
-	sl_nomatch,			/* Not a match. */
-	sl_failure,			/* Error detected. */
-};
-
-/* Single-label: Create new key and seek. */
-static enum sl_seek_result
-sl_key_seek(struct query_iter *it, struct mtbl_iter *seek_iter, const uint8_t *oldkey, size_t oldlen)
+/*
+ * Used with a "single label" wildcard search to match keys beginning
+ * with the search prefix plus a single label.
+ *
+ * If the key does not match, seeks to a prefix of the next possible
+ * matching key.
+ */
+static mtbl_res
+filter_single_label(void *user, struct mtbl_iter *seek_iter,
+		    const uint8_t *key, size_t len_key,
+		    const uint8_t *val, size_t len_val,
+		    bool *match)
 {
+	struct query_iter *it = user;
+	size_t qks, next_len;
 	ubuf *seek_key;
 
-	/* Create a new key. */
-	if (it->key2 == NULL)
-		it->key2 = ubuf_init(oldlen);
-	seek_key = it->key2;
-	ubuf_clip(seek_key, 0);
-
-	ubuf_reserve(seek_key, oldlen);
-	ubuf_append(seek_key, oldkey, oldlen);
-
-	/* Advance the last byte of the new key. */
-	increment_key(seek_key, oldlen - 1);
-
-	/* Seek to the newly generated key. */
-	if (mtbl_iter_seek(seek_iter,
-				ubuf_data(seek_key),
-				ubuf_size(seek_key)) != mtbl_res_success)
-		return (sl_failure);
-
-	/* Restart processing starting from the new key. */
-	return (sl_nomatch);
-}
-
-/*
- * Used with a "single label" wildcard search to determine the action to take
- * for a given matching key.
- * Either:
- *  + Matches  -- One and only one extra label.
- *  + No match -- Restart search.
- *  + Failure  -- Some error.
- *
- * Return-value indicates the action to take.
- */
-static enum sl_seek_result
-seek_next_single_label(struct query_iter *it, struct mtbl_iter *seek_iter, const uint8_t *key, size_t len_key)
-{
-	size_t qks, next_len;
+	(void)val;
+	(void)len_val;
+	*match = false;
 
 	/*
 	 * For left-wildcard, the "key" in the query is label-reversed, and the wildcard char is removed.
@@ -609,7 +583,7 @@ seek_next_single_label(struct query_iter *it, struct mtbl_iter *seek_iter, const
 	qks = ubuf_size(it->key);		/* Byte-size of original key. */
 
 	if (qks >= len_key)
-		return (sl_nomatch);
+		return (mtbl_res_success);
 
 	/*
 	 * No more labels on this key.
@@ -621,8 +595,8 @@ seek_next_single_label(struct query_iter *it, struct mtbl_iter *seek_iter, const
 		 * e.g. seek to key
 		 *   \x00\x03com\x07example\x01
 		 */
-
-		return (sl_key_seek(it, seek_iter, key, qks + 1));
+		next_len = qks + 1;
+		goto seek;
 	}
 
 	/* From here, there is at least one more label. */
@@ -636,7 +610,7 @@ seek_next_single_label(struct query_iter *it, struct mtbl_iter *seek_iter, const
 	 * Bad: \x00\x03com\x07example\x03ns
 	 */
 	if (next_len >= len_key)
-		return (sl_nomatch);
+		return (mtbl_res_success);
 
 	/*
 	 * Key has one or more additional labels.
@@ -646,15 +620,32 @@ seek_next_single_label(struct query_iter *it, struct mtbl_iter *seek_iter, const
 	 * Seek: \x00\x03com\x07example\x03foo\x03bar\x00
 	 */
 
-	if (key[next_len] == '\0')	/* Only 1 additional label. */
-		return (sl_matches);
+	if (key[next_len] == '\0') {	/* Only 1 additional label. */
+		*match = true;
+		return (mtbl_res_success);
+	}
 
+seek:
 	/*
 	 * Create a new key that is just beyond a key containing one extra label.
 	 *   \x00\x03com\x07example\x03fop
 	 */
+	if (it->key2 == NULL)
+		it->key2 = ubuf_init(next_len);
+	seek_key = it->key2;
+	ubuf_clip(seek_key, 0);
 
-	return (sl_key_seek(it, seek_iter, key, next_len));
+	ubuf_reserve(seek_key, next_len);
+	ubuf_append(seek_key, key, next_len);
+
+	/* Advance the last byte of the new key. */
+	increment_key(seek_key, next_len - 1);
+
+	/* Seek to the newly generated key. */
+	return mtbl_iter_seek(seek_iter,
+				ubuf_data(seek_key),
+				ubuf_size(seek_key));
+
 }
 
 static dnstable_res
@@ -677,17 +668,6 @@ query_iter_next(void *clos, struct dnstable_entry **ent)
 
 		if (mtbl_iter_next(it->m_iter, &key, &len_key, &val, &len_val) != mtbl_res_success)
 			return (dnstable_res_failure);
-
-		/* Check the "single label". */
-		if (it->query->dq_wildplus) {
-			enum sl_seek_result sl_ret = seek_next_single_label(it, it->m_iter, key, len_key);
-
-			if (sl_ret == sl_nomatch)
-				continue;
-
-			if (sl_ret == sl_failure)
-				return (dnstable_res_failure);
-		}
 
 		*ent = dnstable_entry_decode(key, len_key, val, len_val);
 		if (*ent == NULL)
@@ -1029,16 +1009,6 @@ query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t t
 			if (it->query->do_rrtype && !rrtype_test(type_byte, wanted_rrtype, val, len_val))
 				continue;
 
-			if (it->query->dq_wildplus) {
-				enum sl_seek_result sl_ret = seek_next_single_label(it, it->m_iter2, key, len_key);
-
-				if (sl_ret == sl_nomatch)
-					continue;
-
-				if (sl_ret == sl_failure)
-					return (dnstable_res_failure);
-			}
-
 			/* Use the index to create the key for the full data. */
 			if (it->key2 == NULL)
 				it->key2 = ubuf_init(len_key + 12);
@@ -1134,6 +1104,11 @@ query_init_rrset_right_wildcard(struct query_iter *it)
 	/* key: rrset owner name, less trailing "\x01\x2a\x00" */
 	ubuf_append(it->key, it->query->name.data, it->query->name.len - 3);
 
+	if (it->query->dq_wildplus) {
+		it->filter_single_label = filter_mtbl_init(it->source_index, filter_single_label, it);
+		it->source_index = filter_mtbl_source(it->filter_single_label);
+	}
+
 	it->m_iter2 = mtbl_source_get_prefix(it->source_index,
 					     ubuf_data(it->key),
 					     ubuf_size(it->key));
@@ -1155,6 +1130,11 @@ query_init_rrset_left_wildcard(struct query_iter *it)
 	if (wdns_reverse_name(it->query->name.data + 2, len, name) != wdns_res_success)
 		return (NULL);
 	ubuf_append(it->key, name, len - 1);
+
+	if (it->query->dq_wildplus) {
+		it->filter_single_label = filter_mtbl_init(it->source, filter_single_label, it);
+		it->source = filter_mtbl_source(it->filter_single_label);
+	}
 
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
@@ -1244,6 +1224,11 @@ query_init_rdata_right_wildcard(struct query_iter *it)
 	/* key: rdata name, less trailing "\x01\x2a\x00" */
 	ubuf_append(it->key, it->query->name.data, it->query->name.len - 3);
 
+	if (it->query->dq_wildplus) {
+		it->filter_single_label = filter_mtbl_init(it->source, filter_single_label, it);
+		it->source = filter_mtbl_source(it->filter_single_label);
+	}
+
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
 
@@ -1260,6 +1245,11 @@ query_init_rdata_left_wildcard(struct query_iter *it)
 	if (wdns_reverse_name(it->query->name.data + 2, len, name) != wdns_res_success)
 		return (NULL);
 	ubuf_append(it->key, name, len - 1);
+
+	if (it->query->dq_wildplus) {
+		it->filter_single_label = filter_mtbl_init(it->source_index, filter_single_label, it);
+		it->source_index = filter_mtbl_source(it->filter_single_label);
+	}
 
 	it->m_iter2 = mtbl_source_get_prefix(it->source_index,
 					     ubuf_data(it->key),
