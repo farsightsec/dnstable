@@ -63,6 +63,8 @@ struct query_iter {
 	ubuf			*key, *key2;
 	struct filter_mtbl	*filter_single_label;
 	struct filter_mtbl	*filter_rrtype;
+	struct filter_mtbl	*filter_time_strict;
+	struct filter_mtbl	*filter_time;
 };
 
 static void
@@ -525,6 +527,8 @@ query_iter_free(void *clos)
 	timeout_mtbl_destroy(&it->timeout_index);
 	filter_mtbl_destroy(&it->filter_single_label);
 	filter_mtbl_destroy(&it->filter_rrtype);
+	filter_mtbl_destroy(&it->filter_time_strict);
+	filter_mtbl_destroy(&it->filter_time);
 	ubuf_destroy(&it->key);
 	ubuf_destroy(&it->key2);
 	my_free(it);
@@ -696,6 +700,76 @@ filter_rrtype(void *user, struct mtbl_iter *seek_iter,
 		*match = true;
 
 	return(mtbl_res_success);
+}
+
+static mtbl_res
+filter_time_strict(void *user, struct mtbl_iter *seek_iter,
+		   const uint8_t *key, size_t len_key,
+		   const uint8_t *val, size_t len_val,
+		   bool *match)
+{
+	struct query_iter *it = user;
+	struct dnstable_query *q = it->query;
+	dnstable_res dres;
+	uint64_t time_first, time_last, count;
+
+	*match = true;
+
+	dres = triplet_unpack(val, len_val, &time_first, &time_last, &count);
+	if (dres != dnstable_res_success)
+		return (mtbl_res_success);
+
+	if (q->do_time_first_after && (time_first < q->time_first_after)) {
+		*match = false;
+		return (mtbl_res_success);
+	}
+
+	if (q->do_time_last_before && (time_last > q->time_last_before)) {
+		*match = false;
+		return (mtbl_res_success);
+	}
+
+	return (mtbl_res_success);
+}
+
+static mtbl_res
+filter_time(void *user, struct mtbl_iter *seek_iter,
+	    const uint8_t *key, size_t len_key,
+	    const uint8_t *val, size_t len_val,
+	    bool *match)
+{
+	struct query_iter *it = user;
+	struct dnstable_query *q = it->query;
+	dnstable_res dres;
+	uint64_t time_first, time_last, count;
+
+	*match = true;
+
+	dres = triplet_unpack(val, len_val, &time_first, &time_last, &count);
+	if (dres != dnstable_res_success)
+		return (mtbl_res_success);
+
+	if (q->do_time_first_before && (time_first > q->time_first_before)) {
+		*match = false;
+		return (mtbl_res_success);
+	}
+
+	if (q->do_time_last_after && (time_last < q->time_last_after)) {
+		*match = false;
+		return (mtbl_res_success);
+	}
+
+	if (q->do_time_first_after && (time_first < q->time_first_after)) {
+		*match = false;
+		return (mtbl_res_success);
+	}
+
+	if (q->do_time_last_before && (time_last > q->time_last_before)) {
+		*match = false;
+		return (mtbl_res_success);
+	}
+
+	return (mtbl_res_success);
 }
 
 static dnstable_res
@@ -1461,11 +1535,22 @@ dnstable_query_iter_common(struct query_iter *it)
 		return (NULL);
 	}
 
+	/* Do the strict time filtering check at end, as it can only advance by one entry. */
+	if (q->do_time_first_after || q->do_time_last_before) {
+		it->filter_time_strict = filter_mtbl_init(it->source, filter_time_strict, it);
+		it->source = filter_mtbl_source(it->filter_time_strict);
+	}
+
 	if (it->fill_merger != NULL) {
 		it->ljoin = ljoin_mtbl_init(it->source,
 					    mtbl_merger_source(it->fill_merger),
 					    dnstable_merge_func, NULL);
 		it->source = ljoin_mtbl_source(it->ljoin);
+	}
+
+	if (q->do_time_first_before || q->do_time_last_after || (it->filter_time_strict != NULL)) {
+		it->filter_time = filter_mtbl_init(it->source, filter_time, it);
+		it->source = filter_mtbl_source(it->filter_time);
 	}
 
 	if (it->m_iter2 == NULL) {
