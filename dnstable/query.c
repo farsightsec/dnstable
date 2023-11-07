@@ -65,7 +65,7 @@ query_set_err(struct dnstable_query *q, const char *err)
 }
 
 static dnstable_res
-query_load_name(struct dnstable_query *q, wdns_name_t *name, const char *s_name)
+query_load_name(struct dnstable_query *q, wdns_name_t *name, const char *s_name, bool case_sensitive)
 {
 	my_free(name->data);
 	name->len = 0;
@@ -75,7 +75,7 @@ query_load_name(struct dnstable_query *q, wdns_name_t *name, const char *s_name)
 		query_set_err(q, "wdns_str_to_name() failed");
 		return (dnstable_res_failure);
 	}
-	if (!q->case_sensitive)
+	if (!case_sensitive)
 		wdns_downcase_name(name);
 	return (dnstable_res_success);
 }
@@ -145,19 +145,19 @@ dnstable_query_set_bailiwick(struct dnstable_query *q, const char *s_name)
 		query_set_err(q, "bailiwick filtering not supported");
 		return (dnstable_res_failure);
 	}
-	return query_load_name(q, &q->bailiwick, s_name);
+	return query_load_name(q, &q->bailiwick, s_name, false);
 }
 
 static dnstable_res
 query_set_data_rrset_owner(struct dnstable_query *q, const char *s_name)
 {
-	return query_load_name(q, &q->name, s_name);
+	return query_load_name(q, &q->name, s_name, q->case_sensitive);
 }
 
 static dnstable_res
 query_set_data_rdata_name(struct dnstable_query *q, const char *s_name)
 {
-	return query_load_name(q, &q->name, s_name);
+	return query_load_name(q, &q->name, s_name, q->case_sensitive);
 }
 
 static dnstable_res
