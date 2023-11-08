@@ -87,6 +87,9 @@ can be used to request a specific type's version. ^ETYPE^ may be one of ^rrset^,
     When using a JSON format for output, add a hex representation of the
     raw rdata and the rrtype.
 
+^-s^::
+    Output the number of matching entries found, rather than details about each entry.
+
 ^-u^::
     Output unaggregated results; default is aggregated results.
     This is only valid with a setfile.

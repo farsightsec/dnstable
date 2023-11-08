@@ -32,6 +32,7 @@
 static bool g_json = false;
 static bool g_Json = false;
 static bool g_add_raw;
+static bool g_summary = false;
 static bool g_aggregate = true;
 static int64_t g_offset = 0;
 
@@ -39,6 +40,9 @@ static void
 print_entry(struct dnstable_entry *ent)
 {
 	char *s;
+
+	if (g_summary)
+		return;
 
 	if (g_Json || g_json) {
 		struct dnstable_formatter *fmt = dnstable_formatter_init();
@@ -75,8 +79,12 @@ do_dump(struct dnstable_iter *it)
 		dnstable_entry_destroy(&ent);
 		count++;
 	}
-	if (!g_json && !g_Json)
-		fprintf(stderr, ";;; Dumped %'" PRIu64 " entries.\n", count);
+
+	if (g_summary)
+		fprintf(stderr, ";;; Processed %'" PRIu64 " entries.\n", count);
+	else
+		if (!g_json && !g_Json)
+			fprintf(stderr, ";;; Dumped %'" PRIu64 " entries.\n", count);
 }
 
 static uint64_t
@@ -192,7 +200,7 @@ main(int argc, char **argv)
 	dnstable_res res;
 	int ch;
 
-	while ((ch = getopt(argc, argv, "a:A:b:B:cjJRuO:")) != -1) {
+	while ((ch = getopt(argc, argv, "a:A:b:B:cjJRsuO:")) != -1) {
 		switch (ch) {
 		case 'a':
 			time_first_after = parse_time(optarg);
@@ -233,6 +241,9 @@ main(int argc, char **argv)
 			break;
 		case 'R':
 			g_add_raw = true;
+			break;
+		case 's':
+			g_summary = true;
 			break;
 		case 'u':
 			g_aggregate = false;
@@ -312,6 +323,11 @@ main(int argc, char **argv)
                         exit(EXIT_FAILURE);
                 }
         }
+
+	if (g_summary && (g_Json || g_json || g_add_raw)) {
+		fprintf(stderr, "dnstable_lookup: cannot specify -s with either -j, -J or -R\n");
+		exit(EXIT_FAILURE);
+	}
 
 	if (g_Json && g_json) {
 		fprintf(stderr, "dnstable_lookup: cannot specify both -j and -J\n");
