@@ -63,6 +63,7 @@ struct query_iter {
 	ubuf			*key, *key2;
 	struct filter_mtbl	*filter_single_label;
 	struct filter_mtbl	*filter_rrtype;
+	struct filter_mtbl	*filter_rrtype_ip;
 	struct filter_mtbl	*filter_time_strict;
 	struct filter_mtbl	*filter_time;
 };
@@ -527,6 +528,7 @@ query_iter_free(void *clos)
 	timeout_mtbl_destroy(&it->timeout_index);
 	filter_mtbl_destroy(&it->filter_single_label);
 	filter_mtbl_destroy(&it->filter_rrtype);
+	filter_mtbl_destroy(&it->filter_rrtype_ip);
 	filter_mtbl_destroy(&it->filter_time_strict);
 	filter_mtbl_destroy(&it->filter_time);
 	ubuf_destroy(&it->key);
@@ -816,50 +818,30 @@ query_iter_next(void *clos, struct dnstable_entry **ent)
 	return (dnstable_res_failure);
 }
 
-static dnstable_res
-query_iter_next_ip(void *clos, struct dnstable_entry **ent)
+static mtbl_res
+filter_rrtype_ip(void *user, struct mtbl_iter *seek_iter,
+		 const uint8_t *key, size_t len_key,
+		 const uint8_t *val, size_t len_val,
+		 bool *match)
 {
-	struct query_iter *it = (struct query_iter *) clos;
+	struct query_iter *it = (struct query_iter *) user;
+	mtbl_res res;
 
-	if (it->query->do_timeout) {
-		my_gettime(DNSTABLE__CLOCK_MONOTONIC, &it->deadline);
-		my_timespec_add(&it->query->timeout, &it->deadline);
-		if (setjmp(it->to_env) != 0)
-			return (dnstable_res_timeout);
-	}
 
-	for (;;) {
-		bool pass = false;
-		dnstable_res res;
-		const uint8_t *key, *val;
-		size_t len_key, len_val;
-		uint16_t rrtype;
+	res = filter_rrtype(it, NULL, key, len_key, val, len_val, match);
+	if (res != mtbl_res_success || *match)
+		return res;
+
+	/*
+	 * Note that *match is false here. We optionally `mtbl_iter_seek` below
+	 * to skip more non-matches.
+	 */
+	do {
+		dnstable_res dres;
 		ubuf *seek_key;
 		int ret;
 
 		const uint8_t max_llen = 63;	/* RFC 1035 maximum label length in an uncompressed name. */
-
-		if (mtbl_iter_next(it->m_iter, &key, &len_key, &val, &len_val) != mtbl_res_success) {
-			return (dnstable_res_failure);
-		}
-
-		*ent = dnstable_entry_decode(key, len_key, val, len_val);
-		if (*ent ==  NULL)
-			continue;
-
-		/* Get the rrtype of the decoded entry. */
-		res = dnstable_entry_get_rrtype(*ent, &rrtype);
-		if (res != dnstable_res_success) {
-			dnstable_entry_destroy(ent);
-			continue;
-		}
-
-		if (rrtype == it->query->rrtype) {
-			goto filter;
-		}
-
-		/* Destroy current entry; skip processing of wrong rrtype. */
-		dnstable_entry_destroy(ent);
 
 		/*
 		 * Create a new start key in it->key2 (seek_key) with the prefix
@@ -960,7 +942,7 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 
 		if (len_key <= ubuf_size(seek_key)) {
 			/* There's no more key data to copy. Move to next key. */
-			continue;
+			return (mtbl_res_success);
 		}
 
 		/* Special case handling if the first byte is a bad label len */
@@ -1059,44 +1041,20 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 		}
 
 increment:
-		res = increment_key(seek_key, key_prefix_len - 1);
+		dres = increment_key(seek_key, key_prefix_len - 1);
 
 		/* Bail out if an increment overflow clobbers the type byte. */
-		assert(res == dnstable_res_success);
+		assert(dres == dnstable_res_success);
 		if (ubuf_value(seek_key, 0) != ENTRY_TYPE_RDATA) {
-			mtbl_iter_destroy(&it->m_iter);
-			return (dnstable_res_failure);
+			return (mtbl_res_failure);
 		}
 
 seek:
 		/* Seek to the newly generated key. */
-		if (mtbl_iter_seek(it->m_iter,
-				   ubuf_data(seek_key),
-				   ubuf_size(seek_key)) != mtbl_res_success) {
-			return (dnstable_res_failure);
-		}
+		return mtbl_iter_seek(it->m_iter, ubuf_data(seek_key), ubuf_size(seek_key));
+	} while(0);
 
-		/* Restart processing starting from the new key. */
-		continue;
-
-filter:
-		res = dnstable_query_filter(it->query, *ent, &pass);
-		assert(res == dnstable_res_success);
-		if (pass) {
-			/* offset (e.g. skip) initial rows */
-			if (it->query->offset > 0 && it->query->offset-- > 0)
-			{
-				dnstable_entry_destroy(ent);
-				continue;
-			}
-
-			return (dnstable_res_success);
-		} else {
-			dnstable_entry_destroy(ent);
-			continue;
-		}
-	}
-	return (dnstable_res_failure);
+	return (mtbl_res_success);
 }
 
 /* this assumes it is called on an entry type with possible new rrtype indexes */
@@ -1454,7 +1412,10 @@ query_init_rdata_ip(struct query_iter *it)
 		increment_key(it->key2, ubuf_size(it->key2) - 1);
 	}
 
-	return dnstable_iter_init(query_iter_next_ip, query_iter_free, it);
+	it->filter_rrtype = filter_mtbl_init(it->source, filter_rrtype_ip, it);
+	it->source = filter_mtbl_source(it->filter_rrtype);
+
+	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
 
 static struct dnstable_iter *
