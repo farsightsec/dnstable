@@ -110,8 +110,14 @@ from the results.  The default is 0, which means to not offset any rows.
 ^dnstable_query_set_aggregated^() sets if the results from queries should be
 aggregated. The default is _true_ for aggregated results.
 
-^dnstable_query_set_case_sensitive() specifies that query parameters should be
+^dnstable_query_set_case_sensitive^() specifies that query parameters should be
 treated as case-sensitive.
+
+For hostnames added after the call to ^dnstable_query_set_case_sensitive^(), case
+is preserved.
+
+Call to ^dnstable_query_set_case_sensitive^() has no effect after a call to
+^dnstable_query_set_data^().
 
 ^dnstable_query_set_data^() specifies the main search parameter and is required.
 Its meaning depends on the query type.
