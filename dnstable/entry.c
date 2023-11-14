@@ -21,6 +21,16 @@
 VECTOR_GENERATE(rdata_vec, wdns_rdata_t *);
 
 
+#define JSON_OBJ_START(u)          ubuf_append(u, (const uint8_t *)"{", 1)
+#define JSON_OBJ_END(u)            ubuf_append(u, (const uint8_t *)"}", 1)
+#define JSON_ARR_START(u)          ubuf_append(u, (const uint8_t *)"[", 1)
+#define JSON_ARR_END(u)            ubuf_append(u, (const uint8_t *)"]", 1)
+#define JSON_ARR_DELIMIT(u,x,y)    if (x + 1 < y) { ubuf_append(u, (const uint8_t *)",", 1); }
+#define JSON_DECL_VALUE(u,s)       declare_json_value(u, s, started++ == 0)
+#define JSON_STR_APPEND(u,s)       append_json_value_string(u, s, strlen(s))
+#define JSON_STR_APPEND_LEN(u,s,n) append_json_value_string(u, s, n)
+#define JSON_NUM_APPEND(u,v)       append_json_value_int(u, v)
+
 struct dnstable_entry {
 	dnstable_entry_type	e_type;
 	wdns_name_t		name, bailiwick;
@@ -108,7 +118,7 @@ fmt_rfc3339_time_json(ubuf *u, uint64_t v)
 {
 	struct tm gm, *r;
 	time_t tm = v;
-	char ts[]="0000-00-00T00:00:00Z";
+	char ts[] = "0000-00-00T00:00:00Z";
 
 	r = gmtime_r(&tm, &gm);
 	assert(r != NULL);
@@ -118,8 +128,7 @@ fmt_rfc3339_time_json(ubuf *u, uint64_t v)
 	/*
 	 * fmt_rfc3339 will completely fill the ts array, so sizeof can be used to compute the string length
 	 */
-	
-	append_json_value_string(u, ts, sizeof(ts) - 1);
+	JSON_STR_APPEND_LEN(u, ts, sizeof(ts) - 1);
 }
 
 /*
@@ -156,12 +165,12 @@ fmt_rrtype_json(ubuf *u, uint16_t rrtype)
 {
 	const char *s_rrtype = wdns_rrtype_to_str(rrtype);
 	if (s_rrtype)
-		append_json_value_string(u, s_rrtype, strlen(s_rrtype));
+		JSON_STR_APPEND(u, s_rrtype);
 	else {
 		char buf[sizeof("TYPE65535")];
 		size_t len = snprintf(buf, sizeof(buf), "TYPE%hu", (uint16_t)rrtype);
 		assert(len > 0);
-		append_json_value_string(u, buf, len);
+		JSON_STR_APPEND_LEN(u, buf, len);
 	}
 }
 
@@ -192,25 +201,23 @@ static void
 fmt_rrtypes_union_json(ubuf *u, const struct dnstable_entry *e)
 {
 	declare_json_value(u, "rrtypes", false);
-	ubuf_append(u, (const uint8_t *)"[", 1);
+	JSON_ARR_START(u);
 
 	if (e->rrtype_map != NULL) {
 		rrtype_unpacked_set rrtype_set;
 		int n_rrtypes = rrtype_union_unpack(ubuf_data(e->rrtype_map), ubuf_size(e->rrtype_map), &rrtype_set);
 		if (n_rrtypes == -1) {
 			const char *_fail = "<failure>";
-			append_json_value_string(u, _fail, strlen(_fail));
+			JSON_STR_APPEND(u, _fail);
 		} else {
 			for (int n = 0; n < n_rrtypes; n++) {
 				fmt_rrtype_json(u, rrtype_set.rrtypes[n]);
-
-				if (n + 1 < n_rrtypes)
-					ubuf_append(u, (const uint8_t *)",", 1);
+				JSON_ARR_DELIMIT(u, n, n_rrtypes);
 			}
 		}
 	}
 
-	ubuf_append(u, (const uint8_t *)"]", 1);
+	JSON_ARR_END(u);
 }
 
 static char *
@@ -332,79 +339,76 @@ dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
 	size_t len;
 	ubuf *u;
 	void (*time_formatter)(ubuf *, uint64_t);
+	unsigned int started = 0;
 
 	time_formatter = (date_format == dnstable_date_format_unix) ?
 		append_json_value_int : fmt_rfc3339_time_json;
 
 	u = ubuf_init(256);
-
-
-	ubuf_append(u, (const uint8_t *)"{", 1);
+	JSON_OBJ_START(u);
 
 	if (e->e_type == DNSTABLE_ENTRY_TYPE_RRSET ||
 	    e->e_type == DNSTABLE_ENTRY_TYPE_RDATA)
 	{
 		/* count */
-		declare_json_value(u, "count", true);
-
-		append_json_value_int(u, e->count);
+		JSON_DECL_VALUE(u, "count");
+		JSON_NUM_APPEND(u, e->count);
 
 		/* first seen */
 		if (e->iszone)
-			declare_json_value(u, "zone_time_first", false);
+			JSON_DECL_VALUE(u, "zone_time_first");
 		else
-			declare_json_value(u, "time_first", false);
+			JSON_DECL_VALUE(u, "time_first");
 
 		time_formatter(u, e->time_first);
 
 		/* last seen */
 		if (e->iszone)
-			declare_json_value(u, "zone_time_last", false);
+			JSON_DECL_VALUE(u, "zone_time_last");
 		else
-			declare_json_value(u, "time_last", false);
+			JSON_DECL_VALUE(u, "time_last");
 
 
 		time_formatter(u, e->time_last);
 
 		/* rrname */
-		declare_json_value(u, "rrname", false);
+		JSON_DECL_VALUE(u, "rrname");
 
 		wdns_domain_to_str(e->name.data, e->name.len, name);
-		append_json_value_string(u, name, strlen(name));
+		JSON_STR_APPEND(u, name);
 
 		/* rrtype */
-		declare_json_value(u, "rrtype", false);
+		JSON_DECL_VALUE(u, "rrtype");
 		fmt_rrtype_json(u, e->rrtype);
 	}
 
 	if (e->e_type == DNSTABLE_ENTRY_TYPE_RRSET) {
 		/* bailiwick */
-		declare_json_value(u, "bailiwick", false);
+		JSON_DECL_VALUE(u, "bailiwick");
 
 		wdns_domain_to_str(e->bailiwick.data, e->bailiwick.len, name);
-		append_json_value_string(u, name, strlen(name));
+		JSON_STR_APPEND(u, name);
 
 		/* resource records */
-		declare_json_value(u, "rdata", false);
-		ubuf_append(u, (const uint8_t *)"[", 1);
+		JSON_DECL_VALUE(u, "rdata");
+		JSON_ARR_START(u);
 
 		const size_t n_rdatas = rdata_vec_size(e->rdatas);
 		for (size_t i = 0; i < n_rdatas; i++) {
 			wdns_rdata_t *rdata = rdata_vec_value(e->rdatas, i);
 			char *data = wdns_rdata_to_str(rdata->data, rdata->len,
 						       e->rrtype, WDNS_CLASS_IN);
-			append_json_value_string(u, data, strlen(data));
+			JSON_STR_APPEND(u, data);
 			my_free(data);
 
-			if (i + 1 < n_rdatas)
-				ubuf_append(u, (const uint8_t *)",", 1);
+			JSON_ARR_DELIMIT(u, i, n_rdatas);
 		}
 
-		ubuf_append(u, (const uint8_t *)"]", 1);
+		JSON_ARR_END(u);
 
 		if (add_raw_rdata) {
-			declare_json_value(u, "rdata_raw", false);
-			ubuf_append(u, (const uint8_t *)"[", 1);
+			JSON_DECL_VALUE(u, "rdata_raw");
+			JSON_ARR_START(u);
 
 			for (size_t i = 0; i < n_rdatas; i++) {
 				wdns_rdata_t *rdata = rdata_vec_value(e->rdatas, i);
@@ -422,40 +426,39 @@ dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
 				ubuf_cterm(rbuf);
 				ubuf_detach(rbuf, &rbuf_as_str, &rbuf_as_str_len);
 				ubuf_destroy(&rbuf);
-				append_json_value_string(u, (const char *)rbuf_as_str, strlen((const char *)rbuf_as_str));
+				JSON_STR_APPEND(u, (const char *)rbuf_as_str);
 				my_free(rbuf_as_str);
 
-				if (i + 1 < n_rdatas)
-					ubuf_append(u, (const uint8_t *)",", 1);
+				JSON_ARR_DELIMIT(u, i, n_rdatas);
 			}
 
-			ubuf_append(u, (const uint8_t *)"]", 1);
+			JSON_ARR_END(u);
 		}
 	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_RDATA) {
 		if (rdata_vec_size(e->rdatas) != 1)
 			goto out;
 
 		/* rdata */
-		declare_json_value(u, "rdata", false);
+		JSON_DECL_VALUE(u, "rdata");
 
 		wdns_rdata_t *rdata = rdata_vec_value(e->rdatas, 0);
 		char *data = wdns_rdata_to_str(rdata->data, rdata->len,
 					       e->rrtype, WDNS_CLASS_IN);
 
 		if (always_array)
-			ubuf_append(u, (const uint8_t *)"[", 1);
+			JSON_ARR_START(u);
 
-		append_json_value_string(u, data, strlen(data));
+		JSON_STR_APPEND(u, data);
 		my_free(data);
 
 		if (always_array)
-			ubuf_append(u, (const uint8_t *)"]", 1);
+			JSON_ARR_END(u);
 
 		if (add_raw_rdata) {
-			declare_json_value(u, "rdata_raw", false);
+			JSON_DECL_VALUE(u, "rdata_raw");
 
 			if (always_array)
-				ubuf_append(u, (const uint8_t *)"[", 1);
+				JSON_ARR_START(u);
 
 			ubuf *rbuf = ubuf_init(2 * rdata->len + 1);
 			uint8_t *rbuf_as_str = NULL;
@@ -465,26 +468,26 @@ dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
 			ubuf_cterm(rbuf);
 			ubuf_detach(rbuf, &rbuf_as_str, &rbuf_as_str_len);
 			ubuf_destroy(&rbuf);
-			append_json_value_string(u, (const char *)rbuf_as_str, strlen((const char *)rbuf_as_str));
+			JSON_STR_APPEND(u, (const char *)rbuf_as_str);
 			my_free(rbuf_as_str);
 
 			if (always_array)
-				ubuf_append(u, (const uint8_t *)"]", 1);
+				JSON_ARR_END(u);
 		}
 	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD) {
-		declare_json_value(u, "rrset_name", true);
+		JSON_DECL_VALUE(u, "rrset_name");
 		wdns_domain_to_str(e->name.data, e->name.len, name);
-		append_json_value_string(u, name, strlen(name));
+		JSON_STR_APPEND(u, name);
 		fmt_rrtypes_union_json(u, e);
 	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV) {
-		declare_json_value(u, "rdata_name", true);
+		JSON_DECL_VALUE(u, "rdata_name");
 		wdns_domain_to_str(e->name.data, e->name.len, name);
-		append_json_value_string(u, name, strlen(name));
+		JSON_STR_APPEND(u, name);
 		fmt_rrtypes_union_json(u, e);
 	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_TIME_RANGE) {
-		declare_json_value(u, "time_first", true);
+		JSON_DECL_VALUE(u, "time_first");
 		time_formatter(u, e->time_first);
-		declare_json_value(u, "time_last", false);
+		JSON_DECL_VALUE(u, "time_last");
 		time_formatter(u, e->time_last);
 	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_VERSION) {
 		const char *vtype = dnstable_entry_type_to_string(e->v_type);
@@ -494,13 +497,13 @@ dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
 			snprintf(buf, sizeof(buf), "unknown-%d", (uint8_t)e->v_type);
 			vtype = buf;
 		}
-		declare_json_value(u, "entry_type", true);
-		append_json_value_string(u, vtype, strlen(vtype));
-		declare_json_value(u, "version", false);
-		append_json_value_int(u, e->version);
+		JSON_DECL_VALUE(u, "entry_type");
+		JSON_STR_APPEND(u, vtype);
+		JSON_DECL_VALUE(u, "version");
+		JSON_NUM_APPEND(u, e->version);
 	}
 
-	ubuf_append(u, (const uint8_t *)"}", 1);
+	JSON_OBJ_END(u);
 
 	ubuf_cterm(u);
 	ubuf_detach(u, &s, &len);
