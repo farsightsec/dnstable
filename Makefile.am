@@ -10,8 +10,7 @@ AM_CPPFLAGS = \
 AM_CFLAGS = \
 	${my_CFLAGS} \
 	$(libmtbl_CFLAGS) \
-	$(libwdns_CFLAGS) \
-	$(libyajl_CFLAGS)
+	$(libwdns_CFLAGS)
 
 AM_LDFLAGS =
 
@@ -54,6 +53,7 @@ lib_LTLIBRARIES = dnstable/libdnstable.la
 
 dnstable_libdnstable_la_SOURCES = \
 	dnstable/dnstable.h \
+	dnstable/dnstable-json.h \
 	dnstable/dnstable-private.h \
 	dnstable/entry.c \
 	dnstable/iter.c \
@@ -74,8 +74,7 @@ dnstable_libdnstable_la_SOURCES = \
 
 dnstable_libdnstable_la_LIBADD = \
 	$(libmtbl_LIBS) \
-	$(libwdns_LIBS) \
-	$(libyajl_LIBS)
+	$(libwdns_LIBS)
 dnstable_libdnstable_la_LDFLAGS = $(AM_LDFLAGS) \
 	-version-info $(LIBDNSTABLE_CURRENT):$(LIBDNSTABLE_REVISION):$(LIBDNSTABLE_AGE)
 if HAVE_LD_VERSION_SCRIPT
@@ -176,7 +175,6 @@ tests_test_bitmaps_LDADD = \
 	dnstable/entry.o \
 	dnstable/triplet.o \
 	dnstable/libdnstable.la \
-	$(libyajl_LIBS) \
 	$(libmtbl_LIBS) \
 	$(libwdns_LIBS)
 tests_test_bitmaps_SOURCES = tests/test-bitmaps.c libmy/my_format.c libmy/my_format.h

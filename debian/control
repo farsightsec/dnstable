@@ -9,7 +9,6 @@ Build-Depends:
  lcov,
  libmtbl-dev (>= 1.5.0),
  libwdns-dev (>= 0.11.0),
- libyajl-dev (>= 1.0.8),
  mtbl-bin,
  pkg-config,
  xmlto

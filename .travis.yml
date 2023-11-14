@@ -11,7 +11,7 @@ before_install:
     - sudo apt-get -qq update
 
 install:
-    - sudo apt-get install -q libyajl-dev libmtbl-dev libwdns-dev
+    - sudo apt-get install -q libmtbl-dev libwdns-dev
 
 script:
     - ./autogen.sh
