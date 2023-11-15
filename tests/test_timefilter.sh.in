@@ -17,6 +17,7 @@ RESULT=0
 
 cleanup() {
 	rm -f $TEST_OUT $TEST_OUT_UNAGGR $CHECK_OUT $CHECK_NTF_OUT $CHECK_MERGED_OUT
+	exit
 }
 
 trap cleanup 0 1 2 15
