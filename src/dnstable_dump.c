@@ -142,13 +142,11 @@ static void
 do_dump(struct dnstable_iter *it)
 {
 	struct dnstable_entry *ent;
-	uint64_t count = 0;
 
 	while (dnstable_iter_next(it, &ent) == dnstable_res_success) {
 		assert(ent != NULL);
 		print_entry(ent);
 		dnstable_entry_destroy(&ent);
-		count++;
 	}
 }
 
