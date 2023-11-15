@@ -59,6 +59,7 @@ dnstable_libdnstable_la_SOURCES = \
 	dnstable/iter.c \
 	dnstable/merge.c \
 	dnstable/query.c \
+	dnstable/query_mtbl.c \
 	dnstable/reader.c \
 	dnstable/triplet.c \
 	libmy/ip_arith.h \
