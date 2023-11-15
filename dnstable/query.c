@@ -49,9 +49,10 @@ struct dnstable_query {
 
 struct query_iter {
 	struct dnstable_query	*query;
-	const struct mtbl_source *source_filter;
 	const struct mtbl_source *source_index;
 	const struct mtbl_source *source;
+	struct mtbl_merger	*fill_merger;
+	struct ljoin_mtbl	*ljoin;
 	struct mtbl_fileset	*fs_filter;
 	struct mtbl_fileset	*fs_no_merge;
 	struct mtbl_iter	*m_iter, *m_iter2;
@@ -510,8 +511,10 @@ query_iter_free(void *clos)
 	struct query_iter *it = (struct query_iter *) clos;
 	mtbl_iter_destroy(&it->m_iter);
 	mtbl_iter_destroy(&it->m_iter2);
+	ljoin_mtbl_destroy(&it->ljoin);
 	mtbl_fileset_destroy(&it->fs_filter);
 	mtbl_fileset_destroy(&it->fs_no_merge);
+	mtbl_merger_destroy(&it->fill_merger);
 	ubuf_destroy(&it->key);
 	ubuf_destroy(&it->key2);
 	my_free(it);
@@ -672,50 +675,11 @@ query_iter_next(void *clos, struct dnstable_entry **ent)
 				return (dnstable_res_timeout);
 		}
 
-		if (it->source_filter != NULL) {
-			if (mtbl_iter_next(it->m_iter2, &key, &len_key, &val, &len_val) != mtbl_res_success) {
-				return (dnstable_res_failure);
-			}
-
-			/* Check the "single label". */
-			if (it->query->dq_wildplus) {
-				enum sl_seek_result sl_ret = seek_next_single_label(it, it->m_iter2, key, len_key);
-
-				if (sl_ret == sl_nomatch)
-					continue;
-
-				if (sl_ret == sl_failure)
-					return (dnstable_res_failure);
-			}
-
-			if (it->query->do_rrtype) {
-				uint16_t rrtype;
-				struct dnstable_entry *e = dnstable_entry_decode(key, len_key, val, len_val);
-
-				if (e == NULL)
-					continue;
-
-				res = dnstable_entry_get_rrtype(e, &rrtype);
-				dnstable_entry_destroy(&e);
-
-				if ((res != dnstable_res_success) || (rrtype != it->query->rrtype))
-					continue;
-			}
-			/*
-			 * When operating with a time filtered fileset, m_iter2 iterates over a
-			 * subset of the keys of m_iter. Thus, we can seek m_iter to a key from
-			 * m_iter2 and the next mtbl_iter_next call will return the same key.
-			 */
-			if (mtbl_iter_seek(it->m_iter, key, len_key) != mtbl_res_success) {
-				return (dnstable_res_failure);
-			}
-		}
-
 		if (mtbl_iter_next(it->m_iter, &key, &len_key, &val, &len_val) != mtbl_res_success)
 			return (dnstable_res_failure);
 
-		/* Check the "single label", if not done above. */
-		if (it->query->dq_wildplus && it->source_filter == NULL) {
+		/* Check the "single label". */
+		if (it->query->dq_wildplus) {
 			enum sl_seek_result sl_ret = seek_next_single_label(it, it->m_iter, key, len_key);
 
 			if (sl_ret == sl_nomatch)
@@ -775,20 +739,6 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 			my_gettime(DNSTABLE__CLOCK_MONOTONIC, &now);
 			if (my_timespec_cmp(&now, &expiry) >= 0)
 				return (dnstable_res_timeout);
-		}
-
-		if (it->source_filter != NULL) {
-			if (mtbl_iter_next(it->m_iter2, &key, &len_key, &val, &len_val) != mtbl_res_success) {
-				return (dnstable_res_failure);
-			}
-			/*
-			 * When operating with a time filtered fileset, m_iter2 iterates over a
-			 * subset of the keys of m_iter. Thus, we can seek m_iter to a key from
-			 * m_iter2 and the next mtbl_iter_next call will return the same key.
-			 */
-			if (mtbl_iter_seek(it->m_iter, key, len_key) != mtbl_res_success) {
-				return (dnstable_res_failure);
-			}
 		}
 
 		if (mtbl_iter_next(it->m_iter, &key, &len_key, &val, &len_val) != mtbl_res_success) {
@@ -1022,13 +972,7 @@ increment:
 
 seek:
 		/* Seek to the newly generated key. */
-		if (it->source_filter != NULL) {
-			if (mtbl_iter_seek(it->m_iter2,
-					   ubuf_data(seek_key),
-				           ubuf_size(seek_key)) != mtbl_res_success) {
-				return (dnstable_res_failure);
-			}
-		} else if (mtbl_iter_seek(it->m_iter,
+		if (mtbl_iter_seek(it->m_iter,
 				   ubuf_data(seek_key),
 				   ubuf_size(seek_key)) != mtbl_res_success) {
 			return (dnstable_res_failure);
@@ -1203,9 +1147,6 @@ query_get_iterator(struct query_iter *it, const struct mtbl_source *s)
 static void
 query_init_iterators(struct query_iter *it)
 {
-	if (it->source_filter != NULL)
-		it->m_iter2 = query_get_iterator(it, it->source_filter);
-
 	it->m_iter = query_get_iterator(it, it->source);
 }
 
@@ -1541,7 +1482,8 @@ dnstable_dupsort_func(void *clos,
 static bool
 reader_time_filter(struct mtbl_reader *r, void *clos)
 {
-	struct dnstable_query *q = clos;
+	struct query_iter *it = clos;
+	struct dnstable_query *q = it->query;
 	struct dnstable_query *tr_q = dnstable_query_init(DNSTABLE_QUERY_TYPE_TIME_RANGE);
 	struct dnstable_iter *tr_it = dnstable_query_iter(tr_q, mtbl_reader_source(r));
 	struct dnstable_entry *tr_e = NULL;
@@ -1609,6 +1551,9 @@ out:
 	dnstable_entry_destroy(&tr_e);
 	dnstable_iter_destroy(&tr_it);
 	dnstable_query_destroy(&tr_q);
+
+	if (!res)
+		mtbl_merger_add_source(it->fill_merger, mtbl_reader_source(r));
 	return res;
 }
 
@@ -1617,6 +1562,7 @@ dnstable_query_iter_fileset(struct dnstable_query *q, struct mtbl_fileset *fs)
 {
 	struct query_iter *it = my_calloc(1, sizeof(*it));
 	struct mtbl_fileset_options *fopt;
+	struct mtbl_merger_options *mopt;
 
 	it->query = q;
 	it->source = mtbl_fileset_source(fs);
@@ -1633,10 +1579,19 @@ dnstable_query_iter_fileset(struct dnstable_query *q, struct mtbl_fileset *fs)
 	 */
 	if (q->do_time_first_before || q->do_time_first_after ||
 	    q->do_time_last_before || q->do_time_last_after) {
-		mtbl_fileset_options_set_reader_filter_func(fopt, reader_time_filter, q);
+
+		mopt = mtbl_merger_options_init();
+		mtbl_merger_options_set_merge_func(mopt, dnstable_merge_func, NULL);
+		it->fill_merger = mtbl_merger_init(mopt);
+		mtbl_merger_options_destroy(&mopt);
+
+		mtbl_fileset_options_set_reader_filter_func(fopt, reader_time_filter, it);
 		it->fs_filter = mtbl_fileset_dup(fs, fopt);
 		it->source_index = mtbl_fileset_source(it->fs_filter);
-		it->source_filter = it->source_index;
+		it->ljoin = ljoin_mtbl_init(mtbl_fileset_source(it->fs_filter),
+					    mtbl_merger_source(it->fill_merger),
+					    dnstable_merge_func, NULL);
+		it->source = ljoin_mtbl_source(it->ljoin);
 	}
 
 	/*
@@ -1654,7 +1609,6 @@ dnstable_query_iter_fileset(struct dnstable_query *q, struct mtbl_fileset *fs)
 		mtbl_fileset_options_set_dupsort_func(fopt, dnstable_dupsort_func, NULL);
 		it->fs_no_merge = mtbl_fileset_dup(fs, fopt);
 		it->source = mtbl_fileset_source(it->fs_no_merge);
-		it->source_filter = NULL;
 	}
 
 	mtbl_fileset_options_destroy(&fopt);
