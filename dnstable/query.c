@@ -705,6 +705,48 @@ filter_rrtype(void *user, struct mtbl_iter *seek_iter,
 }
 
 static mtbl_res
+filter_rrtype_rdata_name(void *user, struct mtbl_iter *seek_iter,
+			 const uint8_t *key, size_t len_key,
+			 const uint8_t *val, size_t len_val,
+			 bool *match)
+{
+	size_t len;
+	uint16_t rdlen;
+	uint32_t rrtype;
+
+	(void)user;
+	*match = false;
+	if (len_key < sizeof(rdlen))
+		return (mtbl_res_success);
+
+	memcpy(&rdlen, &key[len_key - sizeof(rdlen)], sizeof(rdlen));
+	rdlen = le16toh(rdlen);
+	if ((size_t)rdlen + 2 >= len_key)
+		return (mtbl_res_success);
+
+	len = rdlen;
+	mtbl_varint_decode32(&key[len+1], &rrtype);
+
+	switch(rrtype) {
+	case WDNS_TYPE_SOA:
+	case WDNS_TYPE_NS:
+	case WDNS_TYPE_CNAME:
+	case WDNS_TYPE_DNAME:
+	case WDNS_TYPE_PTR:
+	case WDNS_TYPE_MX:
+	case WDNS_TYPE_SRV:
+	case WDNS_TYPE_SVCB:
+	case WDNS_TYPE_HTTPS:
+	case WDNS_TYPE_NSEC:
+	case WDNS_TYPE_RP:
+	case WDNS_TYPE_NXT:
+		*match = true;
+	}
+
+	return mtbl_res_success;
+}
+
+static mtbl_res
 filter_time_strict(void *user, struct mtbl_iter *seek_iter,
 		   const uint8_t *key, size_t len_key,
 		   const uint8_t *val, size_t len_val,
@@ -1356,8 +1398,10 @@ query_init_rdata_name(struct query_iter *it)
 
 	if (it->query->do_rrtype) {
 		it->filter_rrtype = filter_mtbl_init(it->source, filter_rrtype, it);
-		it->source = filter_mtbl_source(it->filter_rrtype);
+	} else {
+		it->filter_rrtype = filter_mtbl_init(it->source, filter_rrtype_rdata_name, it);
 	}
+	it->source = filter_mtbl_source(it->filter_rrtype);
 
 	it->key = ubuf_init(64);
 	if (is_right_wildcard(it->query))
