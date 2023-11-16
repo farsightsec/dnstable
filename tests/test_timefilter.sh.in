@@ -70,6 +70,11 @@ test_cmp_empty() {
 	fi
 }
 
+if [ $# != 0 ]; then
+	test_cmp $*
+	exit $RESULT
+fi
+
 for q in "rrset \*.example.com" \
 	 "rrset \*.example.com NS" \
 	 "rdata name \*.example.net" \
