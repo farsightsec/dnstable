@@ -19,6 +19,7 @@
 #include "dnstable-private.h"
 
 #include "libmy/my_time.h"
+#include "libmy/list.h"
 
 /*
  * Generic mtbl_source_{iter,get,get_prefix,get_range} wrappers to
@@ -561,4 +562,266 @@ timeout_mtbl_destroy(struct timeout_mtbl **ptimeout)
 	mtbl_source_destroy(&((*ptimeout)->source));
 	free(*ptimeout);
 	*ptimeout = NULL;
+}
+
+/* mtbl "remove" */
+
+VECTOR_GENERATE(source_vec, const struct mtbl_source *)
+
+struct remove_mtbl {
+	const struct mtbl_source *upstream;
+	source_vec *rm_sources;
+	struct mtbl_source *source;
+};
+
+struct remove_entry {
+	const struct mtbl_source *source;
+	struct mtbl_iter *it;
+	const uint8_t *key;
+	size_t len_key;
+	bool finished;
+	ISC_LINK(struct remove_entry) link;
+};
+
+struct remove_iter {
+	ISC_LIST(struct remove_entry) list;
+	struct mtbl_iter *it;
+	struct remove_entry *entries;
+	size_t nentries;
+	source_iter_func source_iter;
+	uint8_t *key, *key2;
+	size_t len_key, len_key2;
+};
+
+static bool
+match_key(struct remove_iter *rit, const uint8_t *key, size_t len_key)
+{
+	struct remove_entry *re;
+	mtbl_res res = mtbl_res_success;
+	int ret;
+
+	for (re = ISC_LIST_HEAD(rit->list);
+	     re != NULL;
+	     re = ISC_LIST_NEXT(re, link)) {
+
+		const uint8_t *val;
+		size_t len_val;
+
+		if (re->it == NULL) {
+			re->it = rit->source_iter(re->source, rit->key, rit->len_key,
+							      rit->key2, rit->len_key2);
+			res = mtbl_iter_seek(re->it, key, len_key);
+			if (res != mtbl_res_success) {
+				re->finished = true;
+				continue;
+			}
+			res = mtbl_iter_next(re->it, &re->key, &re->len_key, &val, &len_val);
+			if (res != mtbl_res_success) {
+				re->finished = true;
+				continue;
+			}
+		}
+
+		while (!re->finished) {
+
+			ret = bytes_compare(re->key, re->len_key, key, len_key);
+			if (ret > 0)
+				break;
+			if (ret < 0) {
+				res = mtbl_iter_seek(re->it, key, len_key);
+				if (res != mtbl_res_success)
+					break;
+				res = mtbl_iter_next(re->it, &re->key, &re->len_key, &val, &len_val);
+				if (res != mtbl_res_success)
+					break;
+				continue;
+			}
+
+			/* we have a match. Move it to head of list. */
+			ISC_LIST_UNLINK(rit->list, re, link);
+			ISC_LIST_PREPEND(rit->list, re, link);
+			return true;
+		}
+
+		if (res != mtbl_res_success) {
+			re->finished = true;
+		}
+	}
+
+	return false;
+}
+
+static mtbl_res
+remove_iter_next(void *impl, const uint8_t **key, size_t *len_key,
+			     const uint8_t **val, size_t *len_val)
+{
+	struct remove_iter *rit = impl;
+	mtbl_res res;
+
+	do {
+		res = mtbl_iter_next(rit->it, key, len_key, val, len_val);
+		if (res != mtbl_res_success)
+			return res;
+	} while (match_key(rit, *key, *len_key));
+
+	return mtbl_res_success;
+}
+
+static mtbl_res
+remove_iter_seek(void *impl, const uint8_t *key, size_t len_key)
+{
+	struct remove_iter *rit = impl;
+	struct remove_entry *re;
+	mtbl_res res;
+	unsigned i;
+
+	for (i = 0; i < rit->nentries; i++) {
+		const uint8_t *val;
+		size_t len_val;
+
+		re = &rit->entries[i];
+
+		if (re->it == NULL)
+			continue;
+
+		if (re->finished ||
+		    (bytes_compare(re->key, re->len_key, key, len_key) > 0)) {
+			res = mtbl_iter_seek(re->it, key, len_key);
+			if (res != mtbl_res_success) {
+				re->finished = true;
+				continue;
+			}
+			res = mtbl_iter_next(re->it, &re->key, &re->len_key, &val, &len_val);
+			if (res != mtbl_res_success) {
+				re->finished = true;
+				continue;
+			}
+			re->finished = false;
+		}
+	}
+
+	return  mtbl_iter_seek(rit->it, key, len_key);
+}
+
+static void
+remove_iter_free(void *impl)
+{
+	struct remove_iter *rit = impl;
+	unsigned i;
+
+	mtbl_iter_destroy(&rit->it);
+
+	for (i = 0; i < rit->nentries; i++) {
+		mtbl_iter_destroy(&rit->entries[i].it);
+	}
+	free(rit->entries);
+
+	free(rit);
+}
+
+static struct mtbl_iter *
+remove_source_iter_common(void *impl, source_iter_func source_iter,
+			  const uint8_t *key, size_t len_key,
+			  const uint8_t *key2, size_t len_key2)
+{
+	struct remove_mtbl *rm = impl;
+	struct remove_iter *rit = calloc(1, sizeof(*rit));
+	unsigned i;
+
+	rit->source_iter = source_iter;
+	rit->it = source_iter(rm->upstream, key, len_key, key2, len_key2);
+	if (len_key > 0) {
+		rit->len_key = len_key;
+		rit->key = malloc(len_key);
+		memcpy(rit->key, key, len_key);
+	}
+	if (len_key2 > 0) {
+		rit->len_key2 = len_key2;
+		rit->key2 = malloc(len_key2);
+		memcpy(rit->key2, key2, len_key2);
+	}
+
+	rit->nentries = source_vec_size(rm->rm_sources);
+	rit->entries = calloc(rit->nentries, sizeof(*rit->entries));
+
+	ISC_LIST_INIT(rit->list);
+	for (i = 0; i < rit->nentries; i++) {
+		rit->entries[i].source = source_vec_value(rm->rm_sources, i);
+		ISC_LIST_APPEND(rit->list, &rit->entries[i], link);
+	}
+	return mtbl_iter_init(remove_iter_seek, remove_iter_next, remove_iter_free, rit);
+}
+
+static struct mtbl_iter *
+remove_source_iter(void *impl)
+{
+	return remove_source_iter_common(impl, wrap_source_iter, NULL, 0, NULL, 0);
+}
+
+static struct mtbl_iter *
+remove_source_get(void *impl, const uint8_t *key, size_t len_key)
+{
+	return remove_source_iter_common(impl, wrap_source_get, key, len_key, NULL, 0);
+}
+
+static struct mtbl_iter *
+remove_source_get_prefix(void *impl, const uint8_t *key, size_t len_key)
+{
+	return remove_source_iter_common(impl, wrap_source_get_prefix, key, len_key, NULL, 0);
+}
+
+static struct mtbl_iter *
+remove_source_get_range(void *impl, const uint8_t *key, size_t len_key,
+				    const uint8_t *key2, size_t len_key2)
+{
+	return remove_source_iter_common(impl, wrap_source_get_range, key, len_key, key2, len_key2);
+}
+
+static void
+remove_source_free(void *impl)
+{
+	(void)impl;
+}
+
+struct remove_mtbl *
+remove_mtbl_init(void)
+{
+	struct remove_mtbl *rm = calloc(1, sizeof(*rm));
+	rm->rm_sources = source_vec_init(1);
+	rm->source = mtbl_source_init(remove_source_iter,
+				      remove_source_get,
+				      remove_source_get_prefix,
+				      remove_source_get_range,
+				      remove_source_free,
+				      rm);
+	return rm;
+}
+
+const struct mtbl_source *
+remove_mtbl_source(struct remove_mtbl *rm)
+{
+	return rm->source;
+}
+
+void
+remove_mtbl_add_source(struct remove_mtbl *rm, const struct mtbl_source *s)
+{
+	source_vec_add(rm->rm_sources, s);
+}
+
+void
+remove_mtbl_set_upstream(struct remove_mtbl *rm, const struct mtbl_source *upstream)
+{
+	rm->upstream = upstream;
+}
+
+void
+remove_mtbl_destroy(struct remove_mtbl **prm)
+{
+	struct remove_mtbl *rm = *prm;
+	if (rm == NULL) return;
+	source_vec_destroy(&rm->rm_sources);
+	mtbl_source_destroy(&rm->source);
+	free(rm);
+	*prm = NULL;
 }
