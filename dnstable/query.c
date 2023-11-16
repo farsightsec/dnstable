@@ -68,6 +68,7 @@ struct query_iter {
 	struct filter_mtbl	*filter_time;
 	struct filter_mtbl	*filter_bailiwick;
 	struct filter_mtbl	*filter_offset;
+	struct remove_mtbl	*remove_strict;
 };
 
 static void
@@ -535,6 +536,7 @@ query_iter_free(void *clos)
 	filter_mtbl_destroy(&it->filter_time);
 	filter_mtbl_destroy(&it->filter_bailiwick);
 	filter_mtbl_destroy(&it->filter_offset);
+	remove_mtbl_destroy(&it->remove_strict);
 	ubuf_destroy(&it->key);
 	ubuf_destroy(&it->key2);
 	my_free(it);
@@ -1585,6 +1587,11 @@ dnstable_query_iter_common(struct query_iter *it)
 	if (q->do_time_first_after || q->do_time_last_before) {
 		it->filter_time_strict = filter_mtbl_init(it->source, filter_time_strict, it);
 		it->source = filter_mtbl_source(it->filter_time_strict);
+
+		if (it->remove_strict != NULL) {
+			remove_mtbl_set_upstream(it->remove_strict, it->source);
+			it->source = remove_mtbl_source(it->remove_strict);
+		}
 	}
 
 	if (it->fill_merger != NULL) {
@@ -1680,7 +1687,8 @@ reader_time_filter(struct mtbl_reader *r, void *clos)
 	struct dnstable_iter *tr_it = dnstable_query_iter(tr_q, mtbl_reader_source(r));
 	struct dnstable_entry *tr_e = NULL;
 	uint64_t min_time_first, max_time_last;
-	bool res = true;
+	bool fill = false;
+	bool remove = false;
 
 	if (tr_it == NULL) goto out;
 
@@ -1698,16 +1706,20 @@ reader_time_filter(struct mtbl_reader *r, void *clos)
 	 * time_first_after cutoff, the resulting merged entries will
 	 * fail our time_first_after filter. Ignore for the filter pass.
 	 */
-	if (q->do_time_first_after && (q->time_first_after > max_time_last))
-		res = false;
+	if (q->do_time_first_after && (q->time_first_after > max_time_last)) {
+		remove = true;
+		goto out;
+	}
 
 	/*
 	 * #2. If the current reader has no data with time_last after our
 	 * time_last_after cutoff, it will not cause any merged results
 	 * to pass our time_last_after filter. Ignore for the filter pass.
 	 */
-	if (q->do_time_last_after && (q->time_last_after > max_time_last))
-		res = false;
+	if (q->do_time_last_after && (q->time_last_after > max_time_last)) {
+		fill = true;
+		goto out;
+	}
 
 	/*
 	 * #3. Like with time_first_after (#1), if the current reader has only
@@ -1715,8 +1727,10 @@ reader_time_filter(struct mtbl_reader *r, void *clos)
 	 * entries will fail our time_last_before filter. Ignore for the filter
 	 * pass.
 	 */
-	if (q->do_time_last_before && (q->time_last_before < min_time_first))
-		res = false;
+	if (q->do_time_last_before && (q->time_last_before < min_time_first)) {
+		remove = true;
+		goto out;
+	}
 
 	/*
 	 * #4. If the current reader contains no data with time_first before
@@ -1736,17 +1750,26 @@ reader_time_filter(struct mtbl_reader *r, void *clos)
 	 * to use to exclude readers for the filter pass.
 	 */
 	if (q->do_time_first_before && !q->do_time_last_after &&
-	    (q->time_first_before < min_time_first))
-		res = false;
+	    (q->time_first_before < min_time_first)) {
+		fill = true;
+	}
 
 out:
 	dnstable_entry_destroy(&tr_e);
 	dnstable_iter_destroy(&tr_it);
 	dnstable_query_destroy(&tr_q);
 
-	if (!res && (it->fill_merger != NULL))
+	if (fill && (it->fill_merger != NULL)) {
 		mtbl_merger_add_source(it->fill_merger, mtbl_reader_source(r));
-	return res;
+		return false;
+	}
+
+	if (remove && (it->remove_strict != NULL)) {
+		remove_mtbl_add_source(it->remove_strict, mtbl_reader_source(r));
+		return false;
+	}
+
+	return !(fill || remove);
 }
 
 struct dnstable_iter *
@@ -1771,6 +1794,9 @@ dnstable_query_iter_fileset(struct dnstable_query *q, struct mtbl_fileset *fs)
 	 */
 	if (q->do_time_first_before || q->do_time_first_after ||
 	    q->do_time_last_before || q->do_time_last_after) {
+
+		if (q->do_time_first_after || q->do_time_last_before)
+			it->remove_strict = remove_mtbl_init();
 
 		mopt = mtbl_merger_options_init();
 		mtbl_merger_options_set_merge_func(mopt, dnstable_merge_func, NULL);
@@ -1798,8 +1824,9 @@ dnstable_query_iter_fileset(struct dnstable_query *q, struct mtbl_fileset *fs)
 		mtbl_fileset_options_set_dupsort_func(fopt, dnstable_dupsort_func, NULL);
 		it->fs_no_merge = mtbl_fileset_dup(fs, fopt);
 		it->source = mtbl_fileset_source(it->fs_no_merge);
-		/* fill_merger is unused for non-aggregated queries */
+		/* fill_merger and remove_strict are unused for non-aggregated queries */
 		mtbl_merger_destroy(&it->fill_merger);
+		remove_mtbl_destroy(&it->remove_strict);
 	}
 
 	mtbl_fileset_options_destroy(&fopt);
