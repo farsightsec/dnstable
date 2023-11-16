@@ -123,6 +123,24 @@ EOF
 test_lookup matches  -j rrset www.example.com A example.ORG << EOF
 EOF
 
+# repeat bailiwick tests with wildcards
+test_lookup matches  -j rrset \*.example.com A example.com << EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"A","bailiwick":"example.com.","rdata":["198.51.100.3","198.51.100.4"]}
+EOF
+
+test_lookup matches  -j rrset \*.example.com A example.ORG << EOF
+EOF
+
+# repeat bailiwick tests with no rrtype restriction
+test_lookup matches -j rrset www.example.com ANY example.com << EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"A","bailiwick":"example.com.","rdata":["198.51.100.3","198.51.100.4"]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"AAAA","bailiwick":"example.com.","rdata":["2001:db8::1","2001:db8::2"]}
+EOF
+
+test_lookup matches -j rrset www.example.com ANY example.ORG << EOF
+EOF
+
+
 test_lookup matches  -j rrset www.example.com AAAA << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"AAAA","bailiwick":"example.com.","rdata":["2001:db8::1","2001:db8::2"]}
 EOF
