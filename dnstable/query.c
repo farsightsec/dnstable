@@ -67,6 +67,7 @@ struct query_iter {
 	struct filter_mtbl	*filter_time_strict;
 	struct filter_mtbl	*filter_time;
 	struct filter_mtbl	*filter_bailiwick;
+	struct filter_mtbl	*filter_offset;
 };
 
 static void
@@ -533,6 +534,7 @@ query_iter_free(void *clos)
 	filter_mtbl_destroy(&it->filter_time_strict);
 	filter_mtbl_destroy(&it->filter_time);
 	filter_mtbl_destroy(&it->filter_bailiwick);
+	filter_mtbl_destroy(&it->filter_offset);
 	ubuf_destroy(&it->key);
 	ubuf_destroy(&it->key2);
 	my_free(it);
@@ -856,6 +858,23 @@ filter_time(void *user, struct mtbl_iter *seek_iter,
 	return (mtbl_res_success);
 }
 
+static mtbl_res
+filter_offset(void *user, struct mtbl_iter *seek_iter,
+	      const uint8_t *key, size_t len_key,
+	      const uint8_t *val, size_t len_val,
+	      bool *match)
+{
+	struct query_iter *it = user;
+	struct dnstable_query *q = it->query;
+
+	*match = true;
+	if (q->offset > 0) {
+		*match = false;
+		q->offset--;
+	}
+	return (mtbl_res_success);
+}
+
 static dnstable_res
 query_iter_next(void *clos, struct dnstable_entry **ent)
 {
@@ -869,8 +888,6 @@ query_iter_next(void *clos, struct dnstable_entry **ent)
 	}
 
 	for (;;) {
-		bool pass = false;
-		dnstable_res res;
 		const uint8_t *key, *val;
 		size_t len_key, len_val;
 
@@ -881,20 +898,7 @@ query_iter_next(void *clos, struct dnstable_entry **ent)
 		if (*ent == NULL)
 			continue;
 
-		res = dnstable_query_filter(it->query, *ent, &pass);
-		assert(res == dnstable_res_success);
-		if (pass) {
-			/* offset (e.g. skip) initial rows */
-			if (it->query->offset > 0 && it->query->offset-- > 0)
-			{
-				dnstable_entry_destroy(ent);
-				continue;
-			}
-
-			return (dnstable_res_success);
-		}
-
-		dnstable_entry_destroy(ent);
+		return (dnstable_res_success);
 	}
 
 	return (dnstable_res_failure);
@@ -1146,8 +1150,6 @@ query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t t
 	struct query_iter *it = (struct query_iter *) clos;
 	const uint8_t *key, *val;
 	size_t len_key, len_val;
-	bool pass = false;
-	dnstable_res res;
 
 	if (it->query->do_timeout) {
 		my_gettime(DNSTABLE__CLOCK_MONOTONIC, &it->deadline);
@@ -1225,21 +1227,7 @@ query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t t
 		if (*ent == NULL)
 			continue;
 
-		res = dnstable_query_filter(it->query, *ent, &pass);
-		assert(res == dnstable_res_success);
-		if (pass) {
-			/* offset (e.g. skip) initial rows */
-			if (it->query->offset > 0 && it->query->offset-- > 0)
-			{
-				dnstable_entry_destroy(ent);
-				continue;
-			}
-
-			return (dnstable_res_success);
-		} else {
-			dnstable_entry_destroy(ent);
-			continue;
-		}
+		return (dnstable_res_success);
 	}
 	return (dnstable_res_failure);
 }
@@ -1609,6 +1597,11 @@ dnstable_query_iter_common(struct query_iter *it)
 	if (q->do_time_first_before || q->do_time_last_after || (it->filter_time_strict != NULL)) {
 		it->filter_time = filter_mtbl_init(it->source, filter_time, it);
 		it->source = filter_mtbl_source(it->filter_time);
+	}
+
+	if (q->offset > 0) {
+		it->filter_offset = filter_mtbl_init(it->source, filter_offset, it);
+		it->source = filter_mtbl_source(it->filter_offset);
 	}
 
 	if (it->m_iter2 == NULL) {
