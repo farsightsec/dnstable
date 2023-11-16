@@ -223,4 +223,24 @@ timeout_mtbl_source(const struct timeout_mtbl *);
 void
 timeout_mtbl_destroy(struct timeout_mtbl **);
 
+
+/* Remove keys present in any source from the upstream source. */
+struct remove_mtbl;
+
+struct remove_mtbl *
+remove_mtbl_init(void);
+
+void
+remove_mtbl_add_source(struct remove_mtbl *, const struct mtbl_source *);
+
+void
+remove_mtbl_set_upstream(struct remove_mtbl *, const struct mtbl_source *);
+
+const struct mtbl_source *
+remove_mtbl_source(struct remove_mtbl *);
+
+void
+remove_mtbl_destroy(struct remove_mtbl **);
+
+
 #endif /* DNSTABLE_PRIVATE_H */
