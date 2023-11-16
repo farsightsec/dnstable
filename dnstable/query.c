@@ -66,6 +66,7 @@ struct query_iter {
 	struct filter_mtbl	*filter_rrtype_ip;
 	struct filter_mtbl	*filter_time_strict;
 	struct filter_mtbl	*filter_time;
+	struct filter_mtbl	*filter_bailiwick;
 };
 
 static void
@@ -531,6 +532,7 @@ query_iter_free(void *clos)
 	filter_mtbl_destroy(&it->filter_rrtype_ip);
 	filter_mtbl_destroy(&it->filter_time_strict);
 	filter_mtbl_destroy(&it->filter_time);
+	filter_mtbl_destroy(&it->filter_bailiwick);
 	ubuf_destroy(&it->key);
 	ubuf_destroy(&it->key2);
 	my_free(it);
@@ -744,6 +746,44 @@ filter_rrtype_rdata_name(void *user, struct mtbl_iter *seek_iter,
 	}
 
 	return mtbl_res_success;
+}
+
+static mtbl_res
+filter_bailiwick(void *user, struct mtbl_iter *seek_iter,
+		 const uint8_t *key, size_t len_key,
+		 const uint8_t *val, size_t len_val,
+		 bool *match)
+{
+	struct query_iter *it = user;
+	struct dnstable_query *q = it->query;
+	uint8_t bwick[WDNS_MAXLEN_NAME];
+	size_t len, len_name;
+	uint32_t rrtype;
+
+	*match = false;
+	if (wdns_len_uname(&key[1], &key[len_key], &len) != wdns_res_success)
+		return (mtbl_res_success);
+	if (len + 2 >= len_key)
+		return (mtbl_res_success);
+
+	len ++;
+	len += mtbl_varint_decode32(&key[len], &rrtype);
+	if (len >= len_key)
+		return (mtbl_res_success);
+
+	if (wdns_len_uname(&key[len], &key[len_key], &len_name) != wdns_res_success)
+		return (mtbl_res_success);
+
+	if (len_name != q->bailiwick.len)
+		return (mtbl_res_success);
+
+	if (wdns_reverse_name(&key[len], len_name, bwick) != wdns_res_success)
+		return (mtbl_res_success);
+
+	if (!memcmp(q->bailiwick.data, bwick, len_name))
+		*match = true;
+
+	return (mtbl_res_success);
 }
 
 static mtbl_res
@@ -1242,6 +1282,11 @@ query_init_rrset_right_wildcard(struct query_iter *it)
 		it->source = filter_mtbl_source(it->filter_rrtype);
 	}
 
+	if (it->query->bailiwick.data != NULL) {
+		it->filter_bailiwick = filter_mtbl_init(it->source, filter_bailiwick, it);
+		it->source = filter_mtbl_source(it->filter_bailiwick);
+	}
+
 	return dnstable_iter_init(query_iter_next_rrset_name_fwd, query_iter_free, it);
 }
 
@@ -1268,6 +1313,11 @@ query_init_rrset_left_wildcard(struct query_iter *it)
 	if (it->query->do_rrtype) {
 		it->filter_rrtype = filter_mtbl_init(it->source, filter_rrtype, it);
 		it->source = filter_mtbl_source(it->filter_rrtype);
+	}
+
+	if (it->query->bailiwick.data != NULL) {
+		it->filter_bailiwick = filter_mtbl_init(it->source, filter_bailiwick, it);
+		it->source = filter_mtbl_source(it->filter_bailiwick);
 	}
 
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
@@ -1344,6 +1394,9 @@ query_init_rrset(struct query_iter *it)
 			}
 			ubuf_append(it->key, name, it->query->bailiwick.len);
 		}
+	} else if (it->query->bailiwick.data != NULL) {
+		it->filter_bailiwick = filter_mtbl_init(it->source, filter_bailiwick, it);
+		it->source = filter_mtbl_source(it->filter_bailiwick);
 	}
 
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
