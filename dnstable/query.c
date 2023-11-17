@@ -725,6 +725,12 @@ filter_rrtype(void *user, struct mtbl_iter *seek_iter,
 	return(mtbl_res_success);
 }
 
+/*
+ * filter_rrtype_rdata_name passes rdata entries with types whose
+ * rdata format begin with a domain name, or a domain name at a
+ * fixed offset used for "slice" encoding. This prevents rdata name
+ * searches from returning non-name (e.g. NULL, IPv6) records.
+ */
 static mtbl_res
 filter_rrtype_rdata_name(void *user, struct mtbl_iter *seek_iter,
 			 const uint8_t *key, size_t len_key,
@@ -801,6 +807,11 @@ filter_bailiwick(void *user, struct mtbl_iter *seek_iter,
 	return (mtbl_res_success);
 }
 
+/*
+ * filter_time_strict provides a filter removing partially merged entries
+ * which have already failed time_first_after or time_last_before tests
+ * to save further merges.
+ */
 static mtbl_res
 filter_time_strict(void *user, struct mtbl_iter *seek_iter,
 		   const uint8_t *key, size_t len_key,
