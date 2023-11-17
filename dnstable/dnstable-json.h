@@ -1,3 +1,20 @@
+/*
+ * Copyright (c) 2023 DomainTools LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
 /* Routines for jsonl serialization based on underlying ubuf encapsulation. */
 
 #ifndef DNSTABLE_JSON_H
@@ -6,18 +23,6 @@
 #include "libmy/my_alloc.h"
 #include "libmy/ubuf.h"
 
-static inline void
-num_to_str(int num, int size, char * ptr) {
-	int ndx = size - 1;
-
-	while (size > 0) {
-		int digit = num % 10;
-		ptr[ndx] = '0' + digit;
-		--ndx;
-		--size;
-		num /= 10;
-	}
-}
 
 static inline size_t
 vnum_to_str(uint64_t num, char *ptr) {
@@ -36,7 +41,7 @@ vnum_to_str(uint64_t num, char *ptr) {
 		ptr[ndx] = '0' + digit;
 		--ndx;
 		--left;
-		num = num/10;
+		num = num / 10;
 	}
 
 	ptr[ndigits] = '\0';
@@ -145,26 +150,6 @@ append_json_value_bool(ubuf *u, bool val) {
 		ubuf_append(u, (const uint8_t *)"true", 4);
 	else
 		ubuf_append(u, (const uint8_t *)"false", 5);	// guaranteed success
-}
-
-static inline void
-append_json_value_double(ubuf *u, double val) {
-	char dubbuf[64], *endp;
-	size_t dlen;
-
-	dlen = snprintf(dubbuf, sizeof(dubbuf), "%.18f", val);
-	dubbuf[sizeof(dubbuf)-1] = 0;
-
-	/* Trim possible trailing numerical zero padding */
-	endp = dubbuf + dlen - 1;
-	while (*endp != '\0' && endp > dubbuf) {
-		if (*endp != '0' || *(endp-1) == '.')
-			break;
-		*endp-- = '\0';
-		dlen--;
-	}
-
-	ubuf_append(u, (const uint8_t *)dubbuf, dlen);	// guaranteed success
 }
 
 static inline void

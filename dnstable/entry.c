@@ -25,7 +25,10 @@ VECTOR_GENERATE(rdata_vec, wdns_rdata_t *);
 #define JSON_OBJ_END(u)            ubuf_append(u, (const uint8_t *)"}", 1)
 #define JSON_ARR_START(u)          ubuf_append(u, (const uint8_t *)"[", 1)
 #define JSON_ARR_END(u)            ubuf_append(u, (const uint8_t *)"]", 1)
-#define JSON_ARR_DELIMIT(u,x,y)    if (x + 1 < y) { ubuf_append(u, (const uint8_t *)",", 1); }
+#define JSON_ARR_DELIMIT(u,x,y)    do {	\
+                                   if (x + 1 < y)	\
+                                   	ubuf_append(u, (const uint8_t *)",", 1);	\
+                                   } while (0)
 #define JSON_DECL_VALUE(u,s)       declare_json_value(u, s, started++ == 0)
 #define JSON_STR_APPEND(u,s)       append_json_value_string(u, s, strlen(s))
 #define JSON_STR_APPEND_LEN(u,s,n) append_json_value_string(u, s, n)
