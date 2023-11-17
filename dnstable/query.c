@@ -155,11 +155,23 @@ dnstable_query_set_case_sensitive(struct dnstable_query *q, bool case_sensitive)
 dnstable_res
 dnstable_query_set_bailiwick(struct dnstable_query *q, const char *s_name)
 {
+	dnstable_res res;
+	uint8_t *rev;
 	if (q->q_type != DNSTABLE_QUERY_TYPE_RRSET) {
 		query_set_err(q, "bailiwick filtering not supported");
 		return (dnstable_res_failure);
 	}
-	return query_load_name(q, &q->bailiwick, s_name, false);
+	res = query_load_name(q, &q->bailiwick, s_name, false);
+	if (res != dnstable_res_success || q->bailiwick.data == NULL)
+		return res;
+	rev = my_malloc(q->bailiwick.len);
+	if (wdns_reverse_name(q->bailiwick.data, q->bailiwick.len, rev) != wdns_res_success) {
+		my_free(rev);
+		return (dnstable_res_failure);
+	}
+	my_free(q->bailiwick.data);
+	q->bailiwick.data = rev;
+	return (dnstable_res_success);
 }
 
 static dnstable_res
@@ -500,13 +512,16 @@ dnstable_query_filter(struct dnstable_query *q, struct dnstable_entry *e, bool *
 
 	if (q->q_type == DNSTABLE_QUERY_TYPE_RRSET && q->bailiwick.data != NULL) {
 		const uint8_t *bailiwick;
+		uint8_t rev[WDNS_MAXLEN_NAME];
 		size_t len_bailiwick;
 		res = dnstable_entry_get_bailiwick(e, &bailiwick, &len_bailiwick);
 		if (res != dnstable_res_success)
 			return (res);
 		if (q->bailiwick.len != len_bailiwick)
 			goto fail;
-		if (memcmp(q->bailiwick.data, bailiwick, len_bailiwick) != 0)
+		if (wdns_reverse_name(bailiwick, len_bailiwick, rev) != wdns_res_success)
+			goto fail;
+		if (memcmp(q->bailiwick.data, rev, len_bailiwick) != 0)
 			goto fail;
 	}
 
@@ -760,7 +775,6 @@ filter_bailiwick(void *user, struct mtbl_iter *seek_iter,
 {
 	struct query_iter *it = user;
 	struct dnstable_query *q = it->query;
-	uint8_t bwick[WDNS_MAXLEN_NAME];
 	size_t len, len_name;
 	uint32_t rrtype;
 
@@ -781,10 +795,7 @@ filter_bailiwick(void *user, struct mtbl_iter *seek_iter,
 	if (len_name != q->bailiwick.len)
 		return (mtbl_res_success);
 
-	if (wdns_reverse_name(&key[len], len_name, bwick) != wdns_res_success)
-		return (mtbl_res_success);
-
-	if (!memcmp(q->bailiwick.data, bwick, len_name))
+	if (!memcmp(q->bailiwick.data, &key[len], len_name))
 		*match = true;
 
 	return (mtbl_res_success);
@@ -1373,16 +1384,7 @@ query_init_rrset(struct query_iter *it)
 		add_rrtype_to_key(it->key, it->query->rrtype);
 
 		if (it->query->bailiwick.data != NULL) {
-			/* key: bailiwick name (label-reversed) */
-			if (wdns_reverse_name(it->query->bailiwick.data,
-					      it->query->bailiwick.len,
-					      name)
-			    != wdns_res_success)
-			{
-				ubuf_destroy(&it->key);
-				return (NULL);
-			}
-			ubuf_append(it->key, name, it->query->bailiwick.len);
+			ubuf_append(it->key, it->query->bailiwick.data, it->query->bailiwick.len);
 		}
 	} else if (it->query->bailiwick.data != NULL) {
 		it->filter_bailiwick = filter_mtbl_init(it->source, filter_bailiwick, it);
