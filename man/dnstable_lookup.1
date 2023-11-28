@@ -31,13 +31,13 @@
 dnstable_lookup \- lookup individual records in a dnstable data file or set of data files
 .SH "SYNOPSIS"
 .sp
-\fBdnstable_lookup\fR [\fB\-cjJRu\fR] [\fB\-aAbB datetime\fR] [\fB\-O #\fR] \fBrrset\fR <OWNER> [<RRTYPE> [<BAILIWICK>]]
+\fBdnstable_lookup\fR [\fB\-cCJnRu\fR] [\fB\-aAbB datetime\fR] [\fB\-O #\fR] \fBrrset\fR <OWNER> [<RRTYPE> [<BAILIWICK>]]
 .sp
-\fBdnstable_lookup\fR [\fB\-cjJRu\fR] [\fB\-aAbB datetime\fR] [\fB\-O #\fR] \fBrdata ip\fR <ADDRESS | RANGE | PREFIX>
+\fBdnstable_lookup\fR [\fB\-cJnRu\fR] [\fB\-aAbB datetime\fR] [\fB\-O #\fR] \fBrdata ip\fR <ADDRESS | RANGE | PREFIX>
 .sp
-\fBdnstable_lookup\fR [\fB\-cjJRu\fR] [\fB\-aAbB datetime\fR] [\fB\-O #\fR] \fBrdata raw\fR <HEX STRING> [<RRTYPE>]
+\fBdnstable_lookup\fR [\fB\-cJnRu\fR] [\fB\-aAbB datetime\fR] [\fB\-O #\fR] \fBrdata raw\fR <HEX STRING> [<RRTYPE>]
 .sp
-\fBdnstable_lookup\fR [\fB\-cjJRu\fR] [\fB\-aAbB datetime\fR] [\fB\-O #\fR] \fBrdata name\fR <RDATA NAME> [<RRTYPE>]
+\fBdnstable_lookup\fR [\fB\-cCJnRu\fR] [\fB\-aAbB datetime\fR] [\fB\-O #\fR] \fBrdata name\fR <RDATA NAME> [<RRTYPE>]
 .sp
 \fBdnstable_lookup\fR [\fB\-jJu\fR] [\fB\-O #\fR] \fBtime_range\fR
 .sp
@@ -92,6 +92,11 @@ and
 will select results if any of the time is within the range (even if some are outside the range)\&. The
 \fB\-c\fR
 means it will not output the entry if it was also seen outside the time range\&.
+.RE
+.PP
+\fB\-C\fR
+.RS 4
+Do all matching in a case-sensitive manner.
 .RE
 .PP
 \fB\-j\fR

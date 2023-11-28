@@ -6,13 +6,13 @@ dnstable_lookup - lookup individual records in a dnstable data file or set of da
 
 == SYNOPSIS ==
 
-^dnstable_lookup^ [^-cjJRu^] [^-aAbB datetime^] [^-O #^] ^rrset^ <OWNER> [<RRTYPE> [<BAILIWICK>]]
+^dnstable_lookup^ [^-cCjJnRu^] [^-aAbB datetime^] [^-O #^] ^rrset^ <OWNER> [<RRTYPE> [<BAILIWICK>]]
 
-^dnstable_lookup^ [^-cjJRu^] [^-aAbB datetime^] [^-O #^] ^rdata ip^ <ADDRESS | RANGE | PREFIX>
+^dnstable_lookup^ [^-cjJnRu^] [^-aAbB datetime^] [^-O #^] ^rdata ip^ <ADDRESS | RANGE | PREFIX>
 
-^dnstable_lookup^ [^-cjJRu^] [^-aAbB datetime^] [^-O #^] ^rdata raw^ <HEX STRING> [<RRTYPE>]
+^dnstable_lookup^ [^-cjJnRu^] [^-aAbB datetime^] [^-O #^] ^rdata raw^ <HEX STRING> [<RRTYPE>]
 
-^dnstable_lookup^ [^-cjJRu^] [^-aAbB datetime^] [^-O #^] ^rdata name^ <RDATA NAME> [<RRTYPE>]
+^dnstable_lookup^ [^-cCjJnRu^] [^-aAbB datetime^] [^-O #^] ^rdata name^ <RDATA NAME> [<RRTYPE>]
 
 ^dnstable_lookup^ [^-jJu^] [^-O #^] ^time_range^
 
@@ -72,6 +72,9 @@ can be used to request a specific type's version. ^ETYPE^ may be one of ^rrset^,
     outside the range).
     The ^-c^ means it will not output the entry if it was also
     seen outside the time range.
+
+^-C^::
+    Do all matching in a case-sensitive manner.
 
 ^-j^::
     Use JSON format for output, with timestamps in epoch time (seconds since epoch).
