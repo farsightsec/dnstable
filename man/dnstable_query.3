@@ -85,6 +85,12 @@ dnstable_query_set_aggregated(struct dnstable_query *\fR\fB\fIq\fR\fR\fB,
 .sp
 .nf
 \fBdnstable_res
+dnstable_query_set_case_sensitive(struct dnstable_query *\fR\fB\fIq\fR\fR\fB,
+    bool \fR\fB\fIcase_sensitive\fR\fR\fB);\fR
+.fi
+.sp
+.nf
+\fBdnstable_res
 dnstable_query_set_bailiwick(struct dnstable_query *\fR\fB\fIq\fR\fR\fB,
     const char *\fR\fB\fIbailiwick\fR\fR\fB);\fR
 .fi
@@ -123,6 +129,8 @@ Once the query object has been constructed, \fBdnstable_query_iter\fR() iterates
 \fBdnstable_query_set_offset()\fR sets the number of initial rows to offset (e\&.g\&. skip) from the results\&. The default is 0, which means to not offset any rows\&.
 .sp
 \fBdnstable_query_set_aggregated\fR() sets if the results from queries should be aggregated\&. The default is \fItrue\fR for aggregated results\&.
+.sp
+\fBdnstable_query_set_case_sensitive\fR() sets if the query parameters should be treated as case-sensitive\&. The default is \fIfalse\fR\&.
 .sp
 \fBdnstable_query_set_data\fR() specifies the main search parameter and is required\&. Its meaning depends on the query type\&.
 .sp
