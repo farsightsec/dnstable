@@ -170,6 +170,7 @@ usage(void)
 	fprintf(stderr, "\t-c: treat -A as -a, -B as -b for dnsdbq \"complete (strict) matching\" semantics.\n");
 	fprintf(stderr, "\t-j: output in JSON format with epoch time; default is 'dig' presentation format\n");
 	fprintf(stderr, "\t-J: output in JSON format with human time (RFC3339 format); default is 'dig' presentation format\n");
+	fprintf(stderr, "\t-n: output only the number of matches\n");
 	fprintf(stderr, "\t-R: add raw rdata representation\n");
 	fprintf(stderr, "\t-u: output unaggregated results; default is aggregated results\n");
 	fprintf(stderr, "\t-O #: offset the first # results (must be a positive number)\n");
@@ -200,7 +201,7 @@ main(int argc, char **argv)
 	dnstable_res res;
 	int ch;
 
-	while ((ch = getopt(argc, argv, "a:A:b:B:cjJRsuO:")) != -1) {
+	while ((ch = getopt(argc, argv, "a:A:b:B:cjJnRuO:")) != -1) {
 		switch (ch) {
 		case 'a':
 			time_first_after = parse_time(optarg);
@@ -239,11 +240,11 @@ main(int argc, char **argv)
 		case 'J':
 			g_Json = true;
 			break;
+		case 'n':
+			g_summary = true;
+			break;
 		case 'R':
 			g_add_raw = true;
-			break;
-		case 's':
-			g_summary = true;
 			break;
 		case 'u':
 			g_aggregate = false;
