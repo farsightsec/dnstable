@@ -24,6 +24,7 @@ global:
         dnstable_query_init;
         dnstable_query_iter;
         dnstable_query_set_bailiwick;
+        dnstable_query_set_case_sensitive;
         dnstable_query_set_data;
         dnstable_query_set_rrtype;
         dnstable_reader_destroy;

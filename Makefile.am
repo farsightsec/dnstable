@@ -167,7 +167,8 @@ check_PROGRAMS += tests/test-dnstable
 tests_test_dnstable_CPPFLAGS = -DSRCDIR="\"$(abs_srcdir)\"" $(AM_CPPFLAGS)
 tests_test_dnstable_LDADD = \
 	dnstable/libdnstable.la \
-	$(libmtbl_LIBS)
+	$(libmtbl_LIBS) \
+	$(libwdns_LIBS)
 tests_test_dnstable_SOURCES = tests/test-dnstable.c tests/errors.h libmy/my_format.c libmy/my_format.h
 
 check_PROGRAMS += tests/test-bitmaps

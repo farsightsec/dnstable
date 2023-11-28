@@ -19,9 +19,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <wdns.h>
 
 #include "errors.h"
-
+#include "libmy/my_alloc.h"
 #include "dnstable/dnstable.h"
 
 #define NAME	"test-dnstable"
@@ -549,11 +550,124 @@ test_merger(void)
 	l_return_test_status();
 }
 
+static int do_test_query_case(struct dnstable_query * query, struct mtbl_reader * mreader, bool case_sensitive, const char * t_rrname, const char * t_rrtype, const char * t_bailiwick, dnstable_res exp_res)
+{
+	wdns_name_t test;
+	size_t lrrname, lbailiwick;
+	dnstable_res res;
+	uint16_t rrtype, e_rrtype;
+	const uint8_t *rrname, *bailiwick;
+	struct timespec ts = {0, 0};
+	struct dnstable_iter *iter;
+	struct dnstable_entry *entry;
+
+	// Set query case sensitivity
+	dnstable_query_set_case_sensitive(query, case_sensitive);
+
+	res = dnstable_query_set_data(query, t_rrname);
+	check_return(res == dnstable_res_success);
+
+	res = dnstable_query_set_rrtype(query, t_rrtype);
+	check_return(res == dnstable_res_success);
+
+	if (t_bailiwick != NULL)
+	{
+		res = dnstable_query_set_bailiwick(query, t_bailiwick);
+		check_return(res == dnstable_res_success);
+	}
+
+	ts.tv_sec = 100;
+	res = dnstable_query_set_timeout(query, &ts);
+
+	iter = dnstable_query_iter(query, mtbl_reader_source(mreader));
+	check_return(iter != NULL);
+
+	// Case-sensitive query should not find anything
+	res = dnstable_iter_next(iter, &entry);
+	check_return(res == exp_res);
+	if (res == dnstable_res_success) {
+		uint16_t star_offset = (*t_rrname == '*' ? 2 : 0);
+		check_return(res == dnstable_res_success);
+
+		e_rrtype = wdns_str_to_rrtype(t_rrtype);
+		check_abort(e_rrtype != 0);
+
+		res = dnstable_entry_get_rrtype(entry, &rrtype);
+		check_return(res == dnstable_res_success);
+		check_return(rrtype == e_rrtype);
+
+		/* Should have yielded a dot com extension */
+		res = dnstable_entry_get_rrname(entry, &rrname, &lrrname);
+		check_return(res == dnstable_res_success);
+		check_return(lrrname >= 5);
+
+		memset(&test, 0, sizeof(test));
+		if (case_sensitive == true) {
+			check_return(wdns_str_to_name_case(t_rrname + star_offset, &test) == wdns_res_success);
+		} else {
+			check_return(wdns_str_to_name(t_rrname + star_offset, &test) == wdns_res_success);
+		}
+
+		check_return(!strncasecmp((const char *) &rrname[lrrname - test.len], (const char *) test.data, test.len));
+
+		my_free(test.data);
+		test.len = 0;
+
+		if (t_bailiwick != NULL) {
+			check_return(wdns_str_to_name_case(t_bailiwick, &test) == wdns_res_success);
+			res = dnstable_entry_get_bailiwick(entry, &bailiwick, &lbailiwick);
+			check_return(res == dnstable_res_success);
+			check_return(lbailiwick == test.len);
+			check_return(!memcmp(bailiwick, test.data, test.len));
+			my_free(test.data);
+			test.len = 0;
+		}
+
+		dnstable_entry_destroy(&entry);
+	}
+
+	dnstable_iter_destroy(&iter);
+
+	l_return_test_status();
+}
+
+static int
+test_query_case(void)
+{
+	struct mtbl_reader *mreader;
+	struct dnstable_reader *reader;
+	struct dnstable_query *query;
+
+	mreader = mtbl_reader_init(SRCDIR "/tests/generic-tests/test2.mtbl", NULL);
+	check_return(mreader != NULL);
+	reader = dnstable_reader_init(mtbl_reader_source(mreader));
+	check_return(reader != NULL);
+
+	query = dnstable_query_init(DNSTABLE_QUERY_TYPE_RRSET);
+	check_return(query != NULL);
+
+	/* These two test shall both find exactly one entry */
+	check_return(do_test_query_case(query, mreader, true, "_WILDCARD_.ea.com", "NS", NULL, dnstable_res_success) == 0)
+	check_return(do_test_query_case(query, mreader, false, "_WILDCARD_.ea.COM", "NS", NULL, dnstable_res_success) == 0)
+
+	/* This test should not find an entry */
+	check_return(do_test_query_case(query, mreader, true, "*.COM", "A", "bkk1.cloud.z.com", dnstable_res_failure) == 0)
+
+	/* This test should find an entry */
+	check_return(do_test_query_case(query, mreader, false, "*.COM", "A", "bkk1.cloud.z.com", dnstable_res_success) == 0)
+
+	dnstable_reader_destroy(&reader);
+	dnstable_query_destroy(&query);
+	
+	l_return_test_status();
+}
+
 int
 main(void)
 {
 	check_explicit2_display_only(test_basic() == 0, "test-dnstable/ test_basic");
 	check_explicit2_display_only(test_query() == 0, "test-dnstable/ test_query");
+	check_explicit2_display_only(test_query_case() == 0, "test-dnstable/ test_query_case");
 	check_explicit2_display_only(test_cust_iter() == 0, "test-dnstable/ test_cust_iter");
 	check_explicit2_display_only(test_merger() == 0, "test-dnstable/ test_merger");
 
