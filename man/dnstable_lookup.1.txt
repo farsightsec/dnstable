@@ -83,12 +83,12 @@ can be used to request a specific type's version. ^ETYPE^ may be one of ^rrset^,
     Default is 'dig' presentation format.
     One JSON-formatted entry per line will be printed.
 
+^-s^::
+    Output the number of matching entries found, rather than details about each entry.
+
 ^-R^, ^--raw^::
     When using a JSON format for output, add a hex representation of the
     raw rdata and the rrtype.
-
-^-s^::
-    Output the number of matching entries found, rather than details about each entry.
 
 ^-u^::
     Output unaggregated results; default is aggregated results.

@@ -32,7 +32,7 @@
 static bool g_json = false;
 static bool g_Json = false;
 static bool g_add_raw;
-static bool g_summary = false;
+static bool g_count = false;
 static bool g_aggregate = true;
 static int64_t g_offset = 0;
 
@@ -41,7 +41,7 @@ print_entry(struct dnstable_entry *ent)
 {
 	char *s;
 
-	if (g_summary)
+	if (g_count)
 		return;
 
 	if (g_Json || g_json) {
@@ -80,7 +80,7 @@ do_dump(struct dnstable_iter *it)
 		count++;
 	}
 
-	if (g_summary)
+	if (g_count)
 		fprintf(stderr, ";;; Processed %'" PRIu64 " entries.\n", count);
 	else
 		if (!g_json && !g_Json)
@@ -241,7 +241,7 @@ main(int argc, char **argv)
 			g_Json = true;
 			break;
 		case 'n':
-			g_summary = true;
+			g_count = true;
 			break;
 		case 'R':
 			g_add_raw = true;
@@ -325,7 +325,7 @@ main(int argc, char **argv)
                 }
         }
 
-	if (g_summary && (g_Json || g_json || g_add_raw)) {
+	if (g_count && (g_Json || g_json || g_add_raw)) {
 		fprintf(stderr, "dnstable_lookup: cannot specify -s with either -j, -J or -R\n");
 		exit(EXIT_FAILURE);
 	}
