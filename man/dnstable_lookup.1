@@ -31,13 +31,13 @@
 dnstable_lookup \- lookup individual records in a dnstable data file or set of data files
 .SH "SYNOPSIS"
 .sp
-\fBdnstable_lookup\fR [\fB\-cjJRu\fR] [\fB\-aAbB datetime\fR] [\fB\-O #\fR] \fBrrset\fR <OWNER> [<RRTYPE> [<BAILIWICK>]]
+\fBdnstable_lookup\fR [\fB\-cCJnRu\fR] [\fB\-aAbB datetime\fR] [\fB\-O #\fR] \fBrrset\fR <OWNER> [<RRTYPE> [<BAILIWICK>]]
 .sp
-\fBdnstable_lookup\fR [\fB\-cjJRu\fR] [\fB\-aAbB datetime\fR] [\fB\-O #\fR] \fBrdata ip\fR <ADDRESS | RANGE | PREFIX>
+\fBdnstable_lookup\fR [\fB\-cJnRu\fR] [\fB\-aAbB datetime\fR] [\fB\-O #\fR] \fBrdata ip\fR <ADDRESS | RANGE | PREFIX>
 .sp
-\fBdnstable_lookup\fR [\fB\-cjJRu\fR] [\fB\-aAbB datetime\fR] [\fB\-O #\fR] \fBrdata raw\fR <HEX STRING> [<RRTYPE>]
+\fBdnstable_lookup\fR [\fB\-cJnRu\fR] [\fB\-aAbB datetime\fR] [\fB\-O #\fR] \fBrdata raw\fR <HEX STRING> [<RRTYPE>]
 .sp
-\fBdnstable_lookup\fR [\fB\-cjJRu\fR] [\fB\-aAbB datetime\fR] [\fB\-O #\fR] \fBrdata name\fR <RDATA NAME> [<RRTYPE>]
+\fBdnstable_lookup\fR [\fB\-cCJnRu\fR] [\fB\-aAbB datetime\fR] [\fB\-O #\fR] \fBrdata name\fR <RDATA NAME> [<RRTYPE>]
 .sp
 \fBdnstable_lookup\fR [\fB\-jJu\fR] [\fB\-O #\fR] \fBtime_range\fR
 .sp
@@ -94,6 +94,11 @@ will select results if any of the time is within the range (even if some are out
 means it will not output the entry if it was also seen outside the time range\&.
 .RE
 .PP
+\fB\-C\fR
+.RS 4
+Do all matching in a case-sensitive manner.
+.RE
+.PP
 \fB\-j\fR
 .RS 4
 Use JSON format for output, with timestamps in epoch time (seconds since epoch)\&. Default is
@@ -106,6 +111,11 @@ presentation format\&. One JSON\-formatted entry per line will be printed\&.
 Use JSON format for output, with timestamps in human time (RFC3339 format)\&. Default is
 \fIdig\fR
 presentation format\&. One JSON\-formatted entry per line will be printed\&.
+.RE
+.PP
+\fB\-n\fR
+.RS 4
+Output the number of matching entries found, rather than details about each entry\&.
 .RE
 .PP
 \fB\-R\fR, \fB\-\-raw\fR

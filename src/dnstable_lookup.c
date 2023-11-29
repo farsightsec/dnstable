@@ -32,6 +32,7 @@
 static bool g_json = false;
 static bool g_Json = false;
 static bool g_add_raw;
+static bool g_count = false;
 static bool g_aggregate = true;
 static int64_t g_offset = 0;
 
@@ -39,6 +40,9 @@ static void
 print_entry(struct dnstable_entry *ent)
 {
 	char *s;
+
+	if (g_count)
+		return;
 
 	if (g_Json || g_json) {
 		struct dnstable_formatter *fmt = dnstable_formatter_init();
@@ -75,8 +79,12 @@ do_dump(struct dnstable_iter *it)
 		dnstable_entry_destroy(&ent);
 		count++;
 	}
-	if (!g_json && !g_Json)
-		fprintf(stderr, ";;; Dumped %'" PRIu64 " entries.\n", count);
+
+	if (g_count)
+		fprintf(stderr, ";;; Processed %'" PRIu64 " entries.\n", count);
+	else
+		if (!g_json && !g_Json)
+			fprintf(stderr, ";;; Dumped %'" PRIu64 " entries.\n", count);
 }
 
 static uint64_t
@@ -162,6 +170,7 @@ usage(void)
 	fprintf(stderr, "\t-c: treat -A as -a, -B as -b for dnsdbq \"complete (strict) matching\" semantics.\n");
 	fprintf(stderr, "\t-j: output in JSON format with epoch time; default is 'dig' presentation format\n");
 	fprintf(stderr, "\t-J: output in JSON format with human time (RFC3339 format); default is 'dig' presentation format\n");
+	fprintf(stderr, "\t-n: output only the number of matches\n");
 	fprintf(stderr, "\t-R: add raw rdata representation\n");
 	fprintf(stderr, "\t-u: output unaggregated results; default is aggregated results\n");
 	fprintf(stderr, "\t-O #: offset the first # results (must be a positive number)\n");
@@ -194,7 +203,7 @@ main(int argc, char **argv)
 	dnstable_res res;
 	int ch;
 
-	while ((ch = getopt(argc, argv, "a:A:b:B:cCjJRuO:")) != -1) {
+	while ((ch = getopt(argc, argv, "a:A:b:B:cCjnJRuO:")) != -1) {
 		switch (ch) {
 		case 'a':
 			time_first_after = parse_time(optarg);
@@ -235,6 +244,9 @@ main(int argc, char **argv)
 			break;
 		case 'J':
 			g_Json = true;
+			break;
+		case 'n':
+			g_count = true;
 			break;
 		case 'R':
 			g_add_raw = true;
@@ -314,6 +326,11 @@ main(int argc, char **argv)
 			fprintf(stderr, "dnstable_lookup: Raw option makes no sense with version or time_range commands\n");
 			exit(EXIT_FAILURE);
 		}
+	}
+
+	if (g_count && (g_Json || g_json || g_add_raw)) {
+		fprintf(stderr, "dnstable_lookup: cannot specify -n with either -j, -J or -R\n");
+		exit(EXIT_FAILURE);
 	}
 
 	if (g_Json && g_json) {
