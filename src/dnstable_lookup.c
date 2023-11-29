@@ -203,7 +203,7 @@ main(int argc, char **argv)
 	dnstable_res res;
 	int ch;
 
-	while ((ch = getopt(argc, argv, "a:A:b:B:cCjJRuO:")) != -1) {
+	while ((ch = getopt(argc, argv, "a:A:b:B:cCjnJRuO:")) != -1) {
 		switch (ch) {
 		case 'a':
 			time_first_after = parse_time(optarg);
