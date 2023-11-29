@@ -329,7 +329,7 @@ main(int argc, char **argv)
 	}
 
 	if (g_count && (g_Json || g_json || g_add_raw)) {
-		fprintf(stderr, "dnstable_lookup: cannot specify -s with either -j, -J or -R\n");
+		fprintf(stderr, "dnstable_lookup: cannot specify -n with either -j, -J or -R\n");
 		exit(EXIT_FAILURE);
 	}
 
