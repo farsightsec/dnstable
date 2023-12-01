@@ -1482,9 +1482,6 @@ query_init_rdata_name(struct query_iter *it)
 		case WDNS_TYPE_SRV:
 			add_rrtype_to_key(it->key, it->query->rrtype);
 		}
-
-		it->filter_rrtype = filter_mtbl_init(it->source, filter_rrtype, it);
-		it->source = filter_mtbl_source(it->filter_rrtype);
 	}
 
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
