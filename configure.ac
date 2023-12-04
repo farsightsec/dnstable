@@ -46,7 +46,6 @@ AC_CHECK_HEADERS([sys/endian.h endian.h])
 
 PKG_CHECK_MODULES([libmtbl], [libmtbl >= 1.5.0])
 PKG_CHECK_MODULES([libwdns], [libwdns >= 0.11.0])
-PKG_CHECK_MODULES([libyajl], [yajl >= 2], [], [MY_CHECK_YAJL_1])
 
 AX_PTHREAD([
     LIBS="$PTHREAD_LIBS $LIBS"

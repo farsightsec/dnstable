@@ -46,7 +46,6 @@
 #include <mtbl.h>
 #include <wdns.h>
 
-#include <yajl/yajl_gen.h>
 
 #include "dnstable.h"
 
