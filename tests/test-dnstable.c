@@ -27,7 +27,6 @@
 
 #define NAME	"test-dnstable"
 
-
 static int
 test_basic(void)
 {
@@ -230,6 +229,99 @@ test_filter_parameter(struct dnstable_query *query, struct dnstable_entry *entry
 }
 
 static int
+test_query_iter_stats(struct dnstable_iter *it, int *stages, int64_t *counters)
+{
+	uint64_t tcount = 0;
+	int *stage = stages;
+	int64_t *counter = counters;
+	bool check_counter = false;
+	bool exists;
+	int sti = 0;
+
+	while (*stage >= 0) {
+		int category = 0;
+		if (sti == *stage) {
+			check_counter = true;
+			++stage;
+		}
+		while (1) {
+			dnstable_res res = dnstable_iter_get_count(it, sti, category++, &exists, &tcount);
+			if (check_counter == true) {
+				/*
+				 * Output
+				 * exists = true, res = success - got counter value
+				 * exists = false, res = success - no counter but continue
+				 * exists = false, res = failure - no counter, the end
+				 * */
+				if (!exists && res == dnstable_res_failure)
+					break;
+				if (exists) {
+					check_return((uint64_t) *counter == tcount);
+					++counter;
+				}
+			} else {
+				check_return(tcount == 0);
+				break;
+			}
+		}
+		if (check_counter == true) {
+			++counter;
+			check_counter = false;
+		}
+		++sti;
+	}
+
+	return 1;
+}
+
+static int
+test_query_stats_conversion(void)
+{
+	int n = 0;
+	const char *value;
+	while (1) {
+		dnstable_stat_stage stage;
+		value = dnstable_stat_stage_to_str(n);
+		if (value == NULL)
+			break;
+		check_return(dnstable_stat_str_to_stage(value, &stage) == dnstable_res_success);
+		check_return((int) stage == n);
+		n++;
+	}
+
+	n = 0;
+	while (1) {
+		dnstable_stat_category category;
+		value = dnstable_stat_category_to_str(n);
+		if (value == NULL)
+			break;
+		check_return(dnstable_stat_str_to_category(value, &category) == dnstable_res_success);
+		check_return((int) category == n);
+		n++;
+	}
+
+	check_return(dnstable_stat_stage_to_str(DNSTABLE_STAT_STAGE_LJOIN) != NULL);
+	check_return(dnstable_stat_stage_to_str(-1) == NULL);
+	check_return(dnstable_stat_stage_to_str(1000) == NULL);
+
+	check_return(dnstable_stat_category_to_str(DNSTABLE_STAT_CATEGORY_SEEK) != NULL);
+	check_return(dnstable_stat_category_to_str(-1) == NULL);
+	check_return(dnstable_stat_category_to_str(1000) == NULL);
+
+	check_return(dnstable_stat_str_to_stage(NULL, NULL) == dnstable_res_failure);
+	check_return(dnstable_stat_str_to_stage("", NULL) == dnstable_res_failure);
+	check_return(dnstable_stat_str_to_stage("abcd", NULL) == dnstable_res_failure);
+	check_return(dnstable_stat_str_to_stage(dnstable_stat_stage_to_str(DNSTABLE_STAT_STAGE_FILTER_RRTYPE), NULL) == dnstable_res_failure);
+
+	check_return(dnstable_stat_str_to_category(NULL, NULL) == dnstable_res_failure);
+	check_return(dnstable_stat_str_to_category("", NULL) == dnstable_res_failure);
+	check_return(dnstable_stat_str_to_category("abcd", NULL) == dnstable_res_failure);
+	check_return(dnstable_stat_str_to_category(dnstable_stat_category_to_str(DNSTABLE_STAT_CATEGORY_FILTERED), NULL) == dnstable_res_failure);
+
+	l_return_test_status();
+}
+
+static int
 test_query(void)
 {
 	struct mtbl_reader *mreader;
@@ -275,9 +367,25 @@ struct timespec ts = {0, 0};
 	iter = dnstable_reader_query(reader, query);
 	check_return(iter != NULL);
 
+	// Check that proper counters are initialized
+	{
+		int64_t counters[] = { 0,  0, -1,
+				       0,  0, -1,
+				      -1, -1, -1};
+		int stages[] = {DNSTABLE_STAT_STAGE_FILTER_RRTYPE, DNSTABLE_STAT_STAGE_FILTER_BAILIWICK, -1};
+		check_return(test_query_iter_stats(iter, stages, counters));
+	}
+
 	/* First attempt should timeout. */
 	res = dnstable_iter_next(iter, &entry);
 	check_return(res == dnstable_res_timeout);
+	{
+		int64_t counters[] = { 0,  0, -1,
+				       0,  0, -1,
+				      -1, -1, -1};
+		int stages[] = {DNSTABLE_STAT_STAGE_FILTER_RRTYPE, DNSTABLE_STAT_STAGE_FILTER_BAILIWICK, -1};
+		check_return(test_query_iter_stats(iter, stages, counters));
+	}
 	dnstable_iter_destroy(&iter);
 
 	/* Second attempt should be fine. */
@@ -287,9 +395,22 @@ struct timespec ts = {0, 0};
 	iter = dnstable_query_iter(query, mtbl_reader_source(mreader));
 //	iter = dnstable_reader_query(reader, query);
 	check_return(iter != NULL);
-
+	{
+		int64_t counters[] = { 0,  0, -1,
+				       0,  0, -1,
+				      -1, -1, -1};
+		int stages[] = {DNSTABLE_STAT_STAGE_FILTER_RRTYPE, DNSTABLE_STAT_STAGE_FILTER_BAILIWICK, -1};
+		check_return(test_query_iter_stats(iter, stages, counters));
+	}
 	res = dnstable_iter_next(iter, &entry);
 	check_return(res == dnstable_res_success);
+	{
+		int64_t counters[] = {19,  0, -1,
+				       0,  0, -1,
+				      -1, -1, -1};
+		int stages[] = {DNSTABLE_STAT_STAGE_FILTER_RRTYPE, DNSTABLE_STAT_STAGE_FILTER_BAILIWICK, -1};
+		check_return(test_query_iter_stats(iter, stages, counters));
+	}
 
 	res = dnstable_entry_get_rrtype(entry, &rrtype);
 	check_return(res == dnstable_res_success);
@@ -550,7 +671,14 @@ test_merger(void)
 	l_return_test_status();
 }
 
-static int do_test_query_case(struct dnstable_query * query, struct mtbl_reader * mreader, bool case_sensitive, const char * t_rrname, const char * t_rrtype, const char * t_bailiwick, dnstable_res exp_res)
+static int
+do_test_query_case(struct dnstable_query *query,
+	struct mtbl_reader *mreader,
+	bool case_sensitive,
+	const char *t_rrname,
+	const char *t_rrtype,
+	const char *t_bailiwick,
+	dnstable_res exp_res)
 {
 	wdns_name_t test;
 	size_t lrrname, lbailiwick;
@@ -662,6 +790,31 @@ test_query_case(void)
 	l_return_test_status();
 }
 
+static dnstable_res
+cust_iter_stat_func(const void *clos, dnstable_stat_stage cat, dnstable_stat_category stage, bool *exists, uint64_t *u)
+{
+	int ival = *(const int*) clos;
+	*u = ((uint64_t) ival) * 1234;
+	(void) cat;
+	(void) stage;
+	return dnstable_res_success;
+}
+
+static int
+test_query_count(void)
+{
+	int ival = 1000;
+	uint64_t expect = ((uint64_t) ival) * 1234;
+	uint64_t res = 0;
+	struct dnstable_iter *iter = dnstable_iter_init(cust_iter_next_func, cust_iter_free_func, &ival);
+	check_return(iter != NULL);
+	dnstable_iter_set_stat_func(iter, cust_iter_stat_func);
+	check_return(dnstable_iter_get_count(iter, DNSTABLE_STAT_STAGE_FILTER_SINGLE_LABEL, DNSTABLE_STAT_CATEGORY_FILTERED, NULL, &res) == dnstable_res_success);
+	check_return(res == expect);
+
+	l_return_test_status();
+}
+
 int
 main(void)
 {
@@ -670,6 +823,8 @@ main(void)
 	check_explicit2_display_only(test_query_case() == 0, "test-dnstable/ test_query_case");
 	check_explicit2_display_only(test_cust_iter() == 0, "test-dnstable/ test_cust_iter");
 	check_explicit2_display_only(test_merger() == 0, "test-dnstable/ test_merger");
+	check_explicit2_display_only(test_query_stats_conversion() == 0, "test-dnstable/ test_query_stats_conversion");
+	check_explicit2_display_only(test_query_count() == 0, "test-dnstable/ test_query_count");
 
 	g_check_test_status(0);
 

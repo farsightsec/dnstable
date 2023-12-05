@@ -284,10 +284,34 @@ ljoin_mtbl_init(const struct mtbl_source *left, const struct mtbl_source *right,
 	return j;
 }
 
-const struct ljoin_mtbl_stats *
-ljoin_mtbl_get_stats(const struct ljoin_mtbl *j)
+dnstable_res
+ljoin_mtbl_get_counter(const struct ljoin_mtbl *j,
+		       dnstable_stat_category category, bool *exists, uint64_t *u)
 {
-	return &j->stats;
+	if (u == NULL)
+		return dnstable_res_failure;
+	*u = 0;
+	*exists = (j != NULL);
+	if (!*exists)
+		return dnstable_res_failure;	/* return with count == 0 */
+	switch(category) {
+		case DNSTABLE_STAT_CATEGORY_FILTERED:
+			*exists = false;
+			break;
+		case DNSTABLE_STAT_CATEGORY_ENTRIES:
+			*u = j->stats.entries;
+			break;
+		case DNSTABLE_STAT_CATEGORY_SEEK:
+			*u = j->stats.seek;
+			break;
+		case DNSTABLE_STAT_CATEGORY_MERGED:
+			*u = j->stats.merged;
+			break;
+		default:
+			*exists = false;
+			return dnstable_res_failure;
+	}
+	return dnstable_res_success;
 }
 
 void
@@ -346,21 +370,6 @@ filter_iter_next(void *impl, const uint8_t **key, size_t *len_key,
 }
 
 static mtbl_res
-seek_wrap_iter_seek(void *impl, const uint8_t *key, size_t len_key)
-{
-	struct filter_mtbl_iter *fit = impl;
-	fit->filter->stats.seek++;
-	return mtbl_iter_seek(fit->it, key, len_key);
-}
-
-static void
-seek_wrap_iter_free(void *impl)
-{
-	/* freed by filter_iter_free */
-	(void)impl;
-}
-
-static mtbl_res
 filter_iter_seek(void *impl, const uint8_t *key, size_t len_key)
 {
 	struct filter_mtbl_iter *fit = impl;
@@ -374,6 +383,22 @@ filter_iter_free(void *impl)
 	mtbl_iter_destroy(&fit->it);
 	mtbl_iter_destroy(&fit->seek_wrap_iter);
 	free(fit);
+}
+
+/* A pass-through wrapper simply for gathering operational statistics */
+static mtbl_res
+seek_wrap_iter_seek(void *impl, const uint8_t *key, size_t len_key)
+{
+	struct filter_mtbl_iter *fit = impl;
+	fit->filter->stats.seek++;
+	return filter_iter_seek(fit, key, len_key);
+}
+
+static void
+seek_wrap_iter_free(void *impl)
+{
+	/* freed by filter_iter_free */
+	(void)impl;
 }
 
 static struct mtbl_iter *
@@ -411,6 +436,34 @@ filter_mtbl_init(const struct mtbl_source *upstream, filter_mtbl_func filter, vo
 	f->upstream = upstream;
 	f->source = SOURCE_INIT_HELPER(filter, f);
 	return f;
+}
+
+dnstable_res
+filter_mtbl_get_counter(const struct filter_mtbl *filter,
+			dnstable_stat_category category, bool *exists, uint64_t *u)
+{
+	if (u == NULL)
+		return dnstable_res_failure;
+	*u = 0;
+	*exists = (filter != NULL);
+	if (!*exists)
+		return dnstable_res_failure;	/* return with count == 0 */
+	switch(category) {
+		case DNSTABLE_STAT_CATEGORY_ENTRIES:
+		case DNSTABLE_STAT_CATEGORY_MERGED:
+			*exists = false;
+			break;
+		case DNSTABLE_STAT_CATEGORY_FILTERED:
+			*u = filter->stats.filtered;
+			break;
+		case DNSTABLE_STAT_CATEGORY_SEEK:
+			*u = filter->stats.seek;
+			break;
+		default:
+			*exists = false;
+			return dnstable_res_failure;
+	}
+	return dnstable_res_success;
 }
 
 void
@@ -730,10 +783,33 @@ remove_mtbl_init(void)
 	return rm;
 }
 
-const struct remove_mtbl_stats *
-remove_mtbl_get_stats(const struct remove_mtbl *rm)
+dnstable_res
+remove_mtbl_get_counter(const struct remove_mtbl *rm,
+			dnstable_stat_category category, bool *exists, uint64_t *u)
 {
-	return &rm->stats;
+	if (u == NULL)
+		return dnstable_res_failure;
+	*u = 0;
+	*exists = (rm != NULL);
+	if (!*exists)
+		return dnstable_res_failure;	/* return with count == 0 */
+	switch(category)
+	{
+		case DNSTABLE_STAT_CATEGORY_ENTRIES:
+		case DNSTABLE_STAT_CATEGORY_MERGED:
+			*exists = false;
+			break;
+		case DNSTABLE_STAT_CATEGORY_FILTERED:
+			*u = rm->stats.filtered;
+			break;
+		case DNSTABLE_STAT_CATEGORY_SEEK:
+			*u = rm->stats.seek;
+			break;
+		default:
+			*exists = false;
+			return dnstable_res_failure;
+	}
+	return dnstable_res_success;
 }
 
 void

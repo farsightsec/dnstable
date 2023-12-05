@@ -17,6 +17,8 @@ global:
         dnstable_iter_destroy;
         dnstable_iter_init;
         dnstable_iter_next;
+        dnstable_iter_set_stat_func;
+        dnstable_iter_get_count;
         dnstable_merge_func;
         dnstable_query_destroy;
         dnstable_query_filter;
@@ -34,6 +36,10 @@ global:
         dnstable_reader_iter_rdata;
         dnstable_reader_iter_rrset;
         dnstable_reader_query;
+        dnstable_stat_stage_to_str;
+        dnstable_stat_str_to_stage;
+        dnstable_stat_category_to_str;
+        dnstable_stat_str_to_category;
 local:
         *;
 };

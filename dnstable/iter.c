@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012 by Farsight Security, Inc.
+ * Copyright (c) 2023 by Farsight Security, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@
 struct dnstable_iter {
 	dnstable_iter_next_func	iter_next;
 	dnstable_iter_free_func	iter_free;
+	dnstable_iter_stat_func iter_stat;
 	void			*clos;
 };
 
@@ -31,6 +32,7 @@ dnstable_iter_init(dnstable_iter_next_func iter_next,
 	struct dnstable_iter *it = my_malloc(sizeof(*it));
 	it->iter_next = iter_next;
 	it->iter_free = iter_free;
+	it->iter_stat = NULL;
 	it->clos = clos;
 	return (it);
 }
@@ -45,10 +47,30 @@ dnstable_iter_destroy(struct dnstable_iter **it)
 	}
 }
 
+void
+dnstable_iter_set_stat_func(struct dnstable_iter *it, dnstable_iter_stat_func fp)
+{
+	if (it)
+		it->iter_stat = fp;
+}
+
 dnstable_res
 dnstable_iter_next(struct dnstable_iter *it, struct dnstable_entry **ent)
 {
 	if (it == NULL)
 		return (dnstable_res_failure);
 	return (it->iter_next(it->clos, ent));
+}
+
+dnstable_res
+dnstable_iter_get_count(struct dnstable_iter *it,
+	dnstable_stat_stage stage,
+	dnstable_stat_category category,
+	bool *exists,
+	uint64_t *count)
+{
+	if (it == NULL || it->iter_stat == NULL || count == NULL)
+		return dnstable_res_failure;
+
+	return it->iter_stat(it->clos, stage, category, exists, count);
 }

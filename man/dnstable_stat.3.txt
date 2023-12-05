@@ -1,0 +1,45 @@
+= dnstable_stat(3) =
+
+== NAME ==
+
+dnstable_stat - dnstable stat objects
+
+== SYNOPSIS ==
+
+^#include <dnstable.h>^
+
+[verse]
+^typedef enum {
+	DNSTABLE_STAT_STAGE_FILTER_SINGLE_LABEL,
+	DNSTABLE_STAT_STAGE_FILTER_RRTYPE,
+	DNSTABLE_STAT_STAGE_FILTER_TIME,
+	DNSTABLE_STAT_STAGE_FILTER_TIME_STRICT,
+	DNSTABLE_STAT_STAGE_FILTER_BAILIWICK,
+	DNSTABLE_STAT_STAGE_FILTER_OFFSET,
+	DNSTABLE_STAT_STAGE_LJOIN,
+	DNSTABLE_STAT_STAGE_REMOVE_STRICT
+} dnstable_stat_stage;^
+
+[verse]
+^typedef enum {
+	DNSTABLE_STAT_CATEGORY_FILTERED = 0,
+	DNSTABLE_STAT_CATEGORY_ENTRIES = 1,
+	DNSTABLE_STAT_CATEGORY_SEEK = 2,
+	DNSTABLE_STAT_CATEGORY_MERGED = 3
+} dnstable_stat_category;^
+
+[verse]
+^const char *
+dnstable_stat_stage_to_str(dnstable_stat_stage);^
+
+[verse]
+^dnstable_res
+dnstable_stat_str_to_stage(const char *stage, dnstable_stat_stage *res);^
+
+[verse]
+^const char *
+dnstable_stat_category_to_str(dnstable_stat_category);^
+
+[verse]
+^dnstable_res
+dnstable_stat_str_to_category(const char *category, dnstable_stat_category *res);^

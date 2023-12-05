@@ -182,8 +182,9 @@ ljoin_mtbl_init(const struct mtbl_source *left,
 		mtbl_merge_func merge_fn,
 		void *merge_clos);
 
-const struct ljoin_mtbl_stats *
-ljoin_mtbl_get_stats(const struct ljoin_mtbl *);
+dnstable_res
+ljoin_mtbl_get_counter(const struct ljoin_mtbl *,
+		       dnstable_stat_category, bool *, uint64_t *);
 
 const struct mtbl_source *
 ljoin_mtbl_source(const struct ljoin_mtbl *);
@@ -214,8 +215,9 @@ typedef mtbl_res (*filter_mtbl_func)(
 struct filter_mtbl *
 filter_mtbl_init(const struct mtbl_source *, filter_mtbl_func, void *);
 
-const struct filter_mtbl_stats *
-filter_mtbl_get_stats(const struct filter_mtbl *);
+dnstable_res
+filter_mtbl_get_counter(const struct filter_mtbl *,
+			dnstable_stat_category, bool *, uint64_t *);
 
 const struct mtbl_source *
 filter_mtbl_source(const struct filter_mtbl *);
@@ -257,8 +259,9 @@ remove_mtbl_add_source(struct remove_mtbl *, const struct mtbl_source *);
 void
 remove_mtbl_set_upstream(struct remove_mtbl *, const struct mtbl_source *);
 
-const struct remove_mtbl_stats *
-remove_mtbl_get_stats(const struct remove_mtbl *);
+dnstable_res
+remove_mtbl_get_counter(const struct remove_mtbl *,
+			dnstable_stat_category, bool *, uint64_t *);
 
 const struct mtbl_source *
 remove_mtbl_source(const struct remove_mtbl *);

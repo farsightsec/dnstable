@@ -1,0 +1,89 @@
+'\" t
+.\"     Title: dnstable_stat
+.\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
+.\" Generator: DocBook XSL Stylesheets v1.79.1 <http://docbook.sf.net/>
+.\"      Date: 12/06/2023
+.\"    Manual: \ \&
+.\"    Source: \ \&
+.\"  Language: English
+.\"
+.TH "DNSTABLE_STAT" "3" "12/06/2023" "\ \&" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+dnstable_stat \- dnstable stat objects
+.SH "SYNOPSIS"
+.sp
+\fB#include <dnstable\&.h>\fR
+.sp
+.nf
+\fBtypedef\fBenum {
+    \fR\fB\fIDNSTABLE_STAT_STAGE_FILTER_SINGLE_LABEL\fR\fR\fB,
+    \fR\fB\fIDNSTABLE_STAT_STAGE_FILTER_RRTYPE\fR\fR\fB,
+    \fR\fB\fIDNSTABLE_STAT_STAGE_FILTER_TIME\fR\fR\fB,
+    \fR\fB\fIDNSTABLE_STAT_STAGE_FILTER_TIME_STRICT\fR\fR\fB,
+    \fR\fB\fIDNSTABLE_STAT_STAGE_FILTER_BAILIWICK\fR\fR\fB,
+    \fR\fB\fIDNSTABLE_STAT_STAGE_FILTER_OFFSET\fR\fR\fB,
+    \fR\fB\fIDNSTABLE_STAT_STAGE_LJOIN\fR\fR\fB,
+    \fR\fB\fIDNSTABLE_STAT_STAGE_REMOVE_STRICT\fR\fR\fB
+} dnstable_stat_stage;\fR
+.fi
+.sp
+.nf
+\fBtypedef\fBenum {
+    \fR\fB\fIDNSTABLE_STAT_CATEGORY_FILTERED\fR\fR\fB,
+    \fR\fB\fIDNSTABLE_STAT_CATEGORY_ENTRIES\fR\fR\fB,
+    \fR\fB\fIDNSTABLE_STAT_CATEGORY_SEEK\fR\fR\fB,
+    \fR\fB\fIDNSTABLE_STAT_CATEGORY_MERGED\fR\fR\fB,
+    \fR\fB\fIDNSABLE_STAT_CATEGORY_MAX\fR\fR\fB,
+} dnstable_stat_category;\fR
+.fi
+.sp
+.nf
+\fBconst\fB char *
+dnstable_stat_stage_to_str(dnstable_stat_stage\fR\fB\fI stage\fR\fR\fB);\fR
+
+.fi
+.sp
+.nf
+\fBdnstable_res
+dnstable_stat_str_to_stage(const char *\fR\fB\fIstage\fR\fR\fB, dnstable_stat_stage *\fR\fB\fIres\fR\fR\fB);\fR
+.fi
+.sp
+.nf
+\fBconst\fB char *
+dnstable_stat_category_to_str(dnstable_stat_category\fR\fB\fI category\fR\fR\fB);\fR
+.fi
+.sp
+.nf
+\fBdnstable_res
+dnstable_stat_str_to_category(const char *\fR\fB\fIcat\fR\fR\fB, dnstable_stat_category *\fR\fB\fIres\fR\fR\fB);\fR
+.fi
+.sp
+
+.SH "DESCRIPTION"
+.sp
+The functions \fBdnstable_stat_stage_to_str\fR() and \fBdnstable_stat_str_to_stage\fR() facilitate conversion between \fBdnstable_stat_stage\fR values and human-readable strings, while \fBdnstable_stat_category_to_str\fR() and \fBdnstable_stat_str_to_category\fR() convert between \fBdnstable_stat_category\fR values and human-readable strings.
+.SH "RETURN VALUE"
+.sp
+Both \fBdnstable_stat_stage_to_str\fR() and \fBdnstable_stat_category_to_str\fR() return string representations of the respective stage or category on success, or \fBNULL\fR on failure. Likewise, \fBdnstable_stat_str_to_stage\fR() and \fBdnstable_stat_str_to_category\fR() will return the appropriate corresponding enum values for these strings, or \fBDNSTABLE_STAT_STAGE_MAX\fR or \fBDNSTABLE_STAT_CATEGORY_MAX\fR respectively, on failure.
+.SH "SEE ALSO"
+.sp
+\fBdnstable\_iter\fR(3)

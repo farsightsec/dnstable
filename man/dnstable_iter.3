@@ -39,6 +39,16 @@ dnstable_iter_next(struct dnstable_iter *\fR\fB\fIit\fR\fR\fB, struct dnstable_e
 .fi
 .sp
 .nf
+\fBvoid
+dnstable_iter_set_stat_func(struct dnstable_iter *\fR\fB\fIit\fR\fR\fB, dnstable_iter_stat_func \fR\fB\fIfp\fR\fR\fB);\fR
+.fi
+.sp
+.nf
+\fBdnstable_res
+dnstable_iter_get_count(struct dnstable_iter *\fR\fB\fIit\fR\fR\fB, dnstable_stat_stage \fR\fB\fIstage\fR\fR\fB, dnstable_stat_category \fR\fB\fIcat\fR\fR\fB, uint64_t *\fR\fB\fIvalue\fR\fR\fB);\fR
+.fi
+.sp
+.nf
 \fBdnstable_iter_destroy(struct dnstable_iter **\fR\fB\fIit\fR\fR\fB);\fR
 .fi
 .SH "DESCRIPTION"
@@ -50,3 +60,4 @@ The \fBdnstable_iter\fR interface is used to return a sequence of one or more dn
 .SH "SEE ALSO"
 .sp
 \fBdnstable_entry\fR(3)
+\fBdnstable_stat\fR(3)
