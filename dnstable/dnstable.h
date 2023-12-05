@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014-2015, 2019-2021 by Farsight Security, Inc.
+ * Copyright (c) 2012, 2014-2015, 2019-2023 by Farsight Security, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,6 +64,25 @@ typedef enum {
 	DNSTABLE_QUERY_TYPE_VERSION = 255,
 } dnstable_query_type;
 
+typedef enum {
+	DNSTABLE_STAT_CATEGORY_FILTER_SINGLE_LABEL,
+	DNSTABLE_STAT_CATEGORY_FILTER_RRTYPE,
+	DNSTABLE_STAT_CATEGORY_FILTER_RRTYPE_IP,
+	DNSTABLE_STAT_CATEGORY_FILTER_TIME,
+	DNSTABLE_STAT_CATEGORY_FILTER_TIME_STRICT,
+	DNSTABLE_STAT_CATEGORY_FILTER_BAILIWICK,
+	DNSTABLE_STAT_CATEGORY_FILTER_OFFSET,
+	DNSTABLE_STAT_CATEGORY_LJOIN,
+	DNSTABLE_STAT_CATEGORY_MAX,
+} dnstable_stat_category;
+
+typedef enum {
+	DNSTABLE_STAT_STAGE_FILTERED = 0,
+	DNSTABLE_STAT_STAGE_ENTRIES = 0,
+	DNSTABLE_STAT_STAGE_SEEK = 1,
+	DNSTABLE_STAT_STAGE_MERGED = 2
+} dnstable_stat_stage;
+
 /* merge func */
 
 void
@@ -81,6 +100,9 @@ typedef dnstable_res
 typedef void
 (*dnstable_iter_free_func)(void *);
 
+typedef dnstable_res
+(*dnstable_iter_stat_func)(const void *, dnstable_stat_category, dnstable_stat_stage, uint64_t *);
+
 struct dnstable_iter *
 dnstable_iter_init(
 	dnstable_iter_next_func,
@@ -92,6 +114,16 @@ dnstable_iter_next(
 	struct dnstable_iter *,
 	struct dnstable_entry **)
 __attribute__((warn_unused_result));
+
+void
+dnstable_iter_set_stat_func(struct dnstable_iter *,
+	dnstable_iter_stat_func);
+
+dnstable_res
+dnstable_iter_get_count(struct dnstable_iter *,
+	dnstable_stat_category,
+	dnstable_stat_stage,
+	uint64_t *);
 
 void
 dnstable_iter_destroy(struct dnstable_iter **);

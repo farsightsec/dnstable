@@ -84,6 +84,7 @@ struct ljoin_mtbl {
 	const struct mtbl_source *right;
 	mtbl_merge_func merge_fn;
 	void *merge_clos;
+	struct ljoin_mtbl_stats stats;
 };
 
 struct ljoin_mtbl_iter {
@@ -132,6 +133,8 @@ ljoin_iter_next(void *impl, const uint8_t **key, size_t *len_key,
 	if (res != mtbl_res_success)
 		return res;
 
+	it->join->stats.entries++;
+
 	*key = left_key;
 	*len_key = len_left_key;
 	*val = left_val;
@@ -154,6 +157,7 @@ ljoin_iter_next(void *impl, const uint8_t **key, size_t *len_key,
 		 * seek forward to the left key and retry.
 		 */
 		if (cmp < 0) {
+			it->join->stats.seek++;
 			res = mtbl_iter_seek(it->iter_right, left_key, len_left_key);
 			if (res != mtbl_res_success) {
 				it->right_finished = true;
@@ -174,6 +178,7 @@ ljoin_iter_next(void *impl, const uint8_t **key, size_t *len_key,
 		 * Otherwise, the right iterator's key is the same as the left. Merge
 		 * the two values and return.
 		 */
+		it->join->stats.merged++;
 		free(it->merged_val);
 		it->join->merge_fn(it->join->merge_clos,
 				   left_key, len_left_key,
@@ -268,6 +273,29 @@ ljoin_mtbl_init(const struct mtbl_source *left, const struct mtbl_source *right,
 	return j;
 }
 
+dnstable_res
+ljoin_mtbl_get_counter(const struct ljoin_mtbl *j, dnstable_stat_stage stage, uint64_t *u)
+{
+	if (j == NULL || u == NULL)
+		return dnstable_res_failure;
+
+	switch(stage)
+	{
+		case DNSTABLE_STAT_STAGE_ENTRIES:
+			*u = j->stats.entries;
+			return dnstable_res_success;
+		case DNSTABLE_STAT_STAGE_SEEK:
+			*u = j->stats.seek;
+			return dnstable_res_success;
+		case DNSTABLE_STAT_STAGE_MERGED:
+			*u = j->stats.merged;
+			return dnstable_res_success;
+		default:
+			break;
+	}
+	return dnstable_res_failure;
+}
+
 const struct mtbl_source *
 ljoin_mtbl_source(const struct ljoin_mtbl *j)
 {
@@ -295,11 +323,13 @@ struct filter_mtbl {
 	void *filter_data;
 	const struct mtbl_source *upstream;
 	struct mtbl_source *source;
+	struct filter_mtbl_stats stats;
 };
 
 struct filter_mtbl_iter {
-	const struct filter_mtbl *filter;
+	struct filter_mtbl *filter;
 	struct mtbl_iter *it;
+	struct mtbl_iter *seek_iter;
 };
 
 static mtbl_res
@@ -313,15 +343,33 @@ filter_iter_next(void *impl, const uint8_t **key, size_t *len_key,
 	for (;;) {
 		res = mtbl_iter_next(fit->it, key, len_key, val, len_val);
 		if (res != mtbl_res_success)
-			return res;
+			break;
 		res = fit->filter->filter_func(fit->filter->filter_data,
-					       fit->it,
+					       fit->seek_iter,
 					       *key, *len_key,
 					       *val, *len_val,
 					       &match);
 		if (res != mtbl_res_success || match)
-			return res;
+			break;
+		fit->filter->stats.filtered++;
 	}
+
+	return res;
+}
+
+static mtbl_res
+seek_iter_seek(void *impl, const uint8_t *key, size_t len_key)
+{
+	struct filter_mtbl_iter *fit = impl;
+	fit->filter->stats.seek++;
+	return mtbl_iter_seek(fit->it, key, len_key);
+}
+
+static void
+seek_iter_free(void *impl)
+{
+	/* freed by filter_iter_free */
+	(void)impl;
 }
 
 static mtbl_res
@@ -336,6 +384,7 @@ filter_iter_free(void *impl)
 {
 	struct filter_mtbl_iter *fit = impl;
 	mtbl_iter_destroy(&fit->it);
+	mtbl_iter_destroy(&fit->seek_iter);
 	free(fit);
 }
 
@@ -349,6 +398,10 @@ filter_source_iter_common(void *impl, source_iter_func source_iter,
 
 	fit->filter = filter;
 	fit->it = source_iter(filter->upstream, key, len_key, key2, len_key2);
+	fit->seek_iter = mtbl_iter_init(seek_iter_seek,
+							filter_iter_next,
+							seek_iter_free,
+							fit);
 
 	return mtbl_iter_init(filter_iter_seek,
 			      filter_iter_next,
@@ -409,6 +462,25 @@ filter_mtbl_init(const struct mtbl_source *upstream, filter_mtbl_func filter, vo
 				     filter_source_free,
 				     f);
 	return f;
+}
+
+dnstable_res
+filter_mtbl_get_counter(const struct filter_mtbl * filter, dnstable_stat_stage stage, uint64_t* u)
+{
+	if (filter == NULL || u == NULL)
+		return dnstable_res_failure;
+	switch(stage) {
+		case DNSTABLE_STAT_STAGE_FILTERED:
+			*u = filter->stats.filtered;
+			return dnstable_res_success;
+		case DNSTABLE_STAT_STAGE_SEEK:
+			*u = filter->stats.seek;
+			return dnstable_res_success;
+		default:
+			break;
+	}
+
+	return dnstable_res_failure;
 }
 
 const struct mtbl_source *

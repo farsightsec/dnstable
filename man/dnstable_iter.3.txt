@@ -13,6 +13,14 @@ dnstable_iter - iterate over a sequence of dnstable entries
 dnstable_iter_next(struct dnstable_iter *'it', struct dnstable_entry **'ent');^
 
 [verse]
+^dnstable_res
+dnstable_iter_get_count(struct dnstable_iter *, dnstable_stat_category, dnstable_stat_stage, uint64_t *);^
+
+[verse]
+^void
+dnstable_iter_set_stat_func(struct dnstable_iter *, dnstable_iter_stat_func);^
+
+[verse]
 ^dnstable_iter_destroy(struct dnstable_iter **'it');^
 
 == DESCRIPTION ==

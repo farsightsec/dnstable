@@ -170,11 +170,20 @@ rrtype_test(dnstable_entry_type e_type, uint16_t rrtype,
  */
 struct ljoin_mtbl;
 
+struct ljoin_mtbl_stats {
+	uint64_t entries;
+	uint64_t merged;
+	uint64_t seek;
+};
+
 struct ljoin_mtbl *
 ljoin_mtbl_init(const struct mtbl_source *left,
 		const struct mtbl_source *right,
 		mtbl_merge_func merge_fn,
 		void *merge_clos);
+
+dnstable_res
+ljoin_mtbl_get_counter(const struct ljoin_mtbl *, dnstable_stat_stage, uint64_t *);
 
 const struct mtbl_source *
 ljoin_mtbl_source(const struct ljoin_mtbl *);
@@ -184,11 +193,16 @@ ljoin_mtbl_destroy(struct ljoin_mtbl **);
 
 
 /*
- * Filter an mtbl source, using a filter_mtbl_func which can pass
+ * Filter a mtbl source, using a filter_mtbl_func which can pass
  * matching entries using *match, seek past non-matching entries using
  * seek_iter, or terminate iteration by returning mtbl_res_failure.
  */
 struct filter_mtbl;
+
+struct filter_mtbl_stats {
+	uint64_t filtered;
+	uint64_t seek;
+};
 
 typedef mtbl_res (*filter_mtbl_func)(
 		void *user,
@@ -199,6 +213,10 @@ typedef mtbl_res (*filter_mtbl_func)(
 
 struct filter_mtbl *
 filter_mtbl_init(const struct mtbl_source *, filter_mtbl_func, void *);
+
+dnstable_res
+filter_mtbl_get_counter(const struct filter_mtbl *,
+	   dnstable_stat_stage, uint64_t*);
 
 const struct mtbl_source *
 filter_mtbl_source(const struct filter_mtbl *);

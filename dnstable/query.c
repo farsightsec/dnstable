@@ -928,6 +928,39 @@ query_iter_next(void *clos, struct dnstable_entry **ent)
 	return (dnstable_res_failure);
 }
 
+static dnstable_res
+query_iter_get_count(const void * v,
+	dnstable_stat_category category,
+	dnstable_stat_stage stage,
+	uint64_t *count)
+{
+	const struct query_iter * q = v;
+
+	switch(category)
+	{
+		case DNSTABLE_STAT_CATEGORY_FILTER_SINGLE_LABEL:
+			return filter_mtbl_get_counter(q->filter_single_label, stage, count);
+		case DNSTABLE_STAT_CATEGORY_FILTER_RRTYPE:
+			return filter_mtbl_get_counter(q->filter_rrtype, stage, count);
+		case DNSTABLE_STAT_CATEGORY_FILTER_RRTYPE_IP:
+			return filter_mtbl_get_counter(q->filter_rrtype_ip, stage, count);
+		case DNSTABLE_STAT_CATEGORY_FILTER_TIME:
+			return filter_mtbl_get_counter(q->filter_time, stage, count);
+		case DNSTABLE_STAT_CATEGORY_FILTER_TIME_STRICT:
+			return filter_mtbl_get_counter(q->filter_time_strict, stage, count);
+		case DNSTABLE_STAT_CATEGORY_FILTER_BAILIWICK:
+			return filter_mtbl_get_counter(q->filter_bailiwick, stage, count);
+		case DNSTABLE_STAT_CATEGORY_FILTER_OFFSET:
+			return filter_mtbl_get_counter(q->filter_offset, stage, count);
+		case DNSTABLE_STAT_CATEGORY_LJOIN:
+			return ljoin_mtbl_get_counter(q->ljoin, stage, count);
+		default:
+			break;
+	}
+
+	return dnstable_res_failure;
+}
+
 static mtbl_res
 filter_rrtype_ip(void *user, struct mtbl_iter *seek_iter,
 		 const uint8_t *key, size_t len_key,
@@ -1267,9 +1300,6 @@ query_iter_next_rdata_name_rev(void *clos, struct dnstable_entry **ent)
 {
 	return query_iter_next_name_indirect(clos, ent, ENTRY_TYPE_RDATA);
 }
-
-
-
 
 static struct dnstable_iter *
 query_init_rrset_right_wildcard(struct query_iter *it)
@@ -1637,6 +1667,7 @@ dnstable_query_iter_common(struct query_iter *it)
 							    ubuf_data(it->key), ubuf_size(it->key));
 	}
 
+	dnstable_iter_set_stat_func(d_it, query_iter_get_count);
 	return (d_it);
 }
 
