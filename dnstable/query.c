@@ -1268,8 +1268,13 @@ query_iter_next_rdata_name_rev(void *clos, struct dnstable_entry **ent)
 	return query_iter_next_name_indirect(clos, ent, ENTRY_TYPE_RDATA);
 }
 
-
-
+#define FILTER_SET_COND(cond,fname,src)	\
+do {	\
+	if (it->query->cond) {	\
+		it->fname = filter_mtbl_init(it->src, fname, it);	\
+		it->src = filter_mtbl_source(it->fname);	\
+	}	\
+} while (0)
 
 static struct dnstable_iter *
 query_init_rrset_right_wildcard(struct query_iter *it)
@@ -1280,24 +1285,11 @@ query_init_rrset_right_wildcard(struct query_iter *it)
 	/* key: rrset owner name, less trailing "\x01\x2a\x00" */
 	ubuf_append(it->key, it->query->name.data, it->query->name.len - 3);
 
-	if (it->query->dq_wildplus) {
-		it->filter_single_label = filter_mtbl_init(it->source_index, filter_single_label, it);
-		it->source_index = filter_mtbl_source(it->filter_single_label);
-	}
+	FILTER_SET_COND(dq_wildplus, filter_single_label, source_index);
+	it->m_iter2 = mtbl_source_get_prefix(it->source_index, ubuf_data(it->key), ubuf_size(it->key));
 
-	it->m_iter2 = mtbl_source_get_prefix(it->source_index,
-					     ubuf_data(it->key),
-					     ubuf_size(it->key));
-
-	if (it->query->do_rrtype) {
-		it->filter_rrtype = filter_mtbl_init(it->source, filter_rrtype, it);
-		it->source = filter_mtbl_source(it->filter_rrtype);
-	}
-
-	if (it->query->bailiwick.data != NULL) {
-		it->filter_bailiwick = filter_mtbl_init(it->source, filter_bailiwick, it);
-		it->source = filter_mtbl_source(it->filter_bailiwick);
-	}
+	FILTER_SET_COND(do_rrtype, filter_rrtype, source);
+	FILTER_SET_COND(bailiwick.data, filter_bailiwick, source);
 
 	return dnstable_iter_init(query_iter_next_rrset_name_fwd, query_iter_free, it);
 }
@@ -1317,20 +1309,9 @@ query_init_rrset_left_wildcard(struct query_iter *it)
 		return (NULL);
 	ubuf_append(it->key, name, len - 1);
 
-	if (it->query->dq_wildplus) {
-		it->filter_single_label = filter_mtbl_init(it->source, filter_single_label, it);
-		it->source = filter_mtbl_source(it->filter_single_label);
-	}
-
-	if (it->query->do_rrtype) {
-		it->filter_rrtype = filter_mtbl_init(it->source, filter_rrtype, it);
-		it->source = filter_mtbl_source(it->filter_rrtype);
-	}
-
-	if (it->query->bailiwick.data != NULL) {
-		it->filter_bailiwick = filter_mtbl_init(it->source, filter_bailiwick, it);
-		it->source = filter_mtbl_source(it->filter_bailiwick);
-	}
+	FILTER_SET_COND(dq_wildplus, filter_single_label, source);
+	FILTER_SET_COND(do_rrtype, filter_rrtype, source);
+	FILTER_SET_COND(bailiwick.data, filter_bailiwick, source);
 
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
@@ -1343,8 +1324,7 @@ is_right_wildcard(struct dnstable_query *q)
 
 	if (name->len >= 3 &&
 	    name->data[name->len - 3] == '\x01' &&
-	    (name->data[name->len - 2] == '*' || name->data[name->len - 2] == '+'))
-	{
+	   (name->data[name->len - 2] == '*' || name->data[name->len - 2] == '+')) {
 		q->dq_wildplus = name->data[name->len - 2] == '+';
 		return (true);
 	}
@@ -1359,8 +1339,7 @@ is_left_wildcard(struct dnstable_query *q)
 
 	if (name->len >= 3 &&
 	    name->data[0] == '\x01' &&
-	    (name->data[1] == '*' || name->data[1] == '+'))
-	{
+	   (name->data[1] == '*' || name->data[1] == '+')) {
 		q->dq_wildplus = name->data[1] == '+';
 		return (true);
 	}
@@ -1397,9 +1376,8 @@ query_init_rrset(struct query_iter *it)
 		if (it->query->bailiwick.data != NULL) {
 			ubuf_append(it->key, it->query->bailiwick.data, it->query->bailiwick.len);
 		}
-	} else if (it->query->bailiwick.data != NULL) {
-		it->filter_bailiwick = filter_mtbl_init(it->source, filter_bailiwick, it);
-		it->source = filter_mtbl_source(it->filter_bailiwick);
+	} else {
+		FILTER_SET_COND(bailiwick.data, filter_bailiwick, source);
 	}
 
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
@@ -1414,10 +1392,7 @@ query_init_rdata_right_wildcard(struct query_iter *it)
 	/* key: rdata name, less trailing "\x01\x2a\x00" */
 	ubuf_append(it->key, it->query->name.data, it->query->name.len - 3);
 
-	if (it->query->dq_wildplus) {
-		it->filter_single_label = filter_mtbl_init(it->source, filter_single_label, it);
-		it->source = filter_mtbl_source(it->filter_single_label);
-	}
+	FILTER_SET_COND(dq_wildplus, filter_single_label, source);
 
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
@@ -1436,14 +1411,8 @@ query_init_rdata_left_wildcard(struct query_iter *it)
 		return (NULL);
 	ubuf_append(it->key, name, len - 1);
 
-	if (it->query->dq_wildplus) {
-		it->filter_single_label = filter_mtbl_init(it->source_index, filter_single_label, it);
-		it->source_index = filter_mtbl_source(it->filter_single_label);
-	}
-
-	it->m_iter2 = mtbl_source_get_prefix(it->source_index,
-					     ubuf_data(it->key),
-					     ubuf_size(it->key));
+	FILTER_SET_COND(dq_wildplus, filter_single_label, source_index);
+	it->m_iter2 = mtbl_source_get_prefix(it->source_index, ubuf_data(it->key), ubuf_size(it->key));
 
 	return dnstable_iter_init(query_iter_next_rdata_name_rev, query_iter_free, it);
 }
@@ -1534,10 +1503,7 @@ query_init_rdata_raw(struct query_iter *it)
 	 * or call add_rrtype_to_key(), if do_rrtype is set then the post-query
 	 * filter processing in it->filter_rrtype will filter the results by rrtype.
 	 */
-	if (it->query->do_rrtype) {
-		it->filter_rrtype = filter_mtbl_init(it->source, filter_rrtype, it);
-		it->source = filter_mtbl_source(it->filter_rrtype);
-	}
+	FILTER_SET_COND(do_rrtype, filter_rrtype, source);
 
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
