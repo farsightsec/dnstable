@@ -170,11 +170,20 @@ rrtype_test(dnstable_entry_type e_type, uint16_t rrtype,
  */
 struct ljoin_mtbl;
 
+struct ljoin_mtbl_stats {
+	uint64_t entries;
+	uint64_t merged;
+	uint64_t seek;
+};
+
 struct ljoin_mtbl *
 ljoin_mtbl_init(const struct mtbl_source *left,
 		const struct mtbl_source *right,
 		mtbl_merge_func merge_fn,
 		void *merge_clos);
+
+const struct ljoin_mtbl_stats *
+ljoin_mtbl_get_stats(const struct ljoin_mtbl *);
 
 const struct mtbl_source *
 ljoin_mtbl_source(const struct ljoin_mtbl *);
@@ -190,6 +199,11 @@ ljoin_mtbl_destroy(struct ljoin_mtbl **);
  */
 struct filter_mtbl;
 
+struct filter_mtbl_stats {
+	uint64_t filtered;
+	uint64_t seek;
+};
+
 typedef mtbl_res (*filter_mtbl_func)(
 		void *user,
 		struct mtbl_iter *seek_iter,
@@ -199,6 +213,9 @@ typedef mtbl_res (*filter_mtbl_func)(
 
 struct filter_mtbl *
 filter_mtbl_init(const struct mtbl_source *, filter_mtbl_func, void *);
+
+const struct filter_mtbl_stats *
+filter_mtbl_get_stats(const struct filter_mtbl *);
 
 const struct mtbl_source *
 filter_mtbl_source(const struct filter_mtbl *);
@@ -226,6 +243,11 @@ timeout_mtbl_destroy(struct timeout_mtbl **);
 /* Remove keys present in any source from the upstream source. */
 struct remove_mtbl;
 
+struct remove_mtbl_stats {
+	uint64_t filtered;
+	uint64_t seek;
+};
+
 struct remove_mtbl *
 remove_mtbl_init(void);
 
@@ -234,6 +256,9 @@ remove_mtbl_add_source(struct remove_mtbl *, const struct mtbl_source *);
 
 void
 remove_mtbl_set_upstream(struct remove_mtbl *, const struct mtbl_source *);
+
+const struct remove_mtbl_stats *
+remove_mtbl_get_stats(const struct remove_mtbl *);
 
 const struct mtbl_source *
 remove_mtbl_source(const struct remove_mtbl *);

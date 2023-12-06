@@ -133,6 +133,7 @@ struct ljoin_mtbl {
 	const struct mtbl_source *right;
 	mtbl_merge_func merge_fn;
 	void *merge_clos;
+	struct ljoin_mtbl_stats stats;
 };
 
 struct ljoin_mtbl_iter {
@@ -181,6 +182,8 @@ ljoin_iter_next(void *impl, const uint8_t **key, size_t *len_key,
 	if (res != mtbl_res_success)
 		return res;
 
+	it->join->stats.entries++;
+
 	*key = left_key;
 	*len_key = len_left_key;
 	*val = left_val;
@@ -208,6 +211,7 @@ ljoin_iter_next(void *impl, const uint8_t **key, size_t *len_key,
 				it->right_finished = true;
 				break;
 			}
+			it->join->stats.seek++;
 			it->right_key = NULL;
 			continue;
 		}
@@ -217,6 +221,7 @@ ljoin_iter_next(void *impl, const uint8_t **key, size_t *len_key,
 			break;
 
 		/* If the two keys are equal, merge the two values and return. */
+		it->join->stats.merged++;
 		free(it->merged_val);
 		it->join->merge_fn(it->join->merge_clos,
 				   left_key, len_left_key,
@@ -279,6 +284,12 @@ ljoin_mtbl_init(const struct mtbl_source *left, const struct mtbl_source *right,
 	return j;
 }
 
+const struct ljoin_mtbl_stats *
+ljoin_mtbl_get_stats(const struct ljoin_mtbl *j)
+{
+	return &j->stats;
+}
+
 void
 ljoin_mtbl_destroy(struct ljoin_mtbl **pj)
 {
@@ -300,11 +311,13 @@ struct filter_mtbl {
 	void *filter_data;
 	const struct mtbl_source *upstream;
 	struct mtbl_source *source;
+	struct filter_mtbl_stats stats;
 };
 
 struct filter_mtbl_iter {
-	const struct filter_mtbl *filter;
+	struct filter_mtbl *filter;
 	struct mtbl_iter *it;
+	struct mtbl_iter *seek_wrap_iter;
 };
 
 static mtbl_res
@@ -320,13 +333,31 @@ filter_iter_next(void *impl, const uint8_t **key, size_t *len_key,
 		if (res != mtbl_res_success)
 			return res;
 		res = fit->filter->filter_func(fit->filter->filter_data,
-					       fit->it,
+					       fit->seek_wrap_iter,
 					       *key, *len_key,
 					       *val, *len_val,
 					       &match);
 		if (res != mtbl_res_success || match)
-			return res;
+			break;
+
+		fit->filter->stats.filtered++;
 	}
+	return res;
+}
+
+static mtbl_res
+seek_wrap_iter_seek(void *impl, const uint8_t *key, size_t len_key)
+{
+	struct filter_mtbl_iter *fit = impl;
+	fit->filter->stats.seek++;
+	return mtbl_iter_seek(fit->it, key, len_key);
+}
+
+static void
+seek_wrap_iter_free(void *impl)
+{
+	/* freed by filter_iter_free */
+	(void)impl;
 }
 
 static mtbl_res
@@ -341,6 +372,7 @@ filter_iter_free(void *impl)
 {
 	struct filter_mtbl_iter *fit = impl;
 	mtbl_iter_destroy(&fit->it);
+	mtbl_iter_destroy(&fit->seek_wrap_iter);
 	free(fit);
 }
 
@@ -354,6 +386,11 @@ filter_source_iter_common(void *impl, source_iter_func source_iter,
 
 	fit->filter = filter;
 	fit->it = source_iter(filter->upstream, key, len_key, key2, len_key2);
+	fit->seek_wrap_iter = mtbl_iter_init(seek_wrap_iter_seek,
+					     filter_iter_next,
+					     seek_wrap_iter_free,
+					     fit);
+
 	return ITER_INIT_HELPER(filter, fit);
 }
 
@@ -491,6 +528,7 @@ struct remove_mtbl {
 	const struct mtbl_source *upstream;
 	source_vec *rm_sources;
 	struct mtbl_source *source;
+	struct remove_mtbl_stats stats;
 };
 
 struct remove_entry {
@@ -503,6 +541,7 @@ struct remove_entry {
 };
 
 struct remove_iter {
+	struct remove_mtbl *rm;
 	ISC_LIST(struct remove_entry) list;
 	struct mtbl_iter *it;
 	struct remove_entry *entries;
@@ -533,6 +572,7 @@ match_key(struct remove_iter *rit, const uint8_t *key, size_t len_key)
 				re->finished = true;
 				continue;
 			}
+			rit->rm->stats.seek++;
 			res = mtbl_iter_next(re->it, &re->key, &re->len_key, &val, &len_val);
 			if (res != mtbl_res_success) {
 				re->finished = true;
@@ -549,6 +589,7 @@ match_key(struct remove_iter *rit, const uint8_t *key, size_t len_key)
 				res = mtbl_iter_seek(re->it, key, len_key);
 				if (res != mtbl_res_success)
 					break;
+				rit->rm->stats.seek++;
 				res = mtbl_iter_next(re->it, &re->key, &re->len_key, &val, &len_val);
 				if (res != mtbl_res_success)
 					break;
@@ -558,6 +599,7 @@ match_key(struct remove_iter *rit, const uint8_t *key, size_t len_key)
 			/* we have a match. Move it to head of list. */
 			ISC_LIST_UNLINK(rit->list, re, link);
 			ISC_LIST_PREPEND(rit->list, re, link);
+			rit->rm->stats.filtered++;
 			return true;
 		}
 
@@ -609,6 +651,7 @@ remove_iter_seek(void *impl, const uint8_t *key, size_t len_key)
 				re->finished = true;
 				continue;
 			}
+			rit->rm->stats.seek++;
 			res = mtbl_iter_next(re->it, &re->key, &re->len_key, &val, &len_val);
 			if (res != mtbl_res_success) {
 				re->finished = true;
@@ -646,6 +689,7 @@ remove_source_iter_common(void *impl, source_iter_func source_iter,
 	struct remove_iter *rit = calloc(1, sizeof(*rit));
 	unsigned i;
 
+	rit->rm = rm;
 	rit->source_iter = source_iter;
 	rit->it = source_iter(rm->upstream, key, len_key, key2, len_key2);
 	if (len_key > 0) {
@@ -684,6 +728,12 @@ remove_mtbl_init(void)
 	rm->rm_sources = source_vec_init(1);
 	rm->source = SOURCE_INIT_HELPER(remove, rm);
 	return rm;
+}
+
+const struct remove_mtbl_stats *
+remove_mtbl_get_stats(const struct remove_mtbl *rm)
+{
+	return &rm->stats;
 }
 
 void
