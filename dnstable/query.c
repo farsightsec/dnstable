@@ -25,6 +25,32 @@
 #include "libmy/ip_arith.h"
 #include "libmy/hex_decode.h"
 
+/*
+ * All rrtypes whose dnstable-encoded rdata consist of a single name component.
+ * In other words, their encoding in the MTBL key ensures that they are followed
+ * immediately by an rrtype, allowing for the creation of a specific key prefix.
+ * This includes sliced encoding of rdata where the name is the terminal field.
+ */
+#define CASE_RDATA_NAME_TYPE_STANDALONE	\
+	case WDNS_TYPE_MX:	/* when sliced */	\
+	case WDNS_TYPE_SRV:	/* when sliced */	\
+	case WDNS_TYPE_NS:	\
+	case WDNS_TYPE_CNAME:	\
+	case WDNS_TYPE_DNAME:	\
+	case WDNS_TYPE_PTR
+/*
+ * Every rrtype where the rdata field of its dnstable-encoded (ENTRY_TYPE_RDATA)
+ * key begins with a hostname.
+ */
+#define CASE_RDATA_NAME_TYPE_ALL	\
+	CASE_RDATA_NAME_TYPE_STANDALONE:	\
+	case WDNS_TYPE_SOA:	\
+	case WDNS_TYPE_SVCB:	\
+	case WDNS_TYPE_HTTPS:	\
+	case WDNS_TYPE_NSEC:	\
+	case WDNS_TYPE_RP:	\
+	case WDNS_TYPE_NXT
+
 struct dnstable_query {
 	dnstable_query_type	q_type;
 	bool			do_rrtype, do_timeout;
@@ -468,18 +494,7 @@ dnstable_query_filter(struct dnstable_query *q, struct dnstable_entry *e, bool *
 		goto fail;
 	} else if (q->q_type == DNSTABLE_QUERY_TYPE_RDATA_NAME) {
 		switch(rrtype) {
-		case WDNS_TYPE_SOA:
-		case WDNS_TYPE_NS:
-		case WDNS_TYPE_CNAME:
-		case WDNS_TYPE_DNAME:
-		case WDNS_TYPE_PTR:
-		case WDNS_TYPE_MX:
-		case WDNS_TYPE_SRV:
-		case WDNS_TYPE_SVCB:
-		case WDNS_TYPE_HTTPS:
-		case WDNS_TYPE_NSEC:
-		case WDNS_TYPE_RP:
-		case WDNS_TYPE_NXT:
+		CASE_RDATA_NAME_TYPE_ALL:
 			break;
 		default:
 			goto fail;
@@ -755,18 +770,7 @@ filter_rrtype_rdata_name(void *user, struct mtbl_iter *seek_iter,
 	mtbl_varint_decode32(&key[len+1], &rrtype);
 
 	switch(rrtype) {
-	case WDNS_TYPE_SOA:
-	case WDNS_TYPE_NS:
-	case WDNS_TYPE_CNAME:
-	case WDNS_TYPE_DNAME:
-	case WDNS_TYPE_PTR:
-	case WDNS_TYPE_MX:
-	case WDNS_TYPE_SRV:
-	case WDNS_TYPE_SVCB:
-	case WDNS_TYPE_HTTPS:
-	case WDNS_TYPE_NSEC:
-	case WDNS_TYPE_RP:
-	case WDNS_TYPE_NXT:
+	CASE_RDATA_NAME_TYPE_ALL:
 		*match = true;
 	}
 
@@ -1221,12 +1225,7 @@ query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t t
 				add_rrtype_to_key(full_key, wanted_rrtype);
 			else if (it->query->do_rrtype) {
 				switch(wanted_rrtype) {
-				case WDNS_TYPE_NS:
-				case WDNS_TYPE_CNAME:
-				case WDNS_TYPE_DNAME:
-				case WDNS_TYPE_PTR:
-				case WDNS_TYPE_MX:
-				case WDNS_TYPE_SRV:
+				CASE_RDATA_NAME_TYPE_STANDALONE:
 					add_rrtype_to_key(full_key, wanted_rrtype);
 				}
 			}
@@ -1443,12 +1442,7 @@ query_init_rdata_name(struct query_iter *it)
 	/* key: rrtype */
 	if (it->query->do_rrtype) {
 		switch(it->query->rrtype) {
-		case WDNS_TYPE_NS:
-		case WDNS_TYPE_CNAME:
-		case WDNS_TYPE_DNAME:
-		case WDNS_TYPE_PTR:
-		case WDNS_TYPE_MX:
-		case WDNS_TYPE_SRV:
+		CASE_RDATA_NAME_TYPE_STANDALONE:
 			add_rrtype_to_key(it->key, it->query->rrtype);
 		}
 	}
