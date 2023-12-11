@@ -21,6 +21,55 @@
 #include "libmy/my_time.h"
 #include "libmy/list.h"
 
+
+#define SOURCE_INIT_HELPER(pfx,clos)	mtbl_source_init(pfx##_source_iter,	\
+	pfx##_source_get, pfx##_source_get_prefix, pfx##_source_get_range , pfx## _source_free, clos)
+#define ITER_INIT_HELPER(pfx,it)		mtbl_iter_init(pfx##_iter_seek,	\
+	pfx##_iter_next, pfx##_iter_free, it)
+
+#define DECL_SOURCE_ITER_FN(pfx)	\
+static struct mtbl_iter *	\
+pfx##_source_iter(void *impl)	\
+{	\
+	return pfx##_source_iter_common(impl, wrap_source_iter, NULL, 0, NULL, 0);	\
+}
+
+#define DECL_SOURCE_GET_FN(pfx)	\
+static struct mtbl_iter *	\
+pfx##_source_get(void *impl, const uint8_t *key, size_t len_key)	\
+{	\
+	return pfx##_source_iter_common(impl, wrap_source_get, key, len_key, NULL, 0);	\
+}
+
+#define DECL_SOURCE_GET_PREFIX_FN(pfx)	\
+static struct mtbl_iter *	\
+pfx##_source_get_prefix(void *impl, const uint8_t *key, size_t len_key)	\
+{	\
+	return pfx##_source_iter_common(impl, wrap_source_get_prefix, key, len_key, NULL, 0);	\
+}
+
+#define DECL_SOURCE_GET_RANGE_FN(pfx)	\
+static struct mtbl_iter *	\
+pfx##_source_get_range(void *impl, const uint8_t *key, size_t len_key,	\
+				   const uint8_t *key2, size_t len_key2)	\
+{	\
+	return pfx##_source_iter_common(impl, wrap_source_get_range, key, len_key, key2, len_key2);	\
+}
+
+#define DECL_SOURCE_FN(pfx)	\
+const struct mtbl_source *	\
+pfx##_mtbl_source(const struct pfx##_mtbl *j)	\
+{	\
+	return j->source;	\
+}
+
+#define DECL_SOURCE_FREE(pfx)	\
+static void	\
+pfx##_source_free(void *impl)	\
+{	\
+	(void)impl;	\
+}
+
 /*
  * Generic mtbl_source_{iter,get,get_prefix,get_range} wrappers to
  * reduce repeated code.
@@ -163,17 +212,11 @@ ljoin_iter_next(void *impl, const uint8_t **key, size_t *len_key,
 			continue;
 		}
 
-		/*
-		 * If the right iterator's current key is greater than the left, we
-		 * are finished.
-		 */
+		/* If the right iterator's current key is greater, we are finished. */
 		if (cmp > 0)
 			break;
 
-		/*
-		 * Otherwise, the right iterator's key is the same as the left. Merge
-		 * the two values and return.
-		 */
+		/* If the two keys are equal, merge the two values and return. */
 		free(it->merged_val);
 		it->join->merge_fn(it->join->merge_clos,
 				   left_key, len_left_key,
@@ -209,44 +252,17 @@ ljoin_source_iter_common(void *impl, source_iter_func source_iter,
 	it->join = j;
 	it->iter_left = source_iter(j->left, key, len_key, key2, len_key2);
 	it->iter_right = source_iter(j->right, key, len_key, key2, len_key2);
-	return mtbl_iter_init(ljoin_iter_seek, ljoin_iter_next, ljoin_iter_free, it);
+	return ITER_INIT_HELPER(ljoin, it);
 }
 
 
-static struct mtbl_iter *
-ljoin_source_iter(void *impl)
-{
-	return ljoin_source_iter_common(impl, wrap_source_iter, NULL, 0, NULL, 0);
-}
-
-static struct mtbl_iter *
-ljoin_source_get(void *impl, const uint8_t *key, size_t len_key)
-{
-	return ljoin_source_iter_common(impl, wrap_source_get, key, len_key, NULL, 0);
-}
-
-static struct mtbl_iter *
-ljoin_source_get_prefix(void *impl, const uint8_t *key, size_t len_key)
-{
-	return ljoin_source_iter_common(impl, wrap_source_get_prefix, key, len_key, NULL, 0);
-}
-
-static struct mtbl_iter *
-ljoin_source_get_range(void *impl, const uint8_t *key, size_t len_key,
-				   const uint8_t *key2, size_t len_key2)
-{
-	return ljoin_source_iter_common(impl, wrap_source_get_range, key, len_key, key2, len_key2);
-}
-
-/*
- * The ljoin source's private data is the ljoin_mtbl structure itself,
- * which is reclaimed with ljoin_mtbl_destroy()
- */
-static void
-ljoin_source_free(void *impl)
-{
-	(void)impl;
-}
+DECL_SOURCE_ITER_FN(ljoin)		/* ljoin_source_iter() */
+DECL_SOURCE_GET_FN(ljoin)		/* ljoin_source_get() */
+DECL_SOURCE_GET_PREFIX_FN(ljoin)	/* ljoin_source_get_prefix() */
+DECL_SOURCE_GET_RANGE_FN(ljoin)		/* ljoin_source_get_range() */
+DECL_SOURCE_FN(ljoin)			/* ljoin_mtbl_source() */
+/* The ljoin source's private data (struct ljoin_mtbl *) is reclaimed by ljoin_mtbl_destroy() */
+DECL_SOURCE_FREE(ljoin)			/* ljoin_source_free() */
 
 struct ljoin_mtbl *
 ljoin_mtbl_init(const struct mtbl_source *left, const struct mtbl_source *right,
@@ -259,19 +275,8 @@ ljoin_mtbl_init(const struct mtbl_source *left, const struct mtbl_source *right,
 	j->right = right;
 	j->merge_fn = merge_fn;
 	j->merge_clos = merge_clos;
-	j->source = mtbl_source_init(ljoin_source_iter,
-				     ljoin_source_get,
-				     ljoin_source_get_prefix,
-				     ljoin_source_get_range,
-				     ljoin_source_free,
-				     j);
+	j->source = SOURCE_INIT_HELPER(ljoin, j);
 	return j;
-}
-
-const struct mtbl_source *
-ljoin_mtbl_source(const struct ljoin_mtbl *j)
-{
-	return j->source;
 }
 
 void
@@ -349,50 +354,16 @@ filter_source_iter_common(void *impl, source_iter_func source_iter,
 
 	fit->filter = filter;
 	fit->it = source_iter(filter->upstream, key, len_key, key2, len_key2);
-
-	return mtbl_iter_init(filter_iter_seek,
-			      filter_iter_next,
-			      filter_iter_free,
-			      fit);
+	return ITER_INIT_HELPER(filter, fit);
 }
 
-static struct mtbl_iter *
-filter_source_iter(void *impl)
-{
-	return filter_source_iter_common(impl, wrap_source_iter,
-					 NULL, 0, NULL, 0);
-}
-
-static struct mtbl_iter *
-filter_source_get(void *impl, const uint8_t *key, size_t len_key)
-{
-	return filter_source_iter_common(impl, wrap_source_get,
-					 key, len_key, NULL, 0);
-}
-
-static struct mtbl_iter *
-filter_source_get_prefix(void *impl, const uint8_t *key, size_t len_key)
-{
-	return filter_source_iter_common(impl, wrap_source_get_prefix,
-					 key, len_key, NULL, 0);
-}
-
-static struct mtbl_iter *
-filter_source_get_range(void *impl, const uint8_t *key, size_t len_key, const uint8_t *key2, size_t len_key2)
-{
-	return filter_source_iter_common(impl, wrap_source_get_range,
-					 key, len_key, key2, len_key2);
-}
-
-/*
- * The filter source's private data is the filter_mtbl structure itself,
- * which is reclaimed with filter_mtbl_destroy()
- */
-static void
-filter_source_free(void *impl)
-{
-	(void)impl;
-}
+DECL_SOURCE_ITER_FN(filter)		/* filter_source_iter() */
+DECL_SOURCE_GET_FN(filter)		/* filter_source_get() */
+DECL_SOURCE_GET_PREFIX_FN(filter)	/* filter_source_get_prefix() */
+DECL_SOURCE_GET_RANGE_FN(filter)	/* filter_source_get_range() */
+DECL_SOURCE_FN(filter)			/* filter_mtbl_source() */
+/* The filter source's private data (struct filter_mtbl *) is reclaimed by filter_mtbl_destroy() */
+DECL_SOURCE_FREE(filter)		/* filter_source_free() */
 
 struct filter_mtbl *
 filter_mtbl_init(const struct mtbl_source *upstream, filter_mtbl_func filter, void *filter_data)
@@ -401,20 +372,8 @@ filter_mtbl_init(const struct mtbl_source *upstream, filter_mtbl_func filter, vo
 	f->filter_func = filter;
 	f->filter_data = filter_data;
 	f->upstream = upstream;
-
-	f->source = mtbl_source_init(filter_source_iter,
-				     filter_source_get,
-				     filter_source_get_prefix,
-				     filter_source_get_range,
-				     filter_source_free,
-				     f);
+	f->source = SOURCE_INIT_HELPER(filter, f);
 	return f;
-}
-
-const struct mtbl_source *
-filter_mtbl_source(const struct filter_mtbl *filter)
-{
-	return filter->source;
 }
 
 void
@@ -449,7 +408,7 @@ struct timeout_mtbl_iter {
 
 static mtbl_res
 timeout_iter_next(void *impl, const uint8_t **key, size_t *len_key,
-			     const uint8_t **val, size_t *len_val)
+			      const uint8_t **val, size_t *len_val)
 {
 	struct timeout_mtbl_iter *to_it = impl;
 	struct timespec now;
@@ -486,50 +445,16 @@ timeout_source_iter_common(void *impl, source_iter_func source_iter,
 
 	to_it->it = source_iter(timeout->upstream, key, len_key, key2, len_key2);
 	to_it->timeout = timeout;
-
-	return mtbl_iter_init(timeout_iter_seek,
-			      timeout_iter_next,
-			      timeout_iter_free,
-			      to_it);
+	return ITER_INIT_HELPER(timeout, to_it);
 }
 
-static struct mtbl_iter *
-timeout_source_iter(void *impl)
-{
-	return timeout_source_iter_common(impl, wrap_source_iter,
-					  NULL, 0, NULL, 0);
-}
-
-static struct mtbl_iter *
-timeout_source_get(void *impl, const uint8_t *key, size_t len_key)
-{
-	return timeout_source_iter_common(impl, wrap_source_get,
-					  key, len_key, NULL, 0);
-}
-
-static struct mtbl_iter *
-timeout_source_get_prefix(void *impl, const uint8_t *key, size_t len_key)
-{
-	return timeout_source_iter_common(impl, wrap_source_get_prefix,
-					  key, len_key, NULL, 0);
-}
-
-static struct mtbl_iter *
-timeout_source_get_range(void *impl, const uint8_t *key, size_t len_key, const uint8_t *key2, size_t len_key2)
-{
-	return timeout_source_iter_common(impl, wrap_source_get_range,
-					  key, len_key, key2, len_key2);
-}
-
-/*
- * The timeout source's private data is the timeout_mtbl structure itself,
- * which is reclaimed with timeout_mtbl_destroy()
- */
-static void
-timeout_source_free(void *impl)
-{
-	(void)impl;
-}
+DECL_SOURCE_ITER_FN(timeout)		/* timeout_source_iter() */
+DECL_SOURCE_GET_FN(timeout)		/* timeout_source_get() */
+DECL_SOURCE_GET_PREFIX_FN(timeout)	/* timeout_source_get_prefix() */
+DECL_SOURCE_GET_RANGE_FN(timeout)	/* timeout_source_get_range() */
+DECL_SOURCE_FN(timeout)			/* timeout_mtbl_source() */
+/* The timeout source's private data (struct timeout_mtbl *) is reclaimed by timeout_mtbl_destroy() */
+DECL_SOURCE_FREE(timeout)		/* timeout_source_free() */
 
 struct timeout_mtbl *
 timeout_mtbl_init(const struct mtbl_source *upstream, const struct timespec *deadline, jmp_buf *env)
@@ -538,20 +463,8 @@ timeout_mtbl_init(const struct mtbl_source *upstream, const struct timespec *dea
 	timeout->deadline = deadline;
 	timeout->expire_env = env;
 	timeout->upstream = upstream;
-	timeout->source = mtbl_source_init(timeout_source_iter,
-					   timeout_source_get,
-					   timeout_source_get_prefix,
-					   timeout_source_get_range,
-					   timeout_source_free,
-					   timeout);
-
+	timeout->source = SOURCE_INIT_HELPER(timeout, timeout);
 	return timeout;
-}
-
-const struct mtbl_source *
-timeout_mtbl_source(const struct timeout_mtbl *timeout)
-{
-	return timeout->source;
 }
 
 void
@@ -564,7 +477,13 @@ timeout_mtbl_destroy(struct timeout_mtbl **ptimeout)
 	*ptimeout = NULL;
 }
 
-/* mtbl "remove" */
+/*
+ * mtbl "remove"
+ *
+ * This functions works almost as the inverse of an ljoin.
+ * For every key encountered in the upstream source, skip over it if it is
+ * encountered in any one of the "rm sources".
+ */
 
 VECTOR_GENERATE(source_vec, const struct mtbl_source *)
 
@@ -748,58 +667,23 @@ remove_source_iter_common(void *impl, source_iter_func source_iter,
 		rit->entries[i].source = source_vec_value(rm->rm_sources, i);
 		ISC_LIST_APPEND(rit->list, &rit->entries[i], link);
 	}
-	return mtbl_iter_init(remove_iter_seek, remove_iter_next, remove_iter_free, rit);
+	return ITER_INIT_HELPER(remove, rit);
 }
 
-static struct mtbl_iter *
-remove_source_iter(void *impl)
-{
-	return remove_source_iter_common(impl, wrap_source_iter, NULL, 0, NULL, 0);
-}
-
-static struct mtbl_iter *
-remove_source_get(void *impl, const uint8_t *key, size_t len_key)
-{
-	return remove_source_iter_common(impl, wrap_source_get, key, len_key, NULL, 0);
-}
-
-static struct mtbl_iter *
-remove_source_get_prefix(void *impl, const uint8_t *key, size_t len_key)
-{
-	return remove_source_iter_common(impl, wrap_source_get_prefix, key, len_key, NULL, 0);
-}
-
-static struct mtbl_iter *
-remove_source_get_range(void *impl, const uint8_t *key, size_t len_key,
-				    const uint8_t *key2, size_t len_key2)
-{
-	return remove_source_iter_common(impl, wrap_source_get_range, key, len_key, key2, len_key2);
-}
-
-static void
-remove_source_free(void *impl)
-{
-	(void)impl;
-}
+DECL_SOURCE_ITER_FN(remove)		/* remove_source_iter() */
+DECL_SOURCE_GET_FN(remove)		/* remove_source_get() */
+DECL_SOURCE_GET_PREFIX_FN(remove)	/* remove_source_get_prefix() */
+DECL_SOURCE_GET_RANGE_FN(remove)	/* remove_source_get_range() */
+DECL_SOURCE_FN(remove)			/* remove_mtbl_source() */
+DECL_SOURCE_FREE(remove)		/* remove_source_free() */
 
 struct remove_mtbl *
 remove_mtbl_init(void)
 {
 	struct remove_mtbl *rm = calloc(1, sizeof(*rm));
 	rm->rm_sources = source_vec_init(1);
-	rm->source = mtbl_source_init(remove_source_iter,
-				      remove_source_get,
-				      remove_source_get_prefix,
-				      remove_source_get_range,
-				      remove_source_free,
-				      rm);
+	rm->source = SOURCE_INIT_HELPER(remove, rm);
 	return rm;
-}
-
-const struct mtbl_source *
-remove_mtbl_source(struct remove_mtbl *rm)
-{
-	return rm->source;
 }
 
 void

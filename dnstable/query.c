@@ -54,47 +54,63 @@
 struct dnstable_query {
 	dnstable_query_type	q_type;
 	bool			do_rrtype, do_timeout;
+	uint32_t		rrtype;
+	struct timespec		timeout;
+	bool			aggregated, case_sensitive;
+	bool			dq_wildplus;		/* '+' wildcard? */
 	bool			do_time_first_before, do_time_first_after;
 	bool			do_time_last_before, do_time_last_after;
+	uint64_t		time_first_before, time_first_after;
+	uint64_t		time_last_before, time_last_after;
 	char			*err;
-	wdns_name_t		name, bailiwick;
-	uint32_t		rrtype;
-	bool			aggregated, case_sensitive;
+	wdns_name_t		name, bailiwick;	/* bailiwick is reversed */
 	uint8_t			len_ip1, len_ip2;
 	uint8_t			ip1[16], ip2[16];
 	size_t			len_rdata;
 	uint8_t			*rdata;
-	struct timespec		timeout;
-	uint64_t		time_first_before, time_first_after;
-	uint64_t		time_last_before, time_last_after;
 	uint64_t		offset;
 	bool			has_v_type;
 	uint8_t			v_type;
-	bool			dq_wildplus;		/* '+' wildcard? */
 };
 
 struct query_iter {
 	struct dnstable_query	*query;
-	const struct mtbl_source *source_index;
-	const struct mtbl_source *source;
-	struct mtbl_merger	*fill_merger;
-	struct ljoin_mtbl	*ljoin;
-	struct mtbl_fileset	*fs_filter;
-	struct mtbl_fileset	*fs_no_merge;
-	struct timespec		deadline;
+	/*
+	 * These two sources are the same except in the case of unaggregated or
+	 * time-filtered fileset queries. Even when they contain the same underlying
+	 * files, different filters may be applied to them depending on the query
+	 * configuration (e.g. rrtype restrictions, single-label wildcard lookups).
+	 */
+	const struct mtbl_source *source, *source_index;
+
+	/* Pertinent to fileset-based sources */
+	struct mtbl_fileset	*fs_filter;	/* time-filtered fileset */
+	struct ljoin_mtbl	*ljoin;		/* wraps fill merger */
+	struct mtbl_merger	*fill_merger;	/* for aggregated, time-fenced queries */
+	struct remove_mtbl	*remove_strict;	/* for aggregated + strict time filtering */
+	struct mtbl_fileset	*fs_no_merge;	/* fileset for un-aggregated queries */
+
+	struct timespec		deadline;	/* derived from query->timeout */
 	jmp_buf			to_env;
-	struct timeout_mtbl	*timeout;
-	struct timeout_mtbl	*timeout_index;
+	/* Basically the same, but each applies to either source or source_index */
+	struct timeout_mtbl	*timeout, *timeout_index;
+
+	/* m_iter2 for indirect queries: left wildcard rrset or right WC rdata */
 	struct mtbl_iter	*m_iter, *m_iter2;
-	ubuf			*key, *key2;
-	struct filter_mtbl	*filter_single_label;
+	ubuf			*key, *key2;	/* key2 is a tmp value holder */
+
+	/*
+	 * The following filters are applied in the order they are declared,
+	 * and they are also evaluated in the order they are declared, meaning
+	 * that filter_offset is run only at the end of processing.
+	 */
+	struct filter_mtbl	*filter_single_label;	/* rrset+rdata wildcard */
+	/* Can be filter_rrtype(), filter_rrtype_ip(), or filter_rrtype_rdata_name() */
 	struct filter_mtbl	*filter_rrtype;
-	struct filter_mtbl	*filter_rrtype_ip;
+	struct filter_mtbl	*filter_bailiwick;
 	struct filter_mtbl	*filter_time_strict;
 	struct filter_mtbl	*filter_time;
-	struct filter_mtbl	*filter_bailiwick;
 	struct filter_mtbl	*filter_offset;
-	struct remove_mtbl	*remove_strict;
 };
 
 static void
@@ -477,6 +493,10 @@ dnstable_query_set_filter_parameter(struct dnstable_query *q,
 	}
 }
 
+/*
+ * Run a series of optionally-set query filters against an entry in this order:
+ * rrtype matching, time-fencing, and finally bailiwick verification for rrsets.
+ */
 dnstable_res
 dnstable_query_filter(struct dnstable_query *q, struct dnstable_entry *e, bool *pass)
 {
@@ -561,10 +581,9 @@ query_iter_free(void *clos)
 	timeout_mtbl_destroy(&it->timeout_index);
 	filter_mtbl_destroy(&it->filter_single_label);
 	filter_mtbl_destroy(&it->filter_rrtype);
-	filter_mtbl_destroy(&it->filter_rrtype_ip);
+	filter_mtbl_destroy(&it->filter_bailiwick);
 	filter_mtbl_destroy(&it->filter_time_strict);
 	filter_mtbl_destroy(&it->filter_time);
-	filter_mtbl_destroy(&it->filter_bailiwick);
 	filter_mtbl_destroy(&it->filter_offset);
 	remove_mtbl_destroy(&it->remove_strict);
 	ubuf_destroy(&it->key);
@@ -597,8 +616,7 @@ increment_key(ubuf *key, size_t pos)
  * Used with a "single label" wildcard search to match keys beginning
  * with the search prefix plus a single label.
  *
- * If the key does not match, seeks to a prefix of the next possible
- * matching key.
+ * If the key doesn't match, seek to a prefix of the next possible matching key.
  */
 static mtbl_res
 filter_single_label(void *user, struct mtbl_iter *seek_iter,
@@ -941,15 +959,11 @@ filter_rrtype_ip(void *user, struct mtbl_iter *seek_iter,
 	struct query_iter *it = (struct query_iter *) user;
 	mtbl_res res;
 
-
 	res = filter_rrtype(it, NULL, key, len_key, val, len_val, match);
 	if (res != mtbl_res_success || *match)
 		return res;
 
-	/*
-	 * Note that *match is false here. We optionally `mtbl_iter_seek` below
-	 * to skip more non-matches.
-	 */
+	/* Note that *match is false here. We optionally seek below to skip more non-matches. */
 	do {
 		dnstable_res dres;
 		ubuf *seek_key;
@@ -1171,7 +1185,19 @@ seek:
 	return (mtbl_res_success);
 }
 
-/* this assumes it is called on an entry type with possible new rrtype indexes */
+/*
+ * This is a dnstable_iter_next_func helper function called in two cases:
+ * 1. Right wildcard rrset queries where the source index (m_iter2) iterates over
+ *     entries of type ENTRY_TYPE_RRSET_NAME_FWD which are then used to look up
+ *     matching entries of type ENTRY_TYPE_RRSET in the source (m_iter)
+ * 2. Left wildcard rdata queries where the source index (m_iter2) iterates over
+ *    entries of type ENTRY_TYPE_RDATA_NAME_REV which are then used to look up
+ *    matching entries of type ENTRY_TYPE_RDATA in the source (m_iter)
+ *
+ * In both cases, the current m_iter2 candidate key (which are all encountered in
+ * sequential order) is used to form a search key to find the ultimate
+ * corresponding key in m_iter (which are distributed more randomly).
+ */
 static dnstable_res
 query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t type_byte)
 {
@@ -1274,7 +1300,16 @@ do {	\
 		it->src = filter_mtbl_source(it->fname);	\
 	}	\
 } while (0)
+#define FILTER_SET(fname,src)	\
+do {	\
+	it->fname = filter_mtbl_init(it->src, fname, it);	\
+	it->src = filter_mtbl_source(it->fname);	\
+} while (0)
 
+/*
+ * Requires special handling because rrset entry order is by label-reversed rr-
+ * set owner name, while we are traversing by label-forward rrset owner name.
+ */
 static struct dnstable_iter *
 query_init_rrset_right_wildcard(struct query_iter *it)
 {
@@ -1284,9 +1319,11 @@ query_init_rrset_right_wildcard(struct query_iter *it)
 	/* key: rrset owner name, less trailing "\x01\x2a\x00" */
 	ubuf_append(it->key, it->query->name.data, it->query->name.len - 3);
 
+	/* Single label wildcard filter applies to the index source (forward rrset owner names) */
 	FILTER_SET_COND(dq_wildplus, filter_single_label, source_index);
 	it->m_iter2 = mtbl_source_get_prefix(it->source_index, ubuf_data(it->key), ubuf_size(it->key));
 
+	/* rrtype and bailiwick filters are applied to the final source (rrset entries) */
 	FILTER_SET_COND(do_rrtype, filter_rrtype, source);
 	FILTER_SET_COND(bailiwick.data, filter_bailiwick, source);
 
@@ -1368,10 +1405,12 @@ query_init_rrset(struct query_iter *it)
 	}
 	ubuf_append(it->key, name, it->query->name.len);
 
+	/* No rrtype filter set because the key prefix can do that work itself */
 	if (it->query->do_rrtype) {
 		/* key: rrtype */
 		add_rrtype_to_key(it->key, it->query->rrtype);
 
+		/* Likewise, the bailiwick filter can also be made unnecessary */
 		if (it->query->bailiwick.data != NULL) {
 			ubuf_append(it->key, it->query->bailiwick.data, it->query->bailiwick.len);
 		}
@@ -1396,6 +1435,11 @@ query_init_rdata_right_wildcard(struct query_iter *it)
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
 
+/*
+ * Requires special handling because rdata names found in ENTRY_TYPE_RDATA
+ * entries are in standard wire-format order, while we are traversing by
+ * label-reversed rdata names.
+ */
 static struct dnstable_iter *
 query_init_rdata_left_wildcard(struct query_iter *it)
 {
@@ -1410,6 +1454,7 @@ query_init_rdata_left_wildcard(struct query_iter *it)
 		return (NULL);
 	ubuf_append(it->key, name, len - 1);
 
+	/* Note the single label wildcard filter applies to the index source. */
 	FILTER_SET_COND(dq_wildplus, filter_single_label, source_index);
 	it->m_iter2 = mtbl_source_get_prefix(it->source_index, ubuf_data(it->key), ubuf_size(it->key));
 
@@ -1528,6 +1573,12 @@ dnstable_query_iter_common(struct query_iter *it)
 	struct dnstable_iter *d_it;
 	struct dnstable_query *q = it->query;
 
+	/*
+	 * First-added means that timeouts are evaluated before all other filters
+	 * are applied, at the very bottom of the filter call chain.
+	 * Thus, if a timeout occurs, the last iterator key/value pair is
+	 * preserved for the benefit of the caller.
+	 */
 	if (q->do_timeout) {
 		it->timeout = timeout_mtbl_init(it->source, &it->deadline, &it->to_env);
 		it->source = timeout_mtbl_source(it->timeout);
@@ -1558,14 +1609,44 @@ dnstable_query_iter_common(struct query_iter *it)
 
 	/* Do the strict time filtering check at end, as it can only advance by one entry. */
 	if (q->do_time_first_after || q->do_time_last_before) {
-		it->filter_time_strict = filter_mtbl_init(it->source, filter_time_strict, it);
-		it->source = filter_mtbl_source(it->filter_time_strict);
+		FILTER_SET(filter_time_strict, source);
+
+		/*
+		 * Aggregated time-filtered fileset query setup has populated
+		 * it->remove_strict with a list of sources that all contain key
+		 * entries that we known will ALWAYS FAIL our time filtering checks.
+		 *
+		 * Right here, our main source only contains keys that MIGHT pass
+		 * the time-fence check on their own.
+		 */
 
 		if (it->remove_strict != NULL) {
 			remove_mtbl_set_upstream(it->remove_strict, it->source);
 			it->source = remove_mtbl_source(it->remove_strict);
 		}
+
+		/*
+		 * But after the application of it->remove_strict, any of the keys
+		 * present in it->remove_strict will be hidden so that they are
+		 * never produced by iterating through our main source.
+		 */
 	}
+
+	/*
+	 * If time-fencing is requested for an aggregated fileset, there is now a
+	 * three-way dance that occurs between the various components populated
+	 * by the reader_time_filter() fileset filter function.
+	 *
+	 * The first player is the above application of it->remove_strict in the
+	 * case of strict time-filtering.
+	 *
+	 * The next is the optional left join below.
+	 * The left side of this operation is the (remove-filtered) source, which
+	 *     contains only entries that might pass time-filtering alone.
+	 * The right side is it->fill_merger, which contains entries that would not
+	 *     pass time-filtering on their own, but still might pass once they
+	 *     are merged with a left-side entry.
+	 */
 
 	if (it->fill_merger != NULL) {
 		it->ljoin = ljoin_mtbl_init(it->source,
@@ -1575,16 +1656,16 @@ dnstable_query_iter_common(struct query_iter *it)
 	}
 
 	if (q->do_time_first_before || q->do_time_last_after || (it->filter_time_strict != NULL)) {
-		it->filter_time = filter_mtbl_init(it->source, filter_time, it);
-		it->source = filter_mtbl_source(it->filter_time);
+		FILTER_SET(filter_time, source);
 	}
 
+	/* Seeing if we've hit the user supplied offset is always the first check */
 	if (q->offset > 0) {
-		it->filter_offset = filter_mtbl_init(it->source, filter_offset, it);
-		it->source = filter_mtbl_source(it->filter_offset);
+		FILTER_SET(filter_offset, source);
 	}
 
 	if (it->m_iter2 == NULL) {
+		/* Set in the event of rdata IP range iteration */
 		if (it->key2 != NULL)
 			it->m_iter = mtbl_source_get_range(it->source,
 						           ubuf_data(it->key), ubuf_size(it->key),
@@ -1651,6 +1732,25 @@ dnstable_dupsort_func(void *clos,
 		return 0;
 }
 
+/*
+ * This function takes care of narrowing down the contents of time-filtered
+ * filesets by filtering out readers that don't contain data that might be used
+ * to produce a match.
+ *
+ * The logic is the simplest for unaggregated queries: simply remove all readers
+ * that have no possibility of producing a match.
+ *
+ * The logic is more complicated for aggregated queries. While the filter works
+ * just as it does for unaggregated queries, it also does two things at the end:
+ *
+ * 1. All readers that would necessarily produce non-matching results are saved
+ *    into it->remove_strict.
+ * 2. All readers that might not produce matching results on their own but might
+ *    form a matching entry post-merger are saved into it->fill_merger.
+ *
+ * The contents of remove_strict and fill_merger are subsequently used in
+ * dnstable_query_iter_common(), where more commentary can be found.
+ */
 static bool
 reader_time_filter(struct mtbl_reader *r, void *clos)
 {
@@ -1732,15 +1832,13 @@ out:
 	dnstable_iter_destroy(&tr_it);
 	dnstable_query_destroy(&tr_q);
 
-	if (fill && (it->fill_merger != NULL)) {
+	/* fill_merger and remove_strict are non-NULL for aggregated queries */
+	if (fill && (it->fill_merger != NULL))
 		mtbl_merger_add_source(it->fill_merger, mtbl_reader_source(r));
-		return false;
-	}
 
-	if (remove && (it->remove_strict != NULL)) {
+	/* If remove is set, we've failed a STRICT time fencing check. */
+	if (remove && (it->remove_strict != NULL))
 		remove_mtbl_add_source(it->remove_strict, mtbl_reader_source(r));
-		return false;
-	}
 
 	return !(fill || remove);
 }
@@ -1750,7 +1848,6 @@ dnstable_query_iter_fileset(struct dnstable_query *q, struct mtbl_fileset *fs)
 {
 	struct query_iter *it = my_calloc(1, sizeof(*it));
 	struct mtbl_fileset_options *fopt;
-	struct mtbl_merger_options *mopt;
 
 	it->query = q;
 	it->source = mtbl_fileset_source(fs);
@@ -1759,22 +1856,22 @@ dnstable_query_iter_fileset(struct dnstable_query *q, struct mtbl_fileset *fs)
 	fopt = mtbl_fileset_options_init();
 	mtbl_fileset_options_set_merge_func(fopt, dnstable_merge_func, NULL);
 
-	/*
-	 * For queries with time filtering, we create a filtered fileset
-	 * containing only the set of files in which matching entries or parts
-	 * of matching entries will be present. We use this fileset for index
-	 * (indirect) queries and to filter candidates for direct queries.
-	 */
+	/* For time-filtered queries, replace ourselves with a time-filtered fileset. */
 	if (q->do_time_first_before || q->do_time_first_after ||
 	    q->do_time_last_before || q->do_time_last_after) {
 
-		if (q->do_time_first_after || q->do_time_last_before)
-			it->remove_strict = remove_mtbl_init();
+		/* More stringent filtering is possible on aggregated queries. */
+		if (q->aggregated) {
+			struct mtbl_merger_options *mopt;
 
-		mopt = mtbl_merger_options_init();
-		mtbl_merger_options_set_merge_func(mopt, dnstable_merge_func, NULL);
-		it->fill_merger = mtbl_merger_init(mopt);
-		mtbl_merger_options_destroy(&mopt);
+			if (q->do_time_first_after || q->do_time_last_before)
+				it->remove_strict = remove_mtbl_init();
+
+			mopt = mtbl_merger_options_init();
+			mtbl_merger_options_set_merge_func(mopt, dnstable_merge_func, NULL);
+			it->fill_merger = mtbl_merger_init(mopt);
+			mtbl_merger_options_destroy(&mopt);
+		}
 
 		mtbl_fileset_options_set_reader_filter_func(fopt, reader_time_filter, it);
 		it->fs_filter = mtbl_fileset_dup(fs, fopt);
@@ -1788,18 +1885,15 @@ dnstable_query_iter_fileset(struct dnstable_query *q, struct mtbl_fileset *fs)
 	 * The merged index fileset source remains in place to avoid duplicate
 	 * results for queries involving indexes.
 	 *
-	 * If combined with time filtering, the unaggregated fileset will also
-	 * be time filtered, which takes the place of the filtered source.
+	 * Any fileset time-filtering (like the application of reader_filter_func)
+	 * above applies to this unaggregated fileset.
 	 */
 	if (!q->aggregated) {
-		/* Note the reader_filter_func set above remains in effect here. */
 		mtbl_fileset_options_set_merge_func(fopt, NULL, NULL);
 		mtbl_fileset_options_set_dupsort_func(fopt, dnstable_dupsort_func, NULL);
 		it->fs_no_merge = mtbl_fileset_dup(fs, fopt);
+		/* it->source_index remains merged to prevent duplicate index lookups. */
 		it->source = mtbl_fileset_source(it->fs_no_merge);
-		/* fill_merger and remove_strict are unused for non-aggregated queries */
-		mtbl_merger_destroy(&it->fill_merger);
-		remove_mtbl_destroy(&it->remove_strict);
 	}
 
 	mtbl_fileset_options_destroy(&fopt);
