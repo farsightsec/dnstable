@@ -43,3 +43,17 @@ dnstable_stat_category_to_str(dnstable_stat_category);^
 [verse]
 ^dnstable_res
 dnstable_stat_str_to_category(const char *category, dnstable_stat_category *res);^
+
+== DESCRIPTION ==
+       The functions ^dnstable_stat_stage_to_str^() and ^dnstable_stat_str_to_stage^() facilitate conversion between ^dnstable_stat_stage^ values and human-readable
+       strings, while ^dnstable_stat_category_to_str^() and ^dnstable_stat_str_to_category^() convert between ^dnstable_stat_category^ values and human-readable
+       strings.
+
+== RETURN VALUE ==
+       Both ^dnstable_stat_stage_to_str^() and ^dnstable_stat_category_to_str^() return string representations of the respective stage or category on success, or NULL
+       on failure. Likewise, ^dnstable_stat_str_to_stage^() and ^dnstable_stat_str_to_category^() will return a value of ^dnstable_res_success^ on success and will set
+       the value of res accordingly, or will simply return ^dnstable_res_failure^ upon failure.
+
+== SEE ALSO ==
+
+^dnstable_iter^(3)

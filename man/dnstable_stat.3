@@ -83,7 +83,7 @@ dnstable_stat_str_to_category(const char *\fR\fB\fIcat\fR\fR\fB, dnstable_stat_c
 The functions \fBdnstable_stat_stage_to_str\fR() and \fBdnstable_stat_str_to_stage\fR() facilitate conversion between \fBdnstable_stat_stage\fR values and human-readable strings, while \fBdnstable_stat_category_to_str\fR() and \fBdnstable_stat_str_to_category\fR() convert between \fBdnstable_stat_category\fR values and human-readable strings.
 .SH "RETURN VALUE"
 .sp
-Both \fBdnstable_stat_stage_to_str\fR() and \fBdnstable_stat_category_to_str\fR() return string representations of the respective stage or category on success, or \fBNULL\fR on failure. Likewise, \fBdnstable_stat_str_to_stage\fR() and \fBdnstable_stat_str_to_category\fR() will return the appropriate corresponding enum values for these strings, or \fBDNSTABLE_STAT_STAGE_MAX\fR or \fBDNSTABLE_STAT_CATEGORY_MAX\fR respectively, on failure.
+Both \fBdnstable_stat_stage_to_str\fR() and \fBdnstable_stat_category_to_str\fR() return string representations of the respective stage or category on success, or \fBNULL\fR on failure. Likewise, \fBdnstable_stat_str_to_stage\fR() and \fBdnstable_stat_str_to_category\fR() will return a value of \fBdnstable_res_success\fR on success and will set the value of \fBres\fR accordingly, or will simply return \fBdnstable_res_failure\fR upon failure.
 .SH "SEE ALSO"
 .sp
 \fBdnstable\_iter\fR(3)
