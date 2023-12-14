@@ -25,37 +25,92 @@
 #include "libmy/ip_arith.h"
 #include "libmy/hex_decode.h"
 
+/*
+ * All rrtypes whose dnstable-encoded rdata consist of a single name component.
+ * In other words, their encoding in the MTBL key ensures that they are followed
+ * immediately by an rrtype, allowing for the creation of a specific key prefix.
+ * This includes sliced encoding of rdata where the name is the terminal field.
+ */
+#define CASE_RDATA_NAME_TYPE_STANDALONE	\
+	case WDNS_TYPE_MX:	/* when sliced */	\
+	case WDNS_TYPE_SRV:	/* when sliced */	\
+	case WDNS_TYPE_NS:	\
+	case WDNS_TYPE_CNAME:	\
+	case WDNS_TYPE_DNAME:	\
+	case WDNS_TYPE_PTR
+/*
+ * Every rrtype where the rdata field of its dnstable-encoded (ENTRY_TYPE_RDATA)
+ * key begins with a hostname.
+ */
+#define CASE_RDATA_NAME_TYPE_ALL	\
+	CASE_RDATA_NAME_TYPE_STANDALONE:	\
+	case WDNS_TYPE_SOA:	\
+	case WDNS_TYPE_SVCB:	\
+	case WDNS_TYPE_HTTPS:	\
+	case WDNS_TYPE_NSEC:	\
+	case WDNS_TYPE_RP:	\
+	case WDNS_TYPE_NXT
+
 struct dnstable_query {
 	dnstable_query_type	q_type;
 	bool			do_rrtype, do_timeout;
+	uint32_t		rrtype;
+	struct timespec		timeout;
+	bool			aggregated, case_sensitive;
+	bool			dq_wildplus;		/* '+' wildcard? */
 	bool			do_time_first_before, do_time_first_after;
 	bool			do_time_last_before, do_time_last_after;
+	uint64_t		time_first_before, time_first_after;
+	uint64_t		time_last_before, time_last_after;
 	char			*err;
-	wdns_name_t		name, bailiwick;
-	uint32_t		rrtype;
-	bool			aggregated, case_sensitive;
+	wdns_name_t		name, bailiwick;	/* bailiwick is reversed */
 	uint8_t			len_ip1, len_ip2;
 	uint8_t			ip1[16], ip2[16];
 	size_t			len_rdata;
 	uint8_t			*rdata;
-	struct timespec		timeout;
-	uint64_t		time_first_before, time_first_after;
-	uint64_t		time_last_before, time_last_after;
 	uint64_t		offset;
 	bool			has_v_type;
 	uint8_t			v_type;
-	bool			dq_wildplus;		/* '+' wildcard? */
 };
 
 struct query_iter {
 	struct dnstable_query	*query;
-	const struct mtbl_source *source_filter;
-	const struct mtbl_source *source_index;
-	const struct mtbl_source *source;
-	struct mtbl_fileset	*fs_filter;
-	struct mtbl_fileset	*fs_no_merge;
+	/*
+	 * These two sources are the same except in the case of unaggregated or
+	 * time-filtered fileset queries. Even when they contain the same underlying
+	 * files, different filters may be applied to them depending on the query
+	 * configuration (e.g. rrtype restrictions, single-label wildcard lookups).
+	 */
+	const struct mtbl_source *source, *source_index;
+
+	/* Pertinent to fileset-based sources */
+	struct mtbl_fileset	*fs_filter;	/* time-filtered fileset */
+	struct ljoin_mtbl	*ljoin;		/* wraps fill merger */
+	struct mtbl_merger	*fill_merger;	/* for aggregated, time-fenced queries */
+	struct remove_mtbl	*remove_strict;	/* for aggregated + strict time filtering */
+	struct mtbl_fileset	*fs_no_merge;	/* fileset for un-aggregated queries */
+
+	struct timespec		deadline;	/* derived from query->timeout */
+	jmp_buf			to_env;
+	/* Basically the same, but each applies to either source or source_index */
+	struct timeout_mtbl	*timeout, *timeout_index;
+
+	/* m_iter2 for indirect queries: left wildcard rrset or right WC rdata */
 	struct mtbl_iter	*m_iter, *m_iter2;
-	ubuf			*key, *key2;
+	ubuf			*key, *key2;	/* key2 is a tmp value holder */
+
+	/*
+	 * The following filters are applied in the order they are declared,
+	 * and they are also evaluated in the order they are declared, meaning
+	 * that filter_offset is run only at the end of processing.
+	 */
+	struct filter_mtbl	*filter_single_label;	/* rrset+rdata wildcard */
+	/* Can be filter_rrtype(), filter_rrtype_ip(), or filter_rrtype_rdata_name() */
+	struct filter_mtbl	*filter_rrtype;
+	struct filter_mtbl	*filter_bailiwick;
+	struct filter_mtbl	*filter_time_strict;
+	struct filter_mtbl	*filter_time;
+	struct filter_mtbl	*filter_offset;
 };
 
 static void
@@ -142,11 +197,23 @@ dnstable_query_set_case_sensitive(struct dnstable_query *q, bool case_sensitive)
 dnstable_res
 dnstable_query_set_bailiwick(struct dnstable_query *q, const char *s_name)
 {
+	dnstable_res res;
+	uint8_t *rev;
 	if (q->q_type != DNSTABLE_QUERY_TYPE_RRSET) {
 		query_set_err(q, "bailiwick filtering not supported");
 		return (dnstable_res_failure);
 	}
-	return query_load_name(q, &q->bailiwick, s_name, false);
+	res = query_load_name(q, &q->bailiwick, s_name, false);
+	if (res != dnstable_res_success || q->bailiwick.data == NULL)
+		return res;
+	rev = my_malloc(q->bailiwick.len);
+	if (wdns_reverse_name(q->bailiwick.data, q->bailiwick.len, rev) != wdns_res_success) {
+		my_free(rev);
+		return (dnstable_res_failure);
+	}
+	my_free(q->bailiwick.data);
+	q->bailiwick.data = rev;
+	return (dnstable_res_success);
 }
 
 static dnstable_res
@@ -426,6 +493,10 @@ dnstable_query_set_filter_parameter(struct dnstable_query *q,
 	}
 }
 
+/*
+ * Run a series of optionally-set query filters against an entry in this order:
+ * rrtype matching, time-fencing, and finally bailiwick verification for rrsets.
+ */
 dnstable_res
 dnstable_query_filter(struct dnstable_query *q, struct dnstable_entry *e, bool *pass)
 {
@@ -443,18 +514,7 @@ dnstable_query_filter(struct dnstable_query *q, struct dnstable_entry *e, bool *
 		goto fail;
 	} else if (q->q_type == DNSTABLE_QUERY_TYPE_RDATA_NAME) {
 		switch(rrtype) {
-		case WDNS_TYPE_SOA:
-		case WDNS_TYPE_NS:
-		case WDNS_TYPE_CNAME:
-		case WDNS_TYPE_DNAME:
-		case WDNS_TYPE_PTR:
-		case WDNS_TYPE_MX:
-		case WDNS_TYPE_SRV:
-		case WDNS_TYPE_SVCB:
-		case WDNS_TYPE_HTTPS:
-		case WDNS_TYPE_NSEC:
-		case WDNS_TYPE_RP:
-		case WDNS_TYPE_NXT:
+		CASE_RDATA_NAME_TYPE_ALL:
 			break;
 		default:
 			goto fail;
@@ -487,13 +547,16 @@ dnstable_query_filter(struct dnstable_query *q, struct dnstable_entry *e, bool *
 
 	if (q->q_type == DNSTABLE_QUERY_TYPE_RRSET && q->bailiwick.data != NULL) {
 		const uint8_t *bailiwick;
+		uint8_t rev[WDNS_MAXLEN_NAME];
 		size_t len_bailiwick;
 		res = dnstable_entry_get_bailiwick(e, &bailiwick, &len_bailiwick);
 		if (res != dnstable_res_success)
 			return (res);
 		if (q->bailiwick.len != len_bailiwick)
 			goto fail;
-		if (memcmp(q->bailiwick.data, bailiwick, len_bailiwick) != 0)
+		if (wdns_reverse_name(bailiwick, len_bailiwick, rev) != wdns_res_success)
+			goto fail;
+		if (memcmp(q->bailiwick.data, rev, len_bailiwick) != 0)
 			goto fail;
 	}
 
@@ -510,8 +573,19 @@ query_iter_free(void *clos)
 	struct query_iter *it = (struct query_iter *) clos;
 	mtbl_iter_destroy(&it->m_iter);
 	mtbl_iter_destroy(&it->m_iter2);
+	ljoin_mtbl_destroy(&it->ljoin);
 	mtbl_fileset_destroy(&it->fs_filter);
 	mtbl_fileset_destroy(&it->fs_no_merge);
+	mtbl_merger_destroy(&it->fill_merger);
+	timeout_mtbl_destroy(&it->timeout);
+	timeout_mtbl_destroy(&it->timeout_index);
+	filter_mtbl_destroy(&it->filter_single_label);
+	filter_mtbl_destroy(&it->filter_rrtype);
+	filter_mtbl_destroy(&it->filter_bailiwick);
+	filter_mtbl_destroy(&it->filter_time_strict);
+	filter_mtbl_destroy(&it->filter_time);
+	filter_mtbl_destroy(&it->filter_offset);
+	remove_mtbl_destroy(&it->remove_strict);
 	ubuf_destroy(&it->key);
 	ubuf_destroy(&it->key2);
 	my_free(it);
@@ -538,54 +612,25 @@ increment_key(ubuf *key, size_t pos)
 	return (dnstable_res_failure);
 }
 
-enum sl_seek_result {
-	sl_matches,			/* Label matches. */
-	sl_nomatch,			/* Not a match. */
-	sl_failure,			/* Error detected. */
-};
-
-/* Single-label: Create new key and seek. */
-static enum sl_seek_result
-sl_key_seek(struct query_iter *it, struct mtbl_iter *seek_iter, const uint8_t *oldkey, size_t oldlen)
+/*
+ * Used with a "single label" wildcard search to match keys beginning
+ * with the search prefix plus a single label.
+ *
+ * If the key doesn't match, seek to a prefix of the next possible matching key.
+ */
+static mtbl_res
+filter_single_label(void *user, struct mtbl_iter *seek_iter,
+		    const uint8_t *key, size_t len_key,
+		    const uint8_t *val, size_t len_val,
+		    bool *match)
 {
+	struct query_iter *it = user;
+	size_t qks, next_len;
 	ubuf *seek_key;
 
-	/* Create a new key. */
-	if (it->key2 == NULL)
-		it->key2 = ubuf_init(oldlen);
-	seek_key = it->key2;
-	ubuf_clip(seek_key, 0);
-
-	ubuf_reserve(seek_key, oldlen);
-	ubuf_append(seek_key, oldkey, oldlen);
-
-	/* Advance the last byte of the new key. */
-	increment_key(seek_key, oldlen - 1);
-
-	/* Seek to the newly generated key. */
-	if (mtbl_iter_seek(seek_iter,
-				ubuf_data(seek_key),
-				ubuf_size(seek_key)) != mtbl_res_success)
-		return (sl_failure);
-
-	/* Restart processing starting from the new key. */
-	return (sl_nomatch);
-}
-
-/*
- * Used with a "single label" wildcard search to determine the action to take
- * for a given matching key.
- * Either:
- *  + Matches  -- One and only one extra label.
- *  + No match -- Restart search.
- *  + Failure  -- Some error.
- *
- * Return-value indicates the action to take.
- */
-static enum sl_seek_result
-seek_next_single_label(struct query_iter *it, struct mtbl_iter *seek_iter, const uint8_t *key, size_t len_key)
-{
-	size_t qks, next_len;
+	(void)val;
+	(void)len_val;
+	*match = false;
 
 	/*
 	 * For left-wildcard, the "key" in the query is label-reversed, and the wildcard char is removed.
@@ -600,7 +645,7 @@ seek_next_single_label(struct query_iter *it, struct mtbl_iter *seek_iter, const
 	qks = ubuf_size(it->key);		/* Byte-size of original key. */
 
 	if (qks >= len_key)
-		return (sl_nomatch);
+		return (mtbl_res_success);
 
 	/*
 	 * No more labels on this key.
@@ -612,8 +657,8 @@ seek_next_single_label(struct query_iter *it, struct mtbl_iter *seek_iter, const
 		 * e.g. seek to key
 		 *   \x00\x03com\x07example\x01
 		 */
-
-		return (sl_key_seek(it, seek_iter, key, qks + 1));
+		next_len = qks + 1;
+		goto seek;
 	}
 
 	/* From here, there is at least one more label. */
@@ -627,7 +672,7 @@ seek_next_single_label(struct query_iter *it, struct mtbl_iter *seek_iter, const
 	 * Bad: \x00\x03com\x07example\x03ns
 	 */
 	if (next_len >= len_key)
-		return (sl_nomatch);
+		return (mtbl_res_success);
 
 	/*
 	 * Key has one or more additional labels.
@@ -637,181 +682,294 @@ seek_next_single_label(struct query_iter *it, struct mtbl_iter *seek_iter, const
 	 * Seek: \x00\x03com\x07example\x03foo\x03bar\x00
 	 */
 
-	if (key[next_len] == '\0')	/* Only 1 additional label. */
-		return (sl_matches);
+	if (key[next_len] == '\0') {	/* Only 1 additional label. */
+		*match = true;
+		return (mtbl_res_success);
+	}
 
+seek:
 	/*
 	 * Create a new key that is just beyond a key containing one extra label.
 	 *   \x00\x03com\x07example\x03fop
 	 */
+	if (it->key2 == NULL)
+		it->key2 = ubuf_init(next_len);
+	seek_key = it->key2;
+	ubuf_clip(seek_key, 0);
 
-	return (sl_key_seek(it, seek_iter, key, next_len));
+	ubuf_reserve(seek_key, next_len);
+	ubuf_append(seek_key, key, next_len);
+
+	/* Advance the last byte of the new key. */
+	increment_key(seek_key, next_len - 1);
+
+	/* Seek to the newly generated key. */
+	return mtbl_iter_seek(seek_iter,
+				ubuf_data(seek_key),
+				ubuf_size(seek_key));
+
+}
+
+static mtbl_res
+filter_rrtype(void *user, struct mtbl_iter *seek_iter,
+	      const uint8_t *key, size_t len_key,
+	      const uint8_t *val, size_t len_val,
+	      bool *match)
+{
+	struct query_iter *it = user;
+	size_t len;
+	uint16_t rdlen;
+	uint32_t rrtype;
+
+	(void)seek_iter;
+	(void)val;
+	(void)len_val;
+
+	*match = false;
+	switch(key[0]) {
+	case ENTRY_TYPE_RRSET:
+		if (wdns_len_uname(&key[1], &key[len_key], &len) != wdns_res_success)
+			return (mtbl_res_success);
+		if (len + 2 >= len_key)
+			return (mtbl_res_success);
+
+		break;
+	case ENTRY_TYPE_RDATA:
+		if (len_key < sizeof(rdlen))
+			return (mtbl_res_success);
+
+		memcpy(&rdlen, &key[len_key - sizeof(rdlen)], sizeof(rdlen));
+		rdlen = le16toh(rdlen);
+		if ((size_t)rdlen + 2 >= len_key)
+			return (mtbl_res_success);
+
+		len = rdlen;
+		break;
+	default:
+		assert(0);
+	}
+
+	if (mtbl_varint_decode32(&key[len+1], &rrtype) == 0)
+		return (mtbl_res_success);
+
+	if (rrtype == it->query->rrtype)
+		*match = true;
+
+	return(mtbl_res_success);
+}
+
+/*
+ * filter_rrtype_rdata_name passes rdata entries with types whose
+ * rdata format begin with a domain name, or a domain name at a
+ * fixed offset used for "slice" encoding. This prevents rdata name
+ * searches from returning non-name (e.g. NULL, IPv6) records.
+ */
+static mtbl_res
+filter_rrtype_rdata_name(void *user, struct mtbl_iter *seek_iter,
+			 const uint8_t *key, size_t len_key,
+			 const uint8_t *val, size_t len_val,
+			 bool *match)
+{
+	size_t len;
+	uint16_t rdlen;
+	uint32_t rrtype;
+
+	(void)user;
+	*match = false;
+	if (len_key < sizeof(rdlen))
+		return (mtbl_res_success);
+
+	memcpy(&rdlen, &key[len_key - sizeof(rdlen)], sizeof(rdlen));
+	rdlen = le16toh(rdlen);
+	if ((size_t)rdlen + 2 >= len_key)
+		return (mtbl_res_success);
+
+	len = rdlen;
+	mtbl_varint_decode32(&key[len+1], &rrtype);
+
+	switch(rrtype) {
+	CASE_RDATA_NAME_TYPE_ALL:
+		*match = true;
+	}
+
+	return mtbl_res_success;
+}
+
+static mtbl_res
+filter_bailiwick(void *user, struct mtbl_iter *seek_iter,
+		 const uint8_t *key, size_t len_key,
+		 const uint8_t *val, size_t len_val,
+		 bool *match)
+{
+	struct query_iter *it = user;
+	struct dnstable_query *q = it->query;
+	size_t len, len_name;
+	uint32_t rrtype;
+
+	*match = false;
+	if (wdns_len_uname(&key[1], &key[len_key], &len) != wdns_res_success)
+		return (mtbl_res_success);
+	if (len + 2 >= len_key)
+		return (mtbl_res_success);
+
+	len ++;
+	len += mtbl_varint_decode32(&key[len], &rrtype);
+	if (len >= len_key)
+		return (mtbl_res_success);
+
+	if (wdns_len_uname(&key[len], &key[len_key], &len_name) != wdns_res_success)
+		return (mtbl_res_success);
+
+	if (len_name != q->bailiwick.len)
+		return (mtbl_res_success);
+
+	if (!memcmp(q->bailiwick.data, &key[len], len_name))
+		*match = true;
+
+	return (mtbl_res_success);
+}
+
+/*
+ * filter_time_strict provides a filter removing partially merged entries
+ * which have already failed time_first_after or time_last_before tests
+ * to save further merges.
+ */
+static mtbl_res
+filter_time_strict(void *user, struct mtbl_iter *seek_iter,
+		   const uint8_t *key, size_t len_key,
+		   const uint8_t *val, size_t len_val,
+		   bool *match)
+{
+	struct query_iter *it = user;
+	struct dnstable_query *q = it->query;
+	dnstable_res dres;
+	uint64_t time_first, time_last, count;
+
+	*match = true;
+
+	dres = triplet_unpack(val, len_val, &time_first, &time_last, &count);
+	if (dres != dnstable_res_success)
+		return (mtbl_res_success);
+
+	if (q->do_time_first_after && (time_first < q->time_first_after)) {
+		*match = false;
+		return (mtbl_res_success);
+	}
+
+	if (q->do_time_last_before && (time_last > q->time_last_before)) {
+		*match = false;
+		return (mtbl_res_success);
+	}
+
+	return (mtbl_res_success);
+}
+
+static mtbl_res
+filter_time(void *user, struct mtbl_iter *seek_iter,
+	    const uint8_t *key, size_t len_key,
+	    const uint8_t *val, size_t len_val,
+	    bool *match)
+{
+	struct query_iter *it = user;
+	struct dnstable_query *q = it->query;
+	dnstable_res dres;
+	uint64_t time_first, time_last, count;
+
+	*match = true;
+
+	dres = triplet_unpack(val, len_val, &time_first, &time_last, &count);
+	if (dres != dnstable_res_success)
+		return (mtbl_res_success);
+
+	if (q->do_time_first_before && (time_first > q->time_first_before)) {
+		*match = false;
+		return (mtbl_res_success);
+	}
+
+	if (q->do_time_last_after && (time_last < q->time_last_after)) {
+		*match = false;
+		return (mtbl_res_success);
+	}
+
+	if (q->do_time_first_after && (time_first < q->time_first_after)) {
+		*match = false;
+		return (mtbl_res_success);
+	}
+
+	if (q->do_time_last_before && (time_last > q->time_last_before)) {
+		*match = false;
+		return (mtbl_res_success);
+	}
+
+	return (mtbl_res_success);
+}
+
+static mtbl_res
+filter_offset(void *user, struct mtbl_iter *seek_iter,
+	      const uint8_t *key, size_t len_key,
+	      const uint8_t *val, size_t len_val,
+	      bool *match)
+{
+	struct query_iter *it = user;
+	struct dnstable_query *q = it->query;
+
+	*match = true;
+	if (q->offset > 0) {
+		*match = false;
+		q->offset--;
+	}
+	return (mtbl_res_success);
 }
 
 static dnstable_res
 query_iter_next(void *clos, struct dnstable_entry **ent)
 {
 	struct query_iter *it = (struct query_iter *) clos;
-	struct timespec expiry = {0};
 
 	if (it->query->do_timeout) {
-		my_gettime(DNSTABLE__CLOCK_MONOTONIC, &expiry);
-		my_timespec_add(&it->query->timeout, &expiry);
+		my_gettime(DNSTABLE__CLOCK_MONOTONIC, &it->deadline);
+		my_timespec_add(&it->query->timeout, &it->deadline);
+		if (setjmp(it->to_env) != 0)
+			return (dnstable_res_timeout);
 	}
 
 	for (;;) {
-		bool pass = false;
-		dnstable_res res;
 		const uint8_t *key, *val;
 		size_t len_key, len_val;
-		struct timespec now = {0};
-
-		if (it->query->do_timeout) {
-			my_gettime(DNSTABLE__CLOCK_MONOTONIC, &now);
-			if (my_timespec_cmp(&now, &expiry) >= 0)
-				return (dnstable_res_timeout);
-		}
-
-		if (it->source_filter != NULL) {
-			if (mtbl_iter_next(it->m_iter2, &key, &len_key, &val, &len_val) != mtbl_res_success) {
-				return (dnstable_res_failure);
-			}
-
-			/* Check the "single label". */
-			if (it->query->dq_wildplus) {
-				enum sl_seek_result sl_ret = seek_next_single_label(it, it->m_iter2, key, len_key);
-
-				if (sl_ret == sl_nomatch)
-					continue;
-
-				if (sl_ret == sl_failure)
-					return (dnstable_res_failure);
-			}
-
-			if (it->query->do_rrtype) {
-				uint16_t rrtype;
-				struct dnstable_entry *e = dnstable_entry_decode(key, len_key, val, len_val);
-
-				if (e == NULL)
-					continue;
-
-				res = dnstable_entry_get_rrtype(e, &rrtype);
-				dnstable_entry_destroy(&e);
-
-				if ((res != dnstable_res_success) || (rrtype != it->query->rrtype))
-					continue;
-			}
-			/*
-			 * When operating with a time filtered fileset, m_iter2 iterates over a
-			 * subset of the keys of m_iter. Thus, we can seek m_iter to a key from
-			 * m_iter2 and the next mtbl_iter_next call will return the same key.
-			 */
-			if (mtbl_iter_seek(it->m_iter, key, len_key) != mtbl_res_success) {
-				return (dnstable_res_failure);
-			}
-		}
 
 		if (mtbl_iter_next(it->m_iter, &key, &len_key, &val, &len_val) != mtbl_res_success)
 			return (dnstable_res_failure);
-
-		/* Check the "single label", if not done above. */
-		if (it->query->dq_wildplus && it->source_filter == NULL) {
-			enum sl_seek_result sl_ret = seek_next_single_label(it, it->m_iter, key, len_key);
-
-			if (sl_ret == sl_nomatch)
-				continue;
-
-			if (sl_ret == sl_failure)
-				return (dnstable_res_failure);
-		}
 
 		*ent = dnstable_entry_decode(key, len_key, val, len_val);
 		if (*ent == NULL)
 			continue;
 
-		res = dnstable_query_filter(it->query, *ent, &pass);
-		assert(res == dnstable_res_success);
-		if (pass) {
-			/* offset (e.g. skip) initial rows */
-			if (it->query->offset > 0 && it->query->offset-- > 0)
-			{
-				dnstable_entry_destroy(ent);
-				continue;
-			}
-
-			return (dnstable_res_success);
-		}
-
-		dnstable_entry_destroy(ent);
+		return (dnstable_res_success);
 	}
 
 	return (dnstable_res_failure);
 }
 
-static dnstable_res
-query_iter_next_ip(void *clos, struct dnstable_entry **ent)
+static mtbl_res
+filter_rrtype_ip(void *user, struct mtbl_iter *seek_iter,
+		 const uint8_t *key, size_t len_key,
+		 const uint8_t *val, size_t len_val,
+		 bool *match)
 {
-	struct query_iter *it = (struct query_iter *) clos;
-	struct timespec expiry = {0};
+	struct query_iter *it = (struct query_iter *) user;
+	mtbl_res res;
 
-	if (it->query->do_timeout) {
-		my_gettime(DNSTABLE__CLOCK_MONOTONIC, &expiry);
-		my_timespec_add(&(it->query->timeout), &expiry);
-	}
+	res = filter_rrtype(it, NULL, key, len_key, val, len_val, match);
+	if (res != mtbl_res_success || *match)
+		return res;
 
-	for (;;) {
-		bool pass = false;
-		dnstable_res res;
-		const uint8_t *key, *val;
-		size_t len_key, len_val;
-		uint16_t rrtype;
+	/* Note that *match is false here. We optionally seek below to skip more non-matches. */
+	do {
+		dnstable_res dres;
 		ubuf *seek_key;
 		int ret;
 
 		const uint8_t max_llen = 63;	/* RFC 1035 maximum label length in an uncompressed name. */
-
-		if (it->query->do_timeout) {
-			struct timespec now;
-			my_gettime(DNSTABLE__CLOCK_MONOTONIC, &now);
-			if (my_timespec_cmp(&now, &expiry) >= 0)
-				return (dnstable_res_timeout);
-		}
-
-		if (it->source_filter != NULL) {
-			if (mtbl_iter_next(it->m_iter2, &key, &len_key, &val, &len_val) != mtbl_res_success) {
-				return (dnstable_res_failure);
-			}
-			/*
-			 * When operating with a time filtered fileset, m_iter2 iterates over a
-			 * subset of the keys of m_iter. Thus, we can seek m_iter to a key from
-			 * m_iter2 and the next mtbl_iter_next call will return the same key.
-			 */
-			if (mtbl_iter_seek(it->m_iter, key, len_key) != mtbl_res_success) {
-				return (dnstable_res_failure);
-			}
-		}
-
-		if (mtbl_iter_next(it->m_iter, &key, &len_key, &val, &len_val) != mtbl_res_success) {
-			return (dnstable_res_failure);
-		}
-
-		*ent = dnstable_entry_decode(key, len_key, val, len_val);
-		if (*ent ==  NULL)
-			continue;
-
-		/* Get the rrtype of the decoded entry. */
-		res = dnstable_entry_get_rrtype(*ent, &rrtype);
-		if (res != dnstable_res_success) {
-			dnstable_entry_destroy(ent);
-			continue;
-		}
-
-		if (rrtype == it->query->rrtype) {
-			goto filter;
-		}
-
-		/* Destroy current entry; skip processing of wrong rrtype. */
-		dnstable_entry_destroy(ent);
 
 		/*
 		 * Create a new start key in it->key2 (seek_key) with the prefix
@@ -912,7 +1070,7 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 
 		if (len_key <= ubuf_size(seek_key)) {
 			/* There's no more key data to copy. Move to next key. */
-			continue;
+			return (mtbl_res_success);
 		}
 
 		/* Special case handling if the first byte is a bad label len */
@@ -1011,76 +1169,50 @@ query_iter_next_ip(void *clos, struct dnstable_entry **ent)
 		}
 
 increment:
-		res = increment_key(seek_key, key_prefix_len - 1);
+		dres = increment_key(seek_key, key_prefix_len - 1);
 
 		/* Bail out if an increment overflow clobbers the type byte. */
-		assert(res == dnstable_res_success);
+		assert(dres == dnstable_res_success);
 		if (ubuf_value(seek_key, 0) != ENTRY_TYPE_RDATA) {
-			mtbl_iter_destroy(&it->m_iter);
-			return (dnstable_res_failure);
+			return (mtbl_res_failure);
 		}
 
 seek:
 		/* Seek to the newly generated key. */
-		if (it->source_filter != NULL) {
-			if (mtbl_iter_seek(it->m_iter2,
-					   ubuf_data(seek_key),
-				           ubuf_size(seek_key)) != mtbl_res_success) {
-				return (dnstable_res_failure);
-			}
-		} else if (mtbl_iter_seek(it->m_iter,
-				   ubuf_data(seek_key),
-				   ubuf_size(seek_key)) != mtbl_res_success) {
-			return (dnstable_res_failure);
-		}
+		return mtbl_iter_seek(it->m_iter, ubuf_data(seek_key), ubuf_size(seek_key));
+	} while(0);
 
-		/* Restart processing starting from the new key. */
-		continue;
-
-filter:
-		res = dnstable_query_filter(it->query, *ent, &pass);
-		assert(res == dnstable_res_success);
-		if (pass) {
-			/* offset (e.g. skip) initial rows */
-			if (it->query->offset > 0 && it->query->offset-- > 0)
-			{
-				dnstable_entry_destroy(ent);
-				continue;
-			}
-
-			return (dnstable_res_success);
-		} else {
-			dnstable_entry_destroy(ent);
-			continue;
-		}
-	}
-	return (dnstable_res_failure);
+	return (mtbl_res_success);
 }
 
-/* this assumes it is called on an entry type with possible new rrtype indexes */
+/*
+ * This is a dnstable_iter_next_func helper function called in two cases:
+ * 1. Right wildcard rrset queries where the source index (m_iter2) iterates over
+ *     entries of type ENTRY_TYPE_RRSET_NAME_FWD which are then used to look up
+ *     matching entries of type ENTRY_TYPE_RRSET in the source (m_iter)
+ * 2. Left wildcard rdata queries where the source index (m_iter2) iterates over
+ *    entries of type ENTRY_TYPE_RDATA_NAME_REV which are then used to look up
+ *    matching entries of type ENTRY_TYPE_RDATA in the source (m_iter)
+ *
+ * In both cases, the current m_iter2 candidate key (which are all encountered in
+ * sequential order) is used to form a search key to find the ultimate
+ * corresponding key in m_iter (which are distributed more randomly).
+ */
 static dnstable_res
 query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t type_byte)
 {
 	struct query_iter *it = (struct query_iter *) clos;
 	const uint8_t *key, *val;
 	size_t len_key, len_val;
-	bool pass = false;
-	dnstable_res res;
-	struct timespec expiry = {0};
 
 	if (it->query->do_timeout) {
-		my_gettime(DNSTABLE__CLOCK_MONOTONIC, &expiry);
-		my_timespec_add(&(it->query->timeout), &expiry);
+		my_gettime(DNSTABLE__CLOCK_MONOTONIC, &it->deadline);
+		my_timespec_add(&(it->query->timeout), &it->deadline);
+		if (setjmp(it->to_env) != 0)
+			return (dnstable_res_timeout);
 	}
 
 	for (;;) {
-		struct timespec now = {0};
-
-		if (it->query->do_timeout) {
-			my_gettime(DNSTABLE__CLOCK_MONOTONIC, &now);
-			if (my_timespec_cmp(&now, &expiry) >= 0)
-				return (dnstable_res_timeout);
-		}
 
 		if (it->m_iter == NULL) {
 			uint16_t wanted_rrtype = it->query->rrtype;
@@ -1096,16 +1228,6 @@ query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t t
 			/* use the new rrtype indexes */
 			if (it->query->do_rrtype && !rrtype_test(type_byte, wanted_rrtype, val, len_val))
 				continue;
-
-			if (it->query->dq_wildplus) {
-				enum sl_seek_result sl_ret = seek_next_single_label(it, it->m_iter2, key, len_key);
-
-				if (sl_ret == sl_nomatch)
-					continue;
-
-				if (sl_ret == sl_failure)
-					return (dnstable_res_failure);
-			}
 
 			/* Use the index to create the key for the full data. */
 			if (it->key2 == NULL)
@@ -1129,12 +1251,7 @@ query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t t
 				add_rrtype_to_key(full_key, wanted_rrtype);
 			else if (it->query->do_rrtype) {
 				switch(wanted_rrtype) {
-				case WDNS_TYPE_NS:
-				case WDNS_TYPE_CNAME:
-				case WDNS_TYPE_DNAME:
-				case WDNS_TYPE_PTR:
-				case WDNS_TYPE_MX:
-				case WDNS_TYPE_SRV:
+				CASE_RDATA_NAME_TYPE_STANDALONE:
 					add_rrtype_to_key(full_key, wanted_rrtype);
 				}
 			}
@@ -1159,21 +1276,7 @@ query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t t
 		if (*ent == NULL)
 			continue;
 
-		res = dnstable_query_filter(it->query, *ent, &pass);
-		assert(res == dnstable_res_success);
-		if (pass) {
-			/* offset (e.g. skip) initial rows */
-			if (it->query->offset > 0 && it->query->offset-- > 0)
-			{
-				dnstable_entry_destroy(ent);
-				continue;
-			}
-
-			return (dnstable_res_success);
-		} else {
-			dnstable_entry_destroy(ent);
-			continue;
-		}
+		return (dnstable_res_success);
 	}
 	return (dnstable_res_failure);
 }
@@ -1190,25 +1293,23 @@ query_iter_next_rdata_name_rev(void *clos, struct dnstable_entry **ent)
 	return query_iter_next_name_indirect(clos, ent, ENTRY_TYPE_RDATA);
 }
 
-static struct mtbl_iter *
-query_get_iterator(struct query_iter *it, const struct mtbl_source *s)
-{
-	if (it->key2 != NULL)
-		return mtbl_source_get_range(s, ubuf_data(it->key), ubuf_size(it->key),
-					        ubuf_data(it->key2), ubuf_size(it->key2));
+#define FILTER_SET_COND(cond,fname,src)	\
+do {	\
+	if (it->query->cond) {	\
+		it->fname = filter_mtbl_init(it->src, fname, it);	\
+		it->src = filter_mtbl_source(it->fname);	\
+	}	\
+} while (0)
+#define FILTER_SET(fname,src)	\
+do {	\
+	it->fname = filter_mtbl_init(it->src, fname, it);	\
+	it->src = filter_mtbl_source(it->fname);	\
+} while (0)
 
-	return mtbl_source_get_prefix(s, ubuf_data(it->key), ubuf_size(it->key));
-}
-
-static void
-query_init_iterators(struct query_iter *it)
-{
-	if (it->source_filter != NULL)
-		it->m_iter2 = query_get_iterator(it, it->source_filter);
-
-	it->m_iter = query_get_iterator(it, it->source);
-}
-
+/*
+ * Requires special handling because rrset entry order is by label-reversed rr-
+ * set owner name, while we are traversing by label-forward rrset owner name.
+ */
 static struct dnstable_iter *
 query_init_rrset_right_wildcard(struct query_iter *it)
 {
@@ -1218,9 +1319,13 @@ query_init_rrset_right_wildcard(struct query_iter *it)
 	/* key: rrset owner name, less trailing "\x01\x2a\x00" */
 	ubuf_append(it->key, it->query->name.data, it->query->name.len - 3);
 
-	it->m_iter2 = mtbl_source_get_prefix(it->source_index,
-					     ubuf_data(it->key),
-					     ubuf_size(it->key));
+	/* Single label wildcard filter applies to the index source (forward rrset owner names) */
+	FILTER_SET_COND(dq_wildplus, filter_single_label, source_index);
+	it->m_iter2 = mtbl_source_get_prefix(it->source_index, ubuf_data(it->key), ubuf_size(it->key));
+
+	/* rrtype and bailiwick filters are applied to the final source (rrset entries) */
+	FILTER_SET_COND(do_rrtype, filter_rrtype, source);
+	FILTER_SET_COND(bailiwick.data, filter_bailiwick, source);
 
 	return dnstable_iter_init(query_iter_next_rrset_name_fwd, query_iter_free, it);
 }
@@ -1240,7 +1345,10 @@ query_init_rrset_left_wildcard(struct query_iter *it)
 		return (NULL);
 	ubuf_append(it->key, name, len - 1);
 
-	query_init_iterators(it);
+	FILTER_SET_COND(dq_wildplus, filter_single_label, source);
+	FILTER_SET_COND(do_rrtype, filter_rrtype, source);
+	FILTER_SET_COND(bailiwick.data, filter_bailiwick, source);
+
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
 
@@ -1252,8 +1360,7 @@ is_right_wildcard(struct dnstable_query *q)
 
 	if (name->len >= 3 &&
 	    name->data[name->len - 3] == '\x01' &&
-	    (name->data[name->len - 2] == '*' || name->data[name->len - 2] == '+'))
-	{
+	   (name->data[name->len - 2] == '*' || name->data[name->len - 2] == '+')) {
 		q->dq_wildplus = name->data[name->len - 2] == '+';
 		return (true);
 	}
@@ -1268,8 +1375,7 @@ is_left_wildcard(struct dnstable_query *q)
 
 	if (name->len >= 3 &&
 	    name->data[0] == '\x01' &&
-	    (name->data[1] == '*' || name->data[1] == '+'))
-	{
+	   (name->data[1] == '*' || name->data[1] == '+')) {
 		q->dq_wildplus = name->data[1] == '+';
 		return (true);
 	}
@@ -1299,25 +1405,19 @@ query_init_rrset(struct query_iter *it)
 	}
 	ubuf_append(it->key, name, it->query->name.len);
 
+	/* No rrtype filter set because the key prefix can do that work itself */
 	if (it->query->do_rrtype) {
 		/* key: rrtype */
 		add_rrtype_to_key(it->key, it->query->rrtype);
 
+		/* Likewise, the bailiwick filter can also be made unnecessary */
 		if (it->query->bailiwick.data != NULL) {
-			/* key: bailiwick name (label-reversed) */
-			if (wdns_reverse_name(it->query->bailiwick.data,
-					      it->query->bailiwick.len,
-					      name)
-			    != wdns_res_success)
-			{
-				ubuf_destroy(&it->key);
-				return (NULL);
-			}
-			ubuf_append(it->key, name, it->query->bailiwick.len);
+			ubuf_append(it->key, it->query->bailiwick.data, it->query->bailiwick.len);
 		}
+	} else {
+		FILTER_SET_COND(bailiwick.data, filter_bailiwick, source);
 	}
 
-	query_init_iterators(it);
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
 
@@ -1330,10 +1430,16 @@ query_init_rdata_right_wildcard(struct query_iter *it)
 	/* key: rdata name, less trailing "\x01\x2a\x00" */
 	ubuf_append(it->key, it->query->name.data, it->query->name.len - 3);
 
-	query_init_iterators(it);
+	FILTER_SET_COND(dq_wildplus, filter_single_label, source);
+
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
 
+/*
+ * Requires special handling because rdata names found in ENTRY_TYPE_RDATA
+ * entries are in standard wire-format order, while we are traversing by
+ * label-reversed rdata names.
+ */
 static struct dnstable_iter *
 query_init_rdata_left_wildcard(struct query_iter *it)
 {
@@ -1348,9 +1454,9 @@ query_init_rdata_left_wildcard(struct query_iter *it)
 		return (NULL);
 	ubuf_append(it->key, name, len - 1);
 
-	it->m_iter2 = mtbl_source_get_prefix(it->source_index,
-					     ubuf_data(it->key),
-					     ubuf_size(it->key));
+	/* Note the single label wildcard filter applies to the index source. */
+	FILTER_SET_COND(dq_wildplus, filter_single_label, source_index);
+	it->m_iter2 = mtbl_source_get_prefix(it->source_index, ubuf_data(it->key), ubuf_size(it->key));
 
 	return dnstable_iter_init(query_iter_next_rdata_name_rev, query_iter_free, it);
 }
@@ -1358,6 +1464,14 @@ query_init_rdata_left_wildcard(struct query_iter *it)
 static struct dnstable_iter *
 query_init_rdata_name(struct query_iter *it)
 {
+
+	if (it->query->do_rrtype) {
+		it->filter_rrtype = filter_mtbl_init(it->source, filter_rrtype, it);
+	} else {
+		it->filter_rrtype = filter_mtbl_init(it->source, filter_rrtype_rdata_name, it);
+	}
+	it->source = filter_mtbl_source(it->filter_rrtype);
+
 	it->key = ubuf_init(64);
 	if (is_right_wildcard(it->query))
 		return query_init_rdata_right_wildcard(it);
@@ -1373,17 +1487,11 @@ query_init_rdata_name(struct query_iter *it)
 	/* key: rrtype */
 	if (it->query->do_rrtype) {
 		switch(it->query->rrtype) {
-		case WDNS_TYPE_NS:
-		case WDNS_TYPE_CNAME:
-		case WDNS_TYPE_DNAME:
-		case WDNS_TYPE_PTR:
-		case WDNS_TYPE_MX:
-		case WDNS_TYPE_SRV:
+		CASE_RDATA_NAME_TYPE_STANDALONE:
 			add_rrtype_to_key(it->key, it->query->rrtype);
 		}
 	}
 
-	query_init_iterators(it);
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
 
@@ -1412,9 +1520,10 @@ query_init_rdata_ip(struct query_iter *it)
 		increment_key(it->key2, ubuf_size(it->key2) - 1);
 	}
 
-	query_init_iterators(it);
+	it->filter_rrtype = filter_mtbl_init(it->source, filter_rrtype_ip, it);
+	it->source = filter_mtbl_source(it->filter_rrtype);
 
-	return dnstable_iter_init(query_iter_next_ip, query_iter_free, it);
+	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
 
 static struct dnstable_iter *
@@ -1430,11 +1539,11 @@ query_init_rdata_raw(struct query_iter *it)
 
 	/*
 	 * Note: even though this function does not use it->query->do_rrtype
-	 * or call add_rrtype_to_key(), in the post-query filter processing
-	 * in dnstable_query_filter(), if do_rrtype is set then the results
-	 * will be filtered by rrtype.
+	 * or call add_rrtype_to_key(), if do_rrtype is set then the post-query
+	 * filter processing in it->filter_rrtype will filter the results by rrtype.
 	 */
-	query_init_iterators(it);
+	FILTER_SET_COND(do_rrtype, filter_rrtype, source);
+
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
 
@@ -1464,6 +1573,19 @@ dnstable_query_iter_common(struct query_iter *it)
 	struct dnstable_iter *d_it;
 	struct dnstable_query *q = it->query;
 
+	/*
+	 * First-added means that timeouts are evaluated before all other filters
+	 * are applied, at the very bottom of the filter call chain.
+	 * Thus, if a timeout occurs, the last iterator key/value pair is
+	 * preserved for the benefit of the caller.
+	 */
+	if (q->do_timeout) {
+		it->timeout = timeout_mtbl_init(it->source, &it->deadline, &it->to_env);
+		it->source = timeout_mtbl_source(it->timeout);
+		it->timeout_index = timeout_mtbl_init(it->source_index, &it->deadline, &it->to_env);
+		it->source_index = timeout_mtbl_source(it->timeout_index);
+	}
+
 	if (q->q_type == DNSTABLE_QUERY_TYPE_RRSET) {
 		d_it = query_init_rrset(it);
 	} else if (q->q_type == DNSTABLE_QUERY_TYPE_RDATA_NAME) {
@@ -1479,8 +1601,80 @@ dnstable_query_iter_common(struct query_iter *it)
 	} else {
 		assert(0);
 	}
-	if (d_it == NULL)
+
+	if (d_it == NULL) {
 		query_iter_free(it);
+		return (NULL);
+	}
+
+	/* Do the strict time filtering check at end, as it can only advance by one entry. */
+	if (q->do_time_first_after || q->do_time_last_before) {
+		FILTER_SET(filter_time_strict, source);
+
+		/*
+		 * Aggregated time-filtered fileset query setup has populated
+		 * it->remove_strict with a list of sources that all contain key
+		 * entries that we known will ALWAYS FAIL our time filtering checks.
+		 *
+		 * Right here, our main source only contains keys that MIGHT pass
+		 * the time-fence check on their own.
+		 */
+
+		if (it->remove_strict != NULL) {
+			remove_mtbl_set_upstream(it->remove_strict, it->source);
+			it->source = remove_mtbl_source(it->remove_strict);
+		}
+
+		/*
+		 * But after the application of it->remove_strict, any of the keys
+		 * present in it->remove_strict will be hidden so that they are
+		 * never produced by iterating through our main source.
+		 */
+	}
+
+	/*
+	 * If time-fencing is requested for an aggregated fileset, there is now a
+	 * three-way dance that occurs between the various components populated
+	 * by the reader_time_filter() fileset filter function.
+	 *
+	 * The first player is the above application of it->remove_strict in the
+	 * case of strict time-filtering.
+	 *
+	 * The next is the optional left join below.
+	 * The left side of this operation is the (remove-filtered) source, which
+	 *     contains only entries that might pass time-filtering alone.
+	 * The right side is it->fill_merger, which contains entries that would not
+	 *     pass time-filtering on their own, but still might pass once they
+	 *     are merged with a left-side entry.
+	 */
+
+	if (it->fill_merger != NULL) {
+		it->ljoin = ljoin_mtbl_init(it->source,
+					    mtbl_merger_source(it->fill_merger),
+					    dnstable_merge_func, NULL);
+		it->source = ljoin_mtbl_source(it->ljoin);
+	}
+
+	if (q->do_time_first_before || q->do_time_last_after || (it->filter_time_strict != NULL)) {
+		FILTER_SET(filter_time, source);
+	}
+
+	/* Seeing if we've hit the user supplied offset is always the first check */
+	if (q->offset > 0) {
+		FILTER_SET(filter_offset, source);
+	}
+
+	if (it->m_iter2 == NULL) {
+		/* Set in the event of rdata IP range iteration */
+		if (it->key2 != NULL)
+			it->m_iter = mtbl_source_get_range(it->source,
+						           ubuf_data(it->key), ubuf_size(it->key),
+						           ubuf_data(it->key2), ubuf_size(it->key2));
+		else
+			it->m_iter = mtbl_source_get_prefix(it->source,
+							    ubuf_data(it->key), ubuf_size(it->key));
+	}
+
 	return (d_it);
 }
 
@@ -1538,15 +1732,36 @@ dnstable_dupsort_func(void *clos,
 		return 0;
 }
 
+/*
+ * This function takes care of narrowing down the contents of time-filtered
+ * filesets by filtering out readers that don't contain data that might be used
+ * to produce a match.
+ *
+ * The logic is the simplest for unaggregated queries: simply remove all readers
+ * that have no possibility of producing a match.
+ *
+ * The logic is more complicated for aggregated queries. While the filter works
+ * just as it does for unaggregated queries, it also does two things at the end:
+ *
+ * 1. All readers that would necessarily produce non-matching results are saved
+ *    into it->remove_strict.
+ * 2. All readers that might not produce matching results on their own but might
+ *    form a matching entry post-merger are saved into it->fill_merger.
+ *
+ * The contents of remove_strict and fill_merger are subsequently used in
+ * dnstable_query_iter_common(), where more commentary can be found.
+ */
 static bool
 reader_time_filter(struct mtbl_reader *r, void *clos)
 {
-	struct dnstable_query *q = clos;
+	struct query_iter *it = clos;
+	struct dnstable_query *q = it->query;
 	struct dnstable_query *tr_q = dnstable_query_init(DNSTABLE_QUERY_TYPE_TIME_RANGE);
 	struct dnstable_iter *tr_it = dnstable_query_iter(tr_q, mtbl_reader_source(r));
 	struct dnstable_entry *tr_e = NULL;
 	uint64_t min_time_first, max_time_last;
-	bool res = true;
+	bool fill = false;
+	bool remove = false;
 
 	if (tr_it == NULL) goto out;
 
@@ -1564,16 +1779,20 @@ reader_time_filter(struct mtbl_reader *r, void *clos)
 	 * time_first_after cutoff, the resulting merged entries will
 	 * fail our time_first_after filter. Ignore for the filter pass.
 	 */
-	if (q->do_time_first_after && (q->time_first_after > max_time_last))
-		res = false;
+	if (q->do_time_first_after && (q->time_first_after > max_time_last)) {
+		remove = true;
+		goto out;
+	}
 
 	/*
 	 * #2. If the current reader has no data with time_last after our
 	 * time_last_after cutoff, it will not cause any merged results
 	 * to pass our time_last_after filter. Ignore for the filter pass.
 	 */
-	if (q->do_time_last_after && (q->time_last_after > max_time_last))
-		res = false;
+	if (q->do_time_last_after && (q->time_last_after > max_time_last)) {
+		fill = true;
+		goto out;
+	}
 
 	/*
 	 * #3. Like with time_first_after (#1), if the current reader has only
@@ -1581,8 +1800,10 @@ reader_time_filter(struct mtbl_reader *r, void *clos)
 	 * entries will fail our time_last_before filter. Ignore for the filter
 	 * pass.
 	 */
-	if (q->do_time_last_before && (q->time_last_before < min_time_first))
-		res = false;
+	if (q->do_time_last_before && (q->time_last_before < min_time_first)) {
+		remove = true;
+		goto out;
+	}
 
 	/*
 	 * #4. If the current reader contains no data with time_first before
@@ -1602,14 +1823,24 @@ reader_time_filter(struct mtbl_reader *r, void *clos)
 	 * to use to exclude readers for the filter pass.
 	 */
 	if (q->do_time_first_before && !q->do_time_last_after &&
-	    (q->time_first_before < min_time_first))
-		res = false;
+	    (q->time_first_before < min_time_first)) {
+		fill = true;
+	}
 
 out:
 	dnstable_entry_destroy(&tr_e);
 	dnstable_iter_destroy(&tr_it);
 	dnstable_query_destroy(&tr_q);
-	return res;
+
+	/* fill_merger and remove_strict are non-NULL for aggregated queries */
+	if (fill && (it->fill_merger != NULL))
+		mtbl_merger_add_source(it->fill_merger, mtbl_reader_source(r));
+
+	/* If remove is set, we've failed a STRICT time fencing check. */
+	if (remove && (it->remove_strict != NULL))
+		remove_mtbl_add_source(it->remove_strict, mtbl_reader_source(r));
+
+	return !(fill || remove);
 }
 
 struct dnstable_iter *
@@ -1625,18 +1856,27 @@ dnstable_query_iter_fileset(struct dnstable_query *q, struct mtbl_fileset *fs)
 	fopt = mtbl_fileset_options_init();
 	mtbl_fileset_options_set_merge_func(fopt, dnstable_merge_func, NULL);
 
-	/*
-	 * For queries with time filtering, we create a filtered fileset
-	 * containing only the set of files in which matching entries or parts
-	 * of matching entries will be present. We use this fileset for index
-	 * (indirect) queries and to filter candidates for direct queries.
-	 */
+	/* For time-filtered queries, replace ourselves with a time-filtered fileset. */
 	if (q->do_time_first_before || q->do_time_first_after ||
 	    q->do_time_last_before || q->do_time_last_after) {
-		mtbl_fileset_options_set_reader_filter_func(fopt, reader_time_filter, q);
+
+		/* More stringent filtering is possible on aggregated queries. */
+		if (q->aggregated) {
+			struct mtbl_merger_options *mopt;
+
+			if (q->do_time_first_after || q->do_time_last_before)
+				it->remove_strict = remove_mtbl_init();
+
+			mopt = mtbl_merger_options_init();
+			mtbl_merger_options_set_merge_func(mopt, dnstable_merge_func, NULL);
+			it->fill_merger = mtbl_merger_init(mopt);
+			mtbl_merger_options_destroy(&mopt);
+		}
+
+		mtbl_fileset_options_set_reader_filter_func(fopt, reader_time_filter, it);
 		it->fs_filter = mtbl_fileset_dup(fs, fopt);
 		it->source_index = mtbl_fileset_source(it->fs_filter);
-		it->source_filter = it->source_index;
+		it->source = mtbl_fileset_source(it->fs_filter);
 	}
 
 	/*
@@ -1645,16 +1885,15 @@ dnstable_query_iter_fileset(struct dnstable_query *q, struct mtbl_fileset *fs)
 	 * The merged index fileset source remains in place to avoid duplicate
 	 * results for queries involving indexes.
 	 *
-	 * If combined with time filtering, the unaggregated fileset will also
-	 * be time filtered, which takes the place of the filtered source.
+	 * Any fileset time-filtering (like the application of reader_filter_func)
+	 * above applies to this unaggregated fileset.
 	 */
 	if (!q->aggregated) {
-		/* Note the reader_filter_func set above remains in effect here. */
 		mtbl_fileset_options_set_merge_func(fopt, NULL, NULL);
 		mtbl_fileset_options_set_dupsort_func(fopt, dnstable_dupsort_func, NULL);
 		it->fs_no_merge = mtbl_fileset_dup(fs, fopt);
+		/* it->source_index remains merged to prevent duplicate index lookups. */
 		it->source = mtbl_fileset_source(it->fs_no_merge);
-		it->source_filter = NULL;
 	}
 
 	mtbl_fileset_options_destroy(&fopt);
