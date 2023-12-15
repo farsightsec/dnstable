@@ -35,6 +35,7 @@ static bool g_add_raw;
 static bool g_count = false;
 static bool g_aggregate = true;
 static int64_t g_offset = 0;
+static int32_t g_stats = 0;
 
 static void
 print_entry(struct dnstable_entry *ent)
@@ -68,6 +69,40 @@ print_entry(struct dnstable_entry *ent)
 }
 
 static void
+do_dump_stats_stage(struct dnstable_iter *it)
+{
+	dnstable_stat_stage stage = 0;
+	dnstable_stat_category category = 0;
+	bool exists;
+	for(category = 0; dnstable_stat_category_to_str(category) != NULL; ++category) {
+		uint64_t count = 0;
+		for(stage = 0; dnstable_stat_stage_to_str(stage) != NULL; ++stage) {
+			uint64_t counter;
+			(void) dnstable_iter_get_count(it, stage, category, &exists, &counter);
+			if (exists)
+				count += counter;
+		}
+		fprintf(stderr, "%s : %"PRIu64"\n", dnstable_stat_category_to_str(category), count);
+	}
+}
+
+static void
+do_dump_stats_category(struct dnstable_iter *it)
+{
+	dnstable_stat_stage stage = 0;
+	dnstable_stat_category category = 0;
+	bool exists;
+	uint64_t count;
+	for(stage = 0; dnstable_stat_stage_to_str(stage) != NULL; ++stage) {
+		for(category = 0; dnstable_stat_category_to_str(category) != NULL; ++category) {
+			(void) dnstable_iter_get_count(it, stage, category, &exists, &count);
+			if (exists)
+				fprintf(stderr, "%s - %s: %"PRIu64"\n", dnstable_stat_stage_to_str(stage), dnstable_stat_category_to_str(category), count);
+		}
+	}
+}
+
+static void
 do_dump(struct dnstable_iter *it)
 {
 	struct dnstable_entry *ent;
@@ -80,11 +115,13 @@ do_dump(struct dnstable_iter *it)
 		count++;
 	}
 
-	if (g_count)
-		fprintf(stderr, ";;; Processed %'" PRIu64 " entries.\n", count);
-	else
-		if (!g_json && !g_Json)
-			fprintf(stderr, ";;; Dumped %'" PRIu64 " entries.\n", count);
+	if (g_stats > 1)
+		do_dump_stats_category(it);
+	else if (g_stats > 0)
+		do_dump_stats_stage(it);
+
+	if (!g_json && !g_Json)
+		fprintf(stderr, ";;; Dumped %'" PRIu64 " entries.\n", count);
 }
 
 static uint64_t
@@ -175,6 +212,7 @@ usage(void)
 	fprintf(stderr, "\t-u: output unaggregated results; default is aggregated results\n");
 	fprintf(stderr, "\t-O #: offset the first # results (must be a positive number)\n");
 	fprintf(stderr, "\t-C case sensitive lookup\n");
+	fprintf(stderr, "\t-s print lookup stats\n");
 	fprintf(stderr, "\nUse exactly one of the following environment variables to specify the dnstable\ndata file(s) to query:\n\tDNSTABLE_FNAME - Path to a single dnstable data file, or\n\tDNSTABLE_SETFILE - Path to a \"set file\"\n");
 	exit(EXIT_FAILURE);
 }
@@ -203,7 +241,7 @@ main(int argc, char **argv)
 	dnstable_res res;
 	int ch;
 
-	while ((ch = getopt(argc, argv, "a:A:b:B:cCjnJRuO:")) != -1) {
+	while ((ch = getopt(argc, argv, "a:A:b:B:cCnjJRsuO:")) != -1) {
 		switch (ch) {
 		case 'a':
 			time_first_after = parse_time(optarg);
@@ -250,6 +288,9 @@ main(int argc, char **argv)
 			break;
 		case 'R':
 			g_add_raw = true;
+			break;
+		case 's':
+			g_stats++;
 			break;
 		case 'u':
 			g_aggregate = false;
