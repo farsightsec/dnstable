@@ -969,18 +969,18 @@ query_iter_get_count(const void *v,
 			return filter_mtbl_get_counter(q->filter_single_label, category, exists, count);
 		case DNSTABLE_STAT_STAGE_FILTER_RRTYPE:
 			return filter_mtbl_get_counter(q->filter_rrtype, category, exists, count);
-		case DNSTABLE_STAT_STAGE_FILTER_TIME:
-			return filter_mtbl_get_counter(q->filter_time, category, exists, count);
-		case DNSTABLE_STAT_STAGE_FILTER_TIME_STRICT:
-			return filter_mtbl_get_counter(q->filter_time_strict, category, exists, count);
 		case DNSTABLE_STAT_STAGE_FILTER_BAILIWICK:
 			return filter_mtbl_get_counter(q->filter_bailiwick, category, exists, count);
-		case DNSTABLE_STAT_STAGE_FILTER_OFFSET:
-			return filter_mtbl_get_counter(q->filter_offset, category, exists, count);
-		case DNSTABLE_STAT_STAGE_LJOIN:
-			return ljoin_mtbl_get_counter(q->ljoin, category, exists, count);
+		case DNSTABLE_STAT_STAGE_FILTER_TIME_STRICT:
+			return filter_mtbl_get_counter(q->filter_time_strict, category, exists, count);
 		case DNSTABLE_STAT_STAGE_REMOVE_STRICT:
 			return remove_mtbl_get_counter(q->remove_strict, category, exists, count);
+		case DNSTABLE_STAT_STAGE_LJOIN:
+			return ljoin_mtbl_get_counter(q->ljoin, category, exists, count);
+		case DNSTABLE_STAT_STAGE_FILTER_TIME:
+			return filter_mtbl_get_counter(q->filter_time, category, exists, count);
+		case DNSTABLE_STAT_STAGE_FILTER_OFFSET:
+			return filter_mtbl_get_counter(q->filter_offset, category, exists, count);
 		default:
 			break;
 	}

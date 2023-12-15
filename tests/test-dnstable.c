@@ -293,7 +293,7 @@ test_query_stats_conversion(void)
 		n++;
 	}
 
-	check_return(n == (DNSTABLE_STAT_STAGE_REMOVE_STRICT + 1));
+	check_return(n == (DNSTABLE_STAT_STAGE_FILTER_OFFSET + 1));
 
 	n = 0;
 	while (1) {
