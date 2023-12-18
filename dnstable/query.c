@@ -112,8 +112,10 @@ struct query_iter {
 	struct filter_mtbl	*filter_time;
 	struct filter_mtbl	*filter_offset;
 	struct {
-		uint64_t file_merged;
+		uint64_t fileset_merged;
+		uint64_t fileset_files;
 		uint64_t fill_merged;
+		uint64_t fill_files;
 	} stats;
 };
 
@@ -955,7 +957,7 @@ query_iter_next(void *clos, struct dnstable_entry **ent)
 }
 
 static dnstable_res
-get_counter(uint64_t entries, uint64_t filtered, uint64_t seek, uint64_t merged,
+get_counter(uint64_t entries, uint64_t filtered, uint64_t seek, uint64_t merged, uint64_t files,
 	    dnstable_stat_category category, uint64_t *count)
 {
 	uint64_t values[] = {
@@ -963,6 +965,7 @@ get_counter(uint64_t entries, uint64_t filtered, uint64_t seek, uint64_t merged,
 		[DNSTABLE_STAT_CATEGORY_SEEK] = seek,
 		[DNSTABLE_STAT_CATEGORY_MERGED] = merged,
 		[DNSTABLE_STAT_CATEGORY_ENTRIES] = entries,
+		[DNSTABLE_STAT_CATEGORY_FILES] = files,
 	};
 
 	if (category < 0 || category >= sizeof(values)/sizeof(values[0]))
@@ -988,8 +991,9 @@ query_iter_get_count(const void *v,
 	switch(stage)
 	{
 		case DNSTABLE_STAT_STAGE_FILESET:
-			*exists = (category == DNSTABLE_STAT_CATEGORY_MERGED);
-			return get_counter(0, 0, 0, q->stats.file_merged, category, count);
+			*exists = (category == DNSTABLE_STAT_CATEGORY_MERGED) ||
+				  (category == DNSTABLE_STAT_CATEGORY_FILES);
+			return get_counter(0, 0, 0, q->stats.fileset_merged, q->stats.fileset_files, category, count);
 		case DNSTABLE_STAT_STAGE_FILTER_SINGLE_LABEL:
 			return filter_mtbl_get_counter(q->filter_single_label, category, exists, count);
 		case DNSTABLE_STAT_STAGE_FILTER_RRTYPE:
@@ -1001,9 +1005,10 @@ query_iter_get_count(const void *v,
 		case DNSTABLE_STAT_STAGE_REMOVE_STRICT:
 			return remove_mtbl_get_counter(q->remove_strict, category, exists, count);
 		case DNSTABLE_STAT_STAGE_FILL_MERGER:
-			*exists = (category == DNSTABLE_STAT_CATEGORY_MERGED);
+			*exists = (category == DNSTABLE_STAT_CATEGORY_MERGED) ||
+				  (category == DNSTABLE_STAT_CATEGORY_FILES);
 			*exists = *exists && (q->fill_merger != NULL);
-			return get_counter(0, 0, 0, q->stats.fill_merged, category, count);
+			return get_counter(0, 0, 0, q->stats.fill_merged, q->stats.fill_files, category, count);
 		case DNSTABLE_STAT_STAGE_LJOIN:
 			return ljoin_mtbl_get_counter(q->ljoin, category, exists, count);
 		case DNSTABLE_STAT_STAGE_FILTER_TIME:
@@ -1901,12 +1906,17 @@ out:
 	dnstable_query_destroy(&tr_q);
 
 	/* fill_merger and remove_strict are non-NULL for aggregated queries */
-	if (fill && (it->fill_merger != NULL))
+	if (fill && (it->fill_merger != NULL)) {
 		mtbl_merger_add_source(it->fill_merger, mtbl_reader_source(r));
+		it->stats.fill_files++;
+	}
 
 	/* If remove is set, we've failed a STRICT time fencing check. */
 	if (remove && (it->remove_strict != NULL))
 		remove_mtbl_add_source(it->remove_strict, mtbl_reader_source(r));
+
+	if (!(fill || remove))
+		it->stats.fileset_files++;
 
 	return !(fill || remove);
 }
@@ -1938,7 +1948,7 @@ dnstable_query_iter_fileset(struct dnstable_query *q, struct mtbl_fileset *fs)
 	it->source_index = it->source;
 
 	fopt = mtbl_fileset_options_init();
-	mtbl_fileset_options_set_merge_func(fopt, count_merge_func, &it->stats.file_merged);
+	mtbl_fileset_options_set_merge_func(fopt, count_merge_func, &it->stats.fileset_merged);
 
 	/* For time-filtered queries, replace ourselves with a time-filtered fileset. */
 	if (q->do_time_first_before || q->do_time_first_after ||

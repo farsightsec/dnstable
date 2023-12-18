@@ -306,7 +306,7 @@ test_query_stats_conversion(void)
 		n++;
 	}
 
-	check_return(n == (DNSTABLE_STAT_CATEGORY_MERGED + 1));
+	check_return(n == (DNSTABLE_STAT_CATEGORY_FILES + 1));
 
 	check_return(!strcasecmp(dnstable_stat_stage_to_str(DNSTABLE_STAT_STAGE_LJOIN), "left join"));
 	check_return(dnstable_stat_stage_to_str(-1) == NULL);
