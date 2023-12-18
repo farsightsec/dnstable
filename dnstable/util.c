@@ -18,11 +18,13 @@
 #include "dnstable-private.h"
 
 static const char *stage_strs[] = {
+	[DNSTABLE_STAT_STAGE_FILESET] = "fileset",
 	[DNSTABLE_STAT_STAGE_FILTER_SINGLE_LABEL] = "single label",
 	[DNSTABLE_STAT_STAGE_FILTER_RRTYPE] = "rrtype",
 	[DNSTABLE_STAT_STAGE_FILTER_BAILIWICK] = "bailiwick",
 	[DNSTABLE_STAT_STAGE_FILTER_TIME_STRICT] = "time strict",
 	[DNSTABLE_STAT_STAGE_REMOVE_STRICT] = "remove strict",
+	[DNSTABLE_STAT_STAGE_FILL_MERGER] = "fill merger",
 	[DNSTABLE_STAT_STAGE_LJOIN] = "left join",
 	[DNSTABLE_STAT_STAGE_FILTER_TIME] = "time",
 	[DNSTABLE_STAT_STAGE_FILTER_OFFSET] = "offset",
