@@ -1943,34 +1943,34 @@ dnstable_query_iter_fileset(struct dnstable_query *q, struct mtbl_fileset *fs)
 	struct mtbl_fileset_options *fopt;
 
 	it->query = q;
-	it->source = mtbl_fileset_source(fs);
-	it->source_index = it->source;
 
 	fopt = mtbl_fileset_options_init();
+	mtbl_fileset_options_set_reader_filter_func(fopt, reader_time_filter, it);
 	mtbl_fileset_options_set_merge_func(fopt, count_merge_func, &it->stats.fileset_merged);
 
-	/* For time-filtered queries, replace ourselves with a time-filtered fileset. */
-	if (q->do_time_first_before || q->do_time_first_after ||
-	    q->do_time_last_before || q->do_time_last_after) {
+	/*
+	 * For time-filtered aggregated queries, set up fill merger for complete results.
+	 * If strict time filtering is requested, set up a remove_mtbl to efficiently
+	 * exclude non-matching results.
+	 */
+	if (q->aggregated &&
+	    (q->do_time_first_before || q->do_time_first_after ||
+	     q->do_time_last_before || q->do_time_last_after)) {
 
-		/* More stringent filtering is possible on aggregated queries. */
-		if (q->aggregated) {
-			struct mtbl_merger_options *mopt;
+		struct mtbl_merger_options *mopt;
 
-			if (q->do_time_first_after || q->do_time_last_before)
-				it->remove_strict = remove_mtbl_init();
+		if (q->do_time_first_after || q->do_time_last_before)
+			it->remove_strict = remove_mtbl_init();
 
-			mopt = mtbl_merger_options_init();
-			mtbl_merger_options_set_merge_func(mopt, count_merge_func, &it->stats.fill_merged);
-			it->fill_merger = mtbl_merger_init(mopt);
-			mtbl_merger_options_destroy(&mopt);
-		}
-
-		mtbl_fileset_options_set_reader_filter_func(fopt, reader_time_filter, it);
-		it->fs_filter = mtbl_fileset_dup(fs, fopt);
-		it->source_index = mtbl_fileset_source(it->fs_filter);
-		it->source = mtbl_fileset_source(it->fs_filter);
+		mopt = mtbl_merger_options_init();
+		mtbl_merger_options_set_merge_func(mopt, count_merge_func, &it->stats.fill_merged);
+		it->fill_merger = mtbl_merger_init(mopt);
+		mtbl_merger_options_destroy(&mopt);
 	}
+
+	it->fs_filter = mtbl_fileset_dup(fs, fopt);
+	it->source_index = mtbl_fileset_source(it->fs_filter);
+	it->source = mtbl_fileset_source(it->fs_filter);
 
 	/*
 	 * If the query requests unaggregated results, we create a fileset
