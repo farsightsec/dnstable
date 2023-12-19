@@ -138,18 +138,7 @@ EXTRA_DIST += \
 	tests/test-timefilter/dns-2022-11-16.mtbl \
 	tests/test-timefilter/dns-2022-11-17.mtbl \
 	tests/test-timefilter/dns-2022-11-18.mtbl \
-	tests/test-timefilter/dns-merged.mtbl \
 	tests/test-timefilter/dns-test.fileset \
-	tests/test-timefilter/dns-ntf-2022-11-10.mtbl \
-	tests/test-timefilter/dns-ntf-2022-11-11.mtbl \
-	tests/test-timefilter/dns-ntf-2022-11-12.mtbl \
-	tests/test-timefilter/dns-ntf-2022-11-13.mtbl \
-	tests/test-timefilter/dns-ntf-2022-11-14.mtbl \
-	tests/test-timefilter/dns-ntf-2022-11-15.mtbl \
-	tests/test-timefilter/dns-ntf-2022-11-16.mtbl \
-	tests/test-timefilter/dns-ntf-2022-11-17.mtbl \
-	tests/test-timefilter/dns-ntf-2022-11-18.mtbl \
-	tests/test-timefilter/dns-test-ntf.fileset \
 	tests/test.subr
 
 tests/test-dnstable_merge:

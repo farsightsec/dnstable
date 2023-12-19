@@ -95,27 +95,6 @@ jq -Mc . <<EOF
 EOF
 }
 
-#
-# Generate an entry with a time range wide enough to effectively
-# disable time filtering.
-#
-generate_time() {
-jq -Mc . <<EOF
-{"vname":"SIE",
- "mname":"dnsdedupe",
- "message":{
-   "type":"INSERTION",
-   "time_first":"2022-01-01 00:00:00",
-   "time_last":"2022-12-31 00:00:00",
-   "bailiwick":"example.dom.",
-   "rrname":"example.dom.",
-   "rrclass":"IN",
-   "rrtype":"A",
-   "rrttl":300,
-   "rdata":["0.0.0.0"]}}
-EOF
-}
-
 generate() {
 	local number day first last number
 	local divisor mtbl_file
@@ -138,23 +117,6 @@ generate() {
 		divisor=$(expr $divisor \* 2)
 		echo $mtbl_file
 	done > dns-test.fileset
-
-	rm -f ntf.mtbl
-	generate_time | nmsgtool -j - -w - | dnstable_convert - ntf.mtbl scratch-dnssec.mtbl
-
-	for day in $DATA_DAYS; do
-		mtbl_file=dns-${DATE_BASE}${day}.mtbl
-		mtbl_file_ntf=dns-ntf-${DATE_BASE}${day}.mtbl
-
-		rm -f $mtbl_file_ntf
-		dnstable_merge $mtbl_file ntf.mtbl $mtbl_file_ntf
-		echo $mtbl_file_ntf
-	done > dns-test-ntf.fileset
-
-	rm -f ntf.mtbl
-
-	rm -f dns-merged.mtbl
-	dnstable_merge $(cat dns-test.fileset) dns-merged.mtbl
 }
 
 generate
