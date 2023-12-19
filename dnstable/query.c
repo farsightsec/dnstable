@@ -108,7 +108,7 @@ struct query_iter {
 	/* Can be filter_rrtype(), filter_rrtype_ip(), or filter_rrtype_rdata_name() */
 	struct filter_mtbl	*filter_rrtype;
 	struct filter_mtbl	*filter_bailiwick;
-	struct filter_mtbl	*filter_time_strict;
+	struct filter_mtbl	*filter_time_prefilter;
 	struct filter_mtbl	*filter_time;
 	struct filter_mtbl	*filter_offset;
 	struct {
@@ -588,7 +588,7 @@ query_iter_free(void *clos)
 	filter_mtbl_destroy(&it->filter_single_label);
 	filter_mtbl_destroy(&it->filter_rrtype);
 	filter_mtbl_destroy(&it->filter_bailiwick);
-	filter_mtbl_destroy(&it->filter_time_strict);
+	filter_mtbl_destroy(&it->filter_time_prefilter);
 	filter_mtbl_destroy(&it->filter_time);
 	filter_mtbl_destroy(&it->filter_offset);
 	remove_mtbl_destroy(&it->remove_strict);
@@ -836,15 +836,21 @@ filter_bailiwick(void *user, struct mtbl_iter *seek_iter,
 }
 
 /*
- * filter_time_strict provides a filter removing partially merged entries
- * which have already failed time_first_after or time_last_before tests
- * to save further merges.
+ * filter_time_prefilter provides a filter removing partially merged entries
+ * to save further merges. Entries may be removed at this stage if they have
+ * either:
+ *  1. failed "strict" time_first_after or time_last_before tests, which will
+ *     cause any further merged results to do the same, or
+ *  2. failed "loose" time_first_before or time_last_after tests which, since
+ *     the input to this filter is constructed so that no data deferred for later
+ *     merging will cause the time_first_before or time_last_after test to
+ *     succeed, is sufficient to exclude the entry from further consideration.
  */
 static mtbl_res
-filter_time_strict(void *user, struct mtbl_iter *seek_iter,
-		   const uint8_t *key, size_t len_key,
-		   const uint8_t *val, size_t len_val,
-		   bool *match)
+filter_time_prefilter(void *user, struct mtbl_iter *seek_iter,
+		      const uint8_t *key, size_t len_key,
+		      const uint8_t *val, size_t len_val,
+		      bool *match)
 {
 	struct query_iter *it = user;
 	struct dnstable_query *q = it->query;
@@ -863,6 +869,17 @@ filter_time_strict(void *user, struct mtbl_iter *seek_iter,
 	}
 
 	if (q->do_time_last_before && (time_last > q->time_last_before)) {
+		*match = false;
+		return (mtbl_res_success);
+	}
+
+	if (q->do_time_last_after && (time_last < q->time_last_after)) {
+		*match = false;
+		return (mtbl_res_success);
+	}
+
+	/* Note: this mirrors the logic in reader_time_filter. */
+	if (q->do_time_first_before && !q->do_time_last_after && (time_first > q->time_first_before)) {
 		*match = false;
 		return (mtbl_res_success);
 	}
@@ -998,8 +1015,8 @@ query_iter_get_count(const void *v,
 		return filter_mtbl_get_counter(it->filter_rrtype, category, exists, count);
 	case DNSTABLE_STAT_STAGE_FILTER_BAILIWICK:
 		return filter_mtbl_get_counter(it->filter_bailiwick, category, exists, count);
-	case DNSTABLE_STAT_STAGE_FILTER_TIME_STRICT:
-		return filter_mtbl_get_counter(it->filter_time_strict, category, exists, count);
+	case DNSTABLE_STAT_STAGE_FILTER_TIME_PREFILTER:
+		return filter_mtbl_get_counter(it->filter_time_prefilter, category, exists, count);
 	case DNSTABLE_STAT_STAGE_REMOVE_STRICT:
 		return remove_mtbl_get_counter(it->remove_strict, category, exists, count);
 	case DNSTABLE_STAT_STAGE_FILL_MERGER:
@@ -1678,8 +1695,9 @@ dnstable_query_iter_common(struct query_iter *it)
 	}
 
 	/* Do the strict time filtering check at end, as it can only advance by one entry. */
-	if (q->do_time_first_after || q->do_time_last_before) {
-		FILTER_SET(filter_time_strict, source);
+	if (q->do_time_first_after || q->do_time_last_before ||
+	    q->do_time_first_before || q->do_time_last_after) {
+		FILTER_SET(filter_time_prefilter, source);
 
 		/*
 		 * Aggregated time-filtered fileset query setup has populated
@@ -1725,7 +1743,7 @@ dnstable_query_iter_common(struct query_iter *it)
 		it->source = ljoin_mtbl_source(it->ljoin);
 	}
 
-	if (q->do_time_first_before || q->do_time_last_after || (it->filter_time_strict != NULL)) {
+	if (q->do_time_first_before || q->do_time_last_after || (it->filter_time_prefilter != NULL)) {
 		FILTER_SET(filter_time, source);
 	}
 
