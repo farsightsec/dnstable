@@ -71,48 +71,71 @@ print_entry(struct dnstable_entry *ent)
 	}
 }
 
-static void
+static size_t
 do_dump_stats_stage(struct dnstable_iter *it)
 {
 	dnstable_stat_stage stage = 0;
 	dnstable_stat_category cat = 0;
+	const char *scat;
 	bool exists;
+	size_t n, max = 0;
 
 	fputs("\n", stderr);
-	for (cat = 0; dnstable_stat_category_to_str(cat) != NULL; ++cat) {
-		uint64_t total = 0;
+	for (n = 0; n <= 1; n++) {
+		for (cat = 0; (scat = dnstable_stat_category_to_str(cat)) != NULL; ++cat) {
+			uint64_t total = 0;
 
-		for (stage = 0; dnstable_stat_stage_to_str(stage) != NULL; ++stage) {
-			uint64_t cnt;
-			(void) dnstable_iter_get_count(it, stage, cat, &exists, &cnt);
-			if (exists)
-				total += cnt;
+			if (n == 0) {
+				max = (strlen(scat) > max) ? strlen(scat) : max;
+				continue;
+			}
+
+			for (stage = 0; dnstable_stat_stage_to_str(stage) != NULL; ++stage) {
+				uint64_t cnt;
+				(void) dnstable_iter_get_count(it, stage, cat, &exists, &cnt);
+				if (exists)
+					total += cnt;
+			}
+			fprintf(stderr, "%-*s : %"PRIu64"\n", (int)max, scat, total);
 		}
-		fprintf(stderr, "%s : %"PRIu64"\n",
-			dnstable_stat_category_to_str(cat), total);
 	}
 	fputs("\n", stderr);
+	return max;
 }
 
-static void
+static size_t
 do_dump_stats_category(struct dnstable_iter *it)
 {
+	char tmpbuf[128] = {0};
 	dnstable_stat_stage stage = 0;
 	dnstable_stat_category cat = 0;
+	const char *sstg, *scat;
 	bool exists;
 	uint64_t cnt;
+	size_t n, maxl = 0;
 
 	fputs("\n", stderr);
-	for (stage = 0; dnstable_stat_stage_to_str(stage) != NULL; ++stage) {
-		for (cat = 0; dnstable_stat_category_to_str(cat) != NULL; ++cat) {
-			(void) dnstable_iter_get_count(it, stage, cat, &exists, &cnt);
-			if (exists)
-				fprintf(stderr, "%s - %s: %"PRIu64"\n",
-					dnstable_stat_stage_to_str(stage),
-					dnstable_stat_category_to_str(cat), cnt);
+
+	for (n = 0; n <= 1; n++) {
+		for (stage = 0; (sstg = dnstable_stat_stage_to_str(stage)) != NULL; ++stage) {
+			for (cat = 0; (scat = dnstable_stat_category_to_str(cat)) != NULL; ++cat) {
+				(void) dnstable_iter_get_count(it, stage, cat, &exists, &cnt);
+				if (!exists)
+					continue;
+
+				if (n == 0) {
+					size_t l = strlen(scat) + strlen(sstg) + 1;
+					maxl = l > maxl ? l : maxl;
+					continue;
+				}
+
+				snprintf(tmpbuf, sizeof(tmpbuf), "%s %s", sstg, scat);
+				fprintf(stderr, "%-*s : %"PRIu64"\n", (int)maxl, tmpbuf, cnt);
+			}
 		}
 	}
 	fputs("\n", stderr);
+	return maxl;
 }
 
 static void
@@ -122,6 +145,7 @@ do_dump(struct dnstable_iter *it, struct dnstable_query *q)
 	dnstable_res res;
 	uint64_t count = 0;
 	struct timespec start, deadline, timeout = {0};
+	size_t maxl = 0;
 
 	my_gettime(CLOCK_MONOTONIC, &start);
 	if (g_timeout > 0) {
@@ -146,16 +170,17 @@ do_dump(struct dnstable_iter *it, struct dnstable_query *q)
 	}
 
 	if (g_stats > 1)
-		do_dump_stats_category(it);
+		maxl = do_dump_stats_category(it);
 	else if (g_stats > 0)
-		do_dump_stats_stage(it);
+		maxl = do_dump_stats_stage(it);
 
 	if (g_stats > 0) {
 		struct timespec elapsed;
 		my_gettime(CLOCK_MONOTONIC, &elapsed);
 		my_timespec_sub(&start, &elapsed);
-		fprintf(stderr, "entries: %" PRIu64 "\nelapsed: %ld.%09lds\n",
-				count, elapsed.tv_sec, elapsed.tv_nsec);
+		fprintf(stderr, "%-*s : %" PRIu64 "\n%-*s : %ld.%09lds\n",
+			(int)maxl, "entries", count, (int)maxl, "elapsed",
+			elapsed.tv_sec, elapsed.tv_nsec);
 	}
 
 	if (!g_json && !g_Json) {
