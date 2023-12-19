@@ -835,6 +835,44 @@ filter_bailiwick(void *user, struct mtbl_iter *seek_iter,
 	return (mtbl_res_success);
 }
 
+static mtbl_res
+filter_time_common(struct dnstable_query *q, bool prefilter,
+		   const uint8_t *val, size_t len_val,
+		   bool *match)
+{
+	dnstable_res dres;
+	uint64_t time_first, time_last, count;
+
+	*match = true;
+
+	dres = triplet_unpack(val, len_val, &time_first, &time_last, &count);
+	if (dres != dnstable_res_success)
+		return (mtbl_res_success);
+
+	if (q->do_time_first_after && (time_first < q->time_first_after)) {
+		*match = false;
+		return (mtbl_res_success);
+	}
+
+	if (q->do_time_last_before && (time_last > q->time_last_before)) {
+		*match = false;
+		return (mtbl_res_success);
+	}
+
+	if (q->do_time_last_after && (time_last < q->time_last_after)) {
+		*match = false;
+		return (mtbl_res_success);
+	}
+
+	/* This matches the file selection logic in reader_time_filter when prefiltering. */
+	if (q->do_time_first_before && (time_first > q->time_first_before)) {
+		*match = prefilter && q->do_time_last_after;
+		return (mtbl_res_success);
+	}
+
+	return (mtbl_res_success);
+}
+
 /*
  * filter_time_prefilter provides a filter removing partially merged entries
  * to save further merges. Entries may be removed at this stage if they have
@@ -853,38 +891,7 @@ filter_time_prefilter(void *user, struct mtbl_iter *seek_iter,
 		      bool *match)
 {
 	struct query_iter *it = user;
-	struct dnstable_query *q = it->query;
-	dnstable_res dres;
-	uint64_t time_first, time_last, count;
-
-	*match = true;
-
-	dres = triplet_unpack(val, len_val, &time_first, &time_last, &count);
-	if (dres != dnstable_res_success)
-		return (mtbl_res_success);
-
-	if (q->do_time_first_after && (time_first < q->time_first_after)) {
-		*match = false;
-		return (mtbl_res_success);
-	}
-
-	if (q->do_time_last_before && (time_last > q->time_last_before)) {
-		*match = false;
-		return (mtbl_res_success);
-	}
-
-	if (q->do_time_last_after && (time_last < q->time_last_after)) {
-		*match = false;
-		return (mtbl_res_success);
-	}
-
-	/* Note: this mirrors the logic in reader_time_filter. */
-	if (q->do_time_first_before && !q->do_time_last_after && (time_first > q->time_first_before)) {
-		*match = false;
-		return (mtbl_res_success);
-	}
-
-	return (mtbl_res_success);
+	return filter_time_common(it->query, true, val, len_val, match);
 }
 
 static mtbl_res
@@ -894,37 +901,8 @@ filter_time(void *user, struct mtbl_iter *seek_iter,
 	    bool *match)
 {
 	struct query_iter *it = user;
-	struct dnstable_query *q = it->query;
-	dnstable_res dres;
-	uint64_t time_first, time_last, count;
 
-	*match = true;
-
-	dres = triplet_unpack(val, len_val, &time_first, &time_last, &count);
-	if (dres != dnstable_res_success)
-		return (mtbl_res_success);
-
-	if (q->do_time_first_before && (time_first > q->time_first_before)) {
-		*match = false;
-		return (mtbl_res_success);
-	}
-
-	if (q->do_time_last_after && (time_last < q->time_last_after)) {
-		*match = false;
-		return (mtbl_res_success);
-	}
-
-	if (q->do_time_first_after && (time_first < q->time_first_after)) {
-		*match = false;
-		return (mtbl_res_success);
-	}
-
-	if (q->do_time_last_before && (time_last > q->time_last_before)) {
-		*match = false;
-		return (mtbl_res_success);
-	}
-
-	return (mtbl_res_success);
+	return filter_time_common(it->query, false, val, len_val, match);
 }
 
 static mtbl_res
