@@ -72,17 +72,20 @@ static void
 do_dump_stats_stage(struct dnstable_iter *it)
 {
 	dnstable_stat_stage stage = 0;
-	dnstable_stat_category category = 0;
+	dnstable_stat_category cat = 0;
 	bool exists;
-	for(category = 0; dnstable_stat_category_to_str(category) != NULL; ++category) {
-		uint64_t count = 0;
-		for(stage = 0; dnstable_stat_stage_to_str(stage) != NULL; ++stage) {
-			uint64_t counter;
-			(void) dnstable_iter_get_count(it, stage, category, &exists, &counter);
+
+	for (cat = 0; dnstable_stat_category_to_str(cat) != NULL; ++cat) {
+		uint64_t total = 0;
+
+		for (stage = 0; dnstable_stat_stage_to_str(stage) != NULL; ++stage) {
+			uint64_t cnt;
+			(void) dnstable_iter_get_count(it, stage, cat, &exists, &cnt);
 			if (exists)
-				count += counter;
+				total += cnt;
 		}
-		fprintf(stderr, "%s : %"PRIu64"\n", dnstable_stat_category_to_str(category), count);
+		fprintf(stderr, "%s : %"PRIu64"\n",
+			dnstable_stat_category_to_str(cat), total);
 	}
 }
 
@@ -90,14 +93,17 @@ static void
 do_dump_stats_category(struct dnstable_iter *it)
 {
 	dnstable_stat_stage stage = 0;
-	dnstable_stat_category category = 0;
+	dnstable_stat_category cat = 0;
 	bool exists;
-	uint64_t count;
-	for(stage = 0; dnstable_stat_stage_to_str(stage) != NULL; ++stage) {
-		for(category = 0; dnstable_stat_category_to_str(category) != NULL; ++category) {
-			(void) dnstable_iter_get_count(it, stage, category, &exists, &count);
+	uint64_t cnt;
+
+	for (stage = 0; dnstable_stat_stage_to_str(stage) != NULL; ++stage) {
+		for (cat = 0; dnstable_stat_category_to_str(cat) != NULL; ++cat) {
+			(void) dnstable_iter_get_count(it, stage, cat, &exists, &cnt);
 			if (exists)
-				fprintf(stderr, "%s - %s: %"PRIu64"\n", dnstable_stat_stage_to_str(stage), dnstable_stat_category_to_str(category), count);
+				fprintf(stderr, "%s - %s: %"PRIu64"\n",
+					dnstable_stat_stage_to_str(stage),
+					dnstable_stat_category_to_str(cat), cnt);
 		}
 	}
 }

@@ -962,9 +962,9 @@ get_counter(uint64_t entries, uint64_t filtered, uint64_t seek, uint64_t merged,
 {
 	uint64_t values[] = {
 		[DNSTABLE_STAT_CATEGORY_FILTERED] = filtered,
+		[DNSTABLE_STAT_CATEGORY_ENTRIES] = entries,
 		[DNSTABLE_STAT_CATEGORY_SEEK] = seek,
 		[DNSTABLE_STAT_CATEGORY_MERGED] = merged,
-		[DNSTABLE_STAT_CATEGORY_ENTRIES] = entries,
 		[DNSTABLE_STAT_CATEGORY_FILES] = files,
 	};
 
@@ -988,35 +988,34 @@ query_iter_get_count(const void *v,
 	if (exists == NULL)
 		exists = &exists_local;
 
-	switch(stage)
-	{
-		case DNSTABLE_STAT_STAGE_FILESET:
-			*exists = (category == DNSTABLE_STAT_CATEGORY_MERGED) ||
-				  (category == DNSTABLE_STAT_CATEGORY_FILES);
-			return get_counter(0, 0, 0, it->stats.fileset_merged, it->stats.fileset_files, category, count);
-		case DNSTABLE_STAT_STAGE_FILTER_SINGLE_LABEL:
-			return filter_mtbl_get_counter(it->filter_single_label, category, exists, count);
-		case DNSTABLE_STAT_STAGE_FILTER_RRTYPE:
-			return filter_mtbl_get_counter(it->filter_rrtype, category, exists, count);
-		case DNSTABLE_STAT_STAGE_FILTER_BAILIWICK:
-			return filter_mtbl_get_counter(it->filter_bailiwick, category, exists, count);
-		case DNSTABLE_STAT_STAGE_FILTER_TIME_STRICT:
-			return filter_mtbl_get_counter(it->filter_time_strict, category, exists, count);
-		case DNSTABLE_STAT_STAGE_REMOVE_STRICT:
-			return remove_mtbl_get_counter(it->remove_strict, category, exists, count);
-		case DNSTABLE_STAT_STAGE_FILL_MERGER:
-			*exists = (category == DNSTABLE_STAT_CATEGORY_MERGED) ||
-				  (category == DNSTABLE_STAT_CATEGORY_FILES);
-			*exists = *exists && (it->fill_merger != NULL);
-			return get_counter(0, 0, 0, it->stats.fill_merged, it->stats.fill_files, category, count);
-		case DNSTABLE_STAT_STAGE_LJOIN:
-			return ljoin_mtbl_get_counter(it->ljoin, category, exists, count);
-		case DNSTABLE_STAT_STAGE_FILTER_TIME:
-			return filter_mtbl_get_counter(it->filter_time, category, exists, count);
-		case DNSTABLE_STAT_STAGE_FILTER_OFFSET:
-			return filter_mtbl_get_counter(it->filter_offset, category, exists, count);
-		default:
-			break;
+	switch(stage) {
+	case DNSTABLE_STAT_STAGE_FILESET:
+		*exists = (category == DNSTABLE_STAT_CATEGORY_MERGED) ||
+			  (category == DNSTABLE_STAT_CATEGORY_FILES);
+		return get_counter(0, 0, 0, it->stats.fileset_merged, it->stats.fileset_files, category, count);
+	case DNSTABLE_STAT_STAGE_FILTER_SINGLE_LABEL:
+		return filter_mtbl_get_counter(it->filter_single_label, category, exists, count);
+	case DNSTABLE_STAT_STAGE_FILTER_RRTYPE:
+		return filter_mtbl_get_counter(it->filter_rrtype, category, exists, count);
+	case DNSTABLE_STAT_STAGE_FILTER_BAILIWICK:
+		return filter_mtbl_get_counter(it->filter_bailiwick, category, exists, count);
+	case DNSTABLE_STAT_STAGE_FILTER_TIME_STRICT:
+		return filter_mtbl_get_counter(it->filter_time_strict, category, exists, count);
+	case DNSTABLE_STAT_STAGE_REMOVE_STRICT:
+		return remove_mtbl_get_counter(it->remove_strict, category, exists, count);
+	case DNSTABLE_STAT_STAGE_FILL_MERGER:
+		*exists = (category == DNSTABLE_STAT_CATEGORY_MERGED) ||
+			  (category == DNSTABLE_STAT_CATEGORY_FILES);
+		*exists = *exists && (it->fill_merger != NULL);
+		return get_counter(0, 0, 0, it->stats.fill_merged, it->stats.fill_files, category, count);
+	case DNSTABLE_STAT_STAGE_LJOIN:
+		return ljoin_mtbl_get_counter(it->ljoin, category, exists, count);
+	case DNSTABLE_STAT_STAGE_FILTER_TIME:
+		return filter_mtbl_get_counter(it->filter_time, category, exists, count);
+	case DNSTABLE_STAT_STAGE_FILTER_OFFSET:
+		return filter_mtbl_get_counter(it->filter_offset, category, exists, count);
+	default:
+		break;
 	}
 
 	return dnstable_res_failure;
@@ -1962,7 +1961,7 @@ dnstable_query_iter_fileset(struct dnstable_query *q, struct mtbl_fileset *fs)
 				it->remove_strict = remove_mtbl_init();
 
 			mopt = mtbl_merger_options_init();
-			mtbl_merger_options_set_merge_func(mopt, dnstable_merge_func, &it->stats.fill_merged);
+			mtbl_merger_options_set_merge_func(mopt, count_merge_func, &it->stats.fill_merged);
 			it->fill_merger = mtbl_merger_init(mopt);
 			mtbl_merger_options_destroy(&mopt);
 		}

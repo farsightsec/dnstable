@@ -221,7 +221,6 @@ ljoin_iter_next(void *impl, const uint8_t **key, size_t *len_key,
 			break;
 
 		/* If the two keys are equal, merge the two values and return. */
-		it->join->stats.merged++;
 		free(it->merged_val);
 		it->join->merge_fn(it->join->merge_clos,
 				   left_key, len_left_key,
@@ -230,6 +229,7 @@ ljoin_iter_next(void *impl, const uint8_t **key, size_t *len_key,
 				   &it->merged_val, len_val);
 		if (it->merged_val == NULL)
 			return (mtbl_res_failure);
+		it->join->stats.merged++;
 		*val = it->merged_val;
 		break;
 	}
