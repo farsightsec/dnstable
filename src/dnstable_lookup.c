@@ -78,6 +78,7 @@ do_dump_stats_stage(struct dnstable_iter *it)
 	dnstable_stat_category cat = 0;
 	bool exists;
 
+	fputs("\n", stderr);
 	for (cat = 0; dnstable_stat_category_to_str(cat) != NULL; ++cat) {
 		uint64_t total = 0;
 
@@ -90,6 +91,7 @@ do_dump_stats_stage(struct dnstable_iter *it)
 		fprintf(stderr, "%s : %"PRIu64"\n",
 			dnstable_stat_category_to_str(cat), total);
 	}
+	fputs("\n", stderr);
 }
 
 static void
@@ -100,6 +102,7 @@ do_dump_stats_category(struct dnstable_iter *it)
 	bool exists;
 	uint64_t cnt;
 
+	fputs("\n", stderr);
 	for (stage = 0; dnstable_stat_stage_to_str(stage) != NULL; ++stage) {
 		for (cat = 0; dnstable_stat_category_to_str(cat) != NULL; ++cat) {
 			(void) dnstable_iter_get_count(it, stage, cat, &exists, &cnt);
@@ -109,6 +112,7 @@ do_dump_stats_category(struct dnstable_iter *it)
 					dnstable_stat_category_to_str(cat), cnt);
 		}
 	}
+	fputs("\n", stderr);
 }
 
 static void
@@ -150,7 +154,7 @@ do_dump(struct dnstable_iter *it, struct dnstable_query *q)
 		struct timespec elapsed;
 		my_gettime(CLOCK_MONOTONIC, &elapsed);
 		my_timespec_sub(&start, &elapsed);
-		fprintf(stderr, "entries: %" PRIu64 "\nelapsed: %ld.%09ld\n",
+		fprintf(stderr, "entries: %" PRIu64 "\nelapsed: %ld.%09lds\n",
 				count, elapsed.tv_sec, elapsed.tv_nsec);
 	}
 
