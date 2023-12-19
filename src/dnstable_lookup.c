@@ -117,10 +117,11 @@ do_dump(struct dnstable_iter *it, struct dnstable_query *q)
 	struct dnstable_entry *ent;
 	dnstable_res res;
 	uint64_t count = 0;
-	struct timespec deadline, timeout = {0};
+	struct timespec start, deadline, timeout = {0};
 
+	my_gettime(CLOCK_MONOTONIC, &start);
 	if (g_timeout > 0) {
-		my_gettime(CLOCK_MONOTONIC, &deadline);
+		deadline = start;
 		deadline.tv_sec += g_timeout;
 		timeout.tv_sec = g_timeout;
 		dnstable_query_set_timeout(q, &timeout);
@@ -144,6 +145,14 @@ do_dump(struct dnstable_iter *it, struct dnstable_query *q)
 		do_dump_stats_category(it);
 	else if (g_stats > 0)
 		do_dump_stats_stage(it);
+
+	if (g_stats > 0) {
+		struct timespec elapsed;
+		my_gettime(CLOCK_MONOTONIC, &elapsed);
+		my_timespec_sub(&start, &elapsed);
+		fprintf(stderr, "entries: %" PRIu64 "\nelapsed: %ld.%09ld\n",
+				count, elapsed.tv_sec, elapsed.tv_nsec);
+	}
 
 	if (!g_json && !g_Json) {
 		if (res == dnstable_res_timeout)
