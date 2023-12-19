@@ -29,6 +29,8 @@
 #include <dnstable.h>
 #include <mtbl.h>
 
+#include "libmy/my_time.h"
+
 static bool g_json = false;
 static bool g_Json = false;
 static bool g_add_raw;
@@ -36,6 +38,7 @@ static bool g_count = false;
 static bool g_aggregate = true;
 static int64_t g_offset = 0;
 static int32_t g_stats = 0;
+static int64_t g_timeout = 0;
 
 static void
 print_entry(struct dnstable_entry *ent)
@@ -109,16 +112,32 @@ do_dump_stats_category(struct dnstable_iter *it)
 }
 
 static void
-do_dump(struct dnstable_iter *it)
+do_dump(struct dnstable_iter *it, struct dnstable_query *q)
 {
 	struct dnstable_entry *ent;
+	dnstable_res res;
 	uint64_t count = 0;
+	struct timespec deadline, timeout = {0};
 
-	while (dnstable_iter_next(it, &ent) == dnstable_res_success) {
+	if (g_timeout > 0) {
+		my_gettime(CLOCK_MONOTONIC, &deadline);
+		deadline.tv_sec += g_timeout;
+		timeout.tv_sec = g_timeout;
+		dnstable_query_set_timeout(q, &timeout);
+	}
+
+	while ((res = dnstable_iter_next(it, &ent)) == dnstable_res_success) {
 		assert(ent != NULL);
 		print_entry(ent);
 		dnstable_entry_destroy(&ent);
 		count++;
+		if (g_timeout > 0) {
+			struct timespec now;
+			my_gettime(CLOCK_MONOTONIC, &now);
+			timeout = deadline;
+			my_timespec_sub(&now, &timeout);
+			dnstable_query_set_timeout(q, &timeout);
+		}
 	}
 
 	if (g_stats > 1)
@@ -126,8 +145,11 @@ do_dump(struct dnstable_iter *it)
 	else if (g_stats > 0)
 		do_dump_stats_stage(it);
 
-	if (!g_json && !g_Json)
+	if (!g_json && !g_Json) {
+		if (res == dnstable_res_timeout)
+			fprintf(stderr, ";;; timed out\n");
 		fprintf(stderr, ";;; Dumped %'" PRIu64 " entries.\n", count);
+	}
 }
 
 static uint64_t
@@ -219,6 +241,7 @@ usage(void)
 	fprintf(stderr, "\t-O #: offset the first # results (must be a positive number)\n");
 	fprintf(stderr, "\t-C case sensitive lookup\n");
 	fprintf(stderr, "\t-s print lookup stats\n");
+	fprintf(stderr, "\t-t TIMEOUT: stop after TIMEOUT seconds.\n");
 	fprintf(stderr, "\nUse exactly one of the following environment variables to specify the dnstable\ndata file(s) to query:\n\tDNSTABLE_FNAME - Path to a single dnstable data file, or\n\tDNSTABLE_SETFILE - Path to a \"set file\"\n");
 	exit(EXIT_FAILURE);
 }
@@ -247,7 +270,7 @@ main(int argc, char **argv)
 	dnstable_res res;
 	int ch;
 
-	while ((ch = getopt(argc, argv, "a:A:b:B:cCnjJRsuO:")) != -1) {
+	while ((ch = getopt(argc, argv, "a:A:b:B:cCnjJRst:uO:")) != -1) {
 		switch (ch) {
 		case 'a':
 			time_first_after = parse_time(optarg);
@@ -297,6 +320,11 @@ main(int argc, char **argv)
 			break;
 		case 's':
 			g_stats++;
+			break;
+		case 't':
+			g_timeout = atoi(optarg);
+			if (g_timeout <= 0)
+				usage();
 			break;
 		case 'u':
 			g_aggregate = false;
@@ -507,6 +535,15 @@ main(int argc, char **argv)
 		}
 	}
 
+	if (g_timeout != 0) {
+		struct timespec timeout = {.tv_sec = g_timeout};
+		res = dnstable_query_set_timeout(d_query, &timeout);
+		if (res != dnstable_res_success) {
+			fprintf(stderr, "dnstable_lookup: dnstable_query_set_timeout() failed\n");
+			exit(EXIT_FAILURE);
+		}
+	}
+
 	res = dnstable_query_set_aggregated(d_query, g_aggregate);
 	if (res != dnstable_res_success) {
 		fprintf(stderr, "dnstable_lookup: dnstable_query_set_aggregated() failed\n");
@@ -519,7 +556,7 @@ main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	do_dump(d_iter);
+	do_dump(d_iter, d_query);
 	dnstable_iter_destroy(&d_iter);
 	dnstable_query_destroy(&d_query);
 	dnstable_reader_destroy(&d_reader);
