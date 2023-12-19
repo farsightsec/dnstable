@@ -171,7 +171,6 @@ rrtype_test(dnstable_entry_type e_type, uint16_t rrtype,
 struct ljoin_mtbl;
 
 struct ljoin_mtbl_stats {
-	uint64_t entries;
 	uint64_t merged;
 	uint64_t seek;
 };

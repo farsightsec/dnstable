@@ -182,8 +182,6 @@ ljoin_iter_next(void *impl, const uint8_t **key, size_t *len_key,
 	if (res != mtbl_res_success)
 		return res;
 
-	it->join->stats.entries++;
-
 	*key = left_key;
 	*len_key = len_left_key;
 	*val = left_val;
@@ -298,9 +296,6 @@ ljoin_mtbl_get_counter(const struct ljoin_mtbl *j,
 		case DNSTABLE_STAT_CATEGORY_FILTERED:
 		case DNSTABLE_STAT_CATEGORY_FILES:
 			*exists = false;
-			break;
-		case DNSTABLE_STAT_CATEGORY_ENTRIES:
-			*u = j->stats.entries;
 			break;
 		case DNSTABLE_STAT_CATEGORY_SEEK:
 			*u = j->stats.seek;
@@ -450,7 +445,6 @@ filter_mtbl_get_counter(const struct filter_mtbl *filter,
 	if (!*exists)
 		return dnstable_res_failure;	/* return with count == 0 */
 	switch(category) {
-		case DNSTABLE_STAT_CATEGORY_ENTRIES:
 		case DNSTABLE_STAT_CATEGORY_MERGED:
 		case DNSTABLE_STAT_CATEGORY_FILES:
 			*exists = false;
@@ -797,7 +791,6 @@ remove_mtbl_get_counter(const struct remove_mtbl *rm,
 		return dnstable_res_failure;	/* return with count == 0 */
 	switch(category)
 	{
-		case DNSTABLE_STAT_CATEGORY_ENTRIES:
 		case DNSTABLE_STAT_CATEGORY_MERGED:
 			*exists = false;
 			break;

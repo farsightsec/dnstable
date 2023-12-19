@@ -34,9 +34,8 @@ static const unsigned int stage_strs_size = sizeof(stage_strs) / sizeof(stage_st
 
 static const char *category_strs[] = {
 	[DNSTABLE_STAT_CATEGORY_FILTERED] = "filtered",
-	[DNSTABLE_STAT_CATEGORY_ENTRIES] = "entries",
-	[DNSTABLE_STAT_CATEGORY_SEEK] = "seek",
 	[DNSTABLE_STAT_CATEGORY_MERGED] = "merged",
+	[DNSTABLE_STAT_CATEGORY_SEEK] = "seek",
 	[DNSTABLE_STAT_CATEGORY_FILES] = "files",
 };
 static const unsigned int category_strs_size = sizeof(category_strs) / sizeof(category_strs[0]);

@@ -327,8 +327,8 @@ test_query_stats_conversion(void)
 	check_return(dnstable_stat_str_to_category("", NULL) == dnstable_res_failure);
 	check_return(dnstable_stat_str_to_category("abcd", NULL) == dnstable_res_failure);
 	check_return(dnstable_stat_str_to_category(dnstable_stat_category_to_str(DNSTABLE_STAT_CATEGORY_FILTERED), NULL) == dnstable_res_failure);
-	check_return(dnstable_stat_str_to_category("entries", NULL) == dnstable_res_failure);
-	check_return(dnstable_stat_str_to_category("entries", &dummy_cat) == dnstable_res_success);
+	check_return(dnstable_stat_str_to_category("merged", NULL) == dnstable_res_failure);
+	check_return(dnstable_stat_str_to_category("merged", &dummy_cat) == dnstable_res_success);
 
 	l_return_test_status();
 }

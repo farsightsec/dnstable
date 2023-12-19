@@ -957,14 +957,13 @@ query_iter_next(void *clos, struct dnstable_entry **ent)
 }
 
 static dnstable_res
-get_counter(uint64_t entries, uint64_t filtered, uint64_t seek, uint64_t merged, uint64_t files,
+get_counter(uint64_t filtered, uint64_t merged, uint64_t seek, uint64_t files,
 	    dnstable_stat_category category, uint64_t *count)
 {
 	uint64_t values[] = {
 		[DNSTABLE_STAT_CATEGORY_FILTERED] = filtered,
-		[DNSTABLE_STAT_CATEGORY_ENTRIES] = entries,
-		[DNSTABLE_STAT_CATEGORY_SEEK] = seek,
 		[DNSTABLE_STAT_CATEGORY_MERGED] = merged,
+		[DNSTABLE_STAT_CATEGORY_SEEK] = seek,
 		[DNSTABLE_STAT_CATEGORY_FILES] = files,
 	};
 
@@ -992,7 +991,7 @@ query_iter_get_count(const void *v,
 	case DNSTABLE_STAT_STAGE_FILESET:
 		*exists = (category == DNSTABLE_STAT_CATEGORY_MERGED) ||
 			  (category == DNSTABLE_STAT_CATEGORY_FILES);
-		return get_counter(0, 0, 0, it->stats.fileset_merged, it->stats.fileset_files, category, count);
+		return get_counter(0, it->stats.fileset_merged, 0, it->stats.fileset_files, category, count);
 	case DNSTABLE_STAT_STAGE_FILTER_SINGLE_LABEL:
 		return filter_mtbl_get_counter(it->filter_single_label, category, exists, count);
 	case DNSTABLE_STAT_STAGE_FILTER_RRTYPE:
@@ -1007,7 +1006,7 @@ query_iter_get_count(const void *v,
 		*exists = (category == DNSTABLE_STAT_CATEGORY_MERGED) ||
 			  (category == DNSTABLE_STAT_CATEGORY_FILES);
 		*exists = *exists && (it->fill_merger != NULL);
-		return get_counter(0, 0, 0, it->stats.fill_merged, it->stats.fill_files, category, count);
+		return get_counter(0, it->stats.fill_merged, 0, it->stats.fill_files, category, count);
 	case DNSTABLE_STAT_STAGE_LJOIN:
 		return ljoin_mtbl_get_counter(it->ljoin, category, exists, count);
 	case DNSTABLE_STAT_STAGE_FILTER_TIME:
