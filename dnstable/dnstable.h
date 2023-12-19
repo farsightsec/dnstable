@@ -185,6 +185,10 @@ dnstable_query_set_timeout(struct dnstable_query *,
 			   const struct timespec *);
 
 dnstable_res
+dnstable_query_set_deadline(struct dnstable_query *,
+			    const struct timespec *);
+
+dnstable_res
 dnstable_query_filter(struct dnstable_query *, struct dnstable_entry *, bool *);
 
 struct dnstable_iter *

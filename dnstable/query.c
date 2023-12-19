@@ -53,9 +53,9 @@
 
 struct dnstable_query {
 	dnstable_query_type	q_type;
-	bool			do_rrtype, do_timeout;
+	bool			do_rrtype, do_timeout, do_deadline;
 	uint32_t		rrtype;
-	struct timespec		timeout;
+	struct timespec		timeout, deadline;
 	bool			aggregated, case_sensitive;
 	bool			dq_wildplus;		/* '+' wildcard? */
 	bool			do_time_first_before, do_time_first_after;
@@ -459,6 +459,19 @@ dnstable_query_set_timeout(struct dnstable_query *q, const struct timespec *time
 	q->do_timeout = true;
 	q->timeout = *timeout;
 
+	return (dnstable_res_success);
+}
+
+dnstable_res
+dnstable_query_set_deadline(struct dnstable_query *q, const struct timespec *deadline)
+{
+	if (deadline == NULL) {
+		q->do_deadline = false;
+		return (dnstable_res_success);
+	}
+
+	q->do_deadline = true;
+	q->deadline = *deadline;
 	return (dnstable_res_success);
 }
 
@@ -922,14 +935,31 @@ filter_offset(void *user, struct mtbl_iter *seek_iter,
 	return (mtbl_res_success);
 }
 
+static void
+query_iter_set_deadline(struct query_iter *it)
+{
+	struct dnstable_query *q = it->query;
+
+	if (!q->do_timeout) {
+		it->deadline = q->deadline;
+		return;
+	}
+
+	my_gettime(DNSTABLE__CLOCK_MONOTONIC, &it->deadline);
+	my_timespec_add(&q->timeout, &it->deadline);
+	if (q->do_deadline && my_timespec_cmp(&q->deadline, &it->deadline) < 0) {
+		it->deadline = q->deadline;
+	}
+}
+
 static dnstable_res
 query_iter_next(void *clos, struct dnstable_entry **ent)
 {
 	struct query_iter *it = (struct query_iter *) clos;
+	struct dnstable_query *q = it->query;
 
-	if (it->query->do_timeout) {
-		my_gettime(DNSTABLE__CLOCK_MONOTONIC, &it->deadline);
-		my_timespec_add(&it->query->timeout, &it->deadline);
+	if (q->do_timeout || q->do_deadline) {
+		query_iter_set_deadline(it);
 		if (setjmp(it->to_env) != 0)
 			return (dnstable_res_timeout);
 	}
@@ -1267,12 +1297,12 @@ static dnstable_res
 query_iter_next_name_indirect(void *clos, struct dnstable_entry **ent, uint8_t type_byte)
 {
 	struct query_iter *it = (struct query_iter *) clos;
+	struct dnstable_query *q = it->query;
 	const uint8_t *key, *val;
 	size_t len_key, len_val;
 
-	if (it->query->do_timeout) {
-		my_gettime(DNSTABLE__CLOCK_MONOTONIC, &it->deadline);
-		my_timespec_add(&(it->query->timeout), &it->deadline);
+	if (q->do_timeout || q->do_deadline) {
+		query_iter_set_deadline(it);
 		if (setjmp(it->to_env) != 0)
 			return (dnstable_res_timeout);
 	}
@@ -1644,7 +1674,7 @@ dnstable_query_iter_common(struct query_iter *it)
 	 * Thus, if a timeout occurs, the last iterator key/value pair is
 	 * preserved for the benefit of the caller.
 	 */
-	if (q->do_timeout) {
+	if (q->do_timeout || q->do_deadline) {
 		it->timeout = timeout_mtbl_init(it->source, &it->deadline, &it->to_env);
 		it->source = timeout_mtbl_source(it->timeout);
 		it->timeout_index = timeout_mtbl_init(it->source_index, &it->deadline, &it->to_env);

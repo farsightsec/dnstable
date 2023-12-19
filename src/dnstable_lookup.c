@@ -144,29 +144,16 @@ do_dump(struct dnstable_iter *it, struct dnstable_query *q)
 	struct dnstable_entry *ent;
 	dnstable_res res;
 	uint64_t count = 0;
-	struct timespec start, deadline, timeout = {0};
+	struct timespec start;
 	size_t maxl = 0;
 
 	my_gettime(CLOCK_MONOTONIC, &start);
-	if (g_timeout > 0) {
-		deadline = start;
-		deadline.tv_sec += g_timeout;
-		timeout.tv_sec = g_timeout;
-		dnstable_query_set_timeout(q, &timeout);
-	}
 
 	while ((res = dnstable_iter_next(it, &ent)) == dnstable_res_success) {
 		assert(ent != NULL);
 		print_entry(ent);
 		dnstable_entry_destroy(&ent);
 		count++;
-		if (g_timeout > 0) {
-			struct timespec now;
-			my_gettime(CLOCK_MONOTONIC, &now);
-			timeout = deadline;
-			my_timespec_sub(&now, &timeout);
-			dnstable_query_set_timeout(q, &timeout);
-		}
 	}
 
 	if (g_stats > 1)
@@ -574,10 +561,13 @@ main(int argc, char **argv)
 	}
 
 	if (g_timeout != 0) {
-		struct timespec timeout = {.tv_sec = g_timeout};
-		res = dnstable_query_set_timeout(d_query, &timeout);
+		struct timespec deadline;
+
+		my_gettime(CLOCK_MONOTONIC, &deadline);
+		deadline.tv_sec += g_timeout;
+		res = dnstable_query_set_deadline(d_query, &deadline);
 		if (res != dnstable_res_success) {
-			fprintf(stderr, "dnstable_lookup: dnstable_query_set_timeout() failed\n");
+			fprintf(stderr, "dnstable_lookup: dnstable_query_set_deadline() failed\n");
 			exit(EXIT_FAILURE);
 		}
 	}

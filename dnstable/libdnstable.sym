@@ -83,4 +83,5 @@ global:
 	dnstable_formatter_set_raw_rdata;
 	dnstable_reader_iter_time_range;
 	dnstable_reader_iter_version;
+	dnstable_query_set_deadline;
 } LIBDNSTABLE_0.11.0;
