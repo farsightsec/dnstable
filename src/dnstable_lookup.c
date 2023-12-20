@@ -38,7 +38,9 @@ static bool g_count = false;
 static bool g_aggregate = true;
 static int64_t g_offset = 0;
 static int32_t g_stats = 0;
-static int64_t g_timeout = 0;
+
+static struct timespec g_deadline;
+static struct timespec g_interval;
 
 static void
 print_entry(struct dnstable_entry *ent)
@@ -144,30 +146,47 @@ do_dump(struct dnstable_iter *it, struct dnstable_query *q)
 	struct dnstable_entry *ent;
 	dnstable_res res;
 	uint64_t count = 0;
-	struct timespec start;
+	struct timespec start, next;
 	size_t maxl = 0;
 
 	my_gettime(CLOCK_MONOTONIC, &start);
 
-	while ((res = dnstable_iter_next(it, &ent)) == dnstable_res_success) {
-		assert(ent != NULL);
-		print_entry(ent);
-		dnstable_entry_destroy(&ent);
-		count++;
-	}
+	for (;;) {
 
-	if (g_stats > 1)
-		maxl = do_dump_stats_category(it);
-	else if (g_stats > 0)
-		maxl = do_dump_stats_stage(it);
+		while ((res = dnstable_iter_next(it, &ent)) == dnstable_res_success) {
+			assert(ent != NULL);
+			print_entry(ent);
+			dnstable_entry_destroy(&ent);
+			count++;
+		}
 
-	if (g_stats > 0) {
-		struct timespec elapsed;
-		my_gettime(CLOCK_MONOTONIC, &elapsed);
-		my_timespec_sub(&start, &elapsed);
-		fprintf(stderr, "%-*s : %" PRIu64 "\n%-*s : %ld.%09lds\n",
-			(int)maxl, "entries", count, (int)maxl, "elapsed",
-			elapsed.tv_sec, elapsed.tv_nsec);
+		if (g_stats > 1)
+			maxl = do_dump_stats_category(it);
+		else if (g_stats > 0)
+			maxl = do_dump_stats_stage(it);
+
+		if (g_stats > 0) {
+			struct timespec elapsed;
+			my_gettime(CLOCK_MONOTONIC, &elapsed);
+			my_timespec_sub(&start, &elapsed);
+			fprintf(stderr, "%-*s : %" PRIu64 "\n%-*s : %ld.%09lds\n",
+				(int)maxl, "entries", count, (int)maxl, "elapsed",
+				elapsed.tv_sec, elapsed.tv_nsec);
+		}
+
+		if (res == dnstable_res_failure) break;
+		if (g_interval.tv_sec == 0) break;
+
+		my_gettime(CLOCK_MONOTONIC, &next);
+		if (g_deadline.tv_sec != 0 && my_timespec_cmp(&next, &g_deadline) > 0)
+			break;
+
+		my_timespec_add(&g_interval, &next);
+		if (g_deadline.tv_sec != 0 && my_timespec_cmp(&next, &g_deadline) > 0)
+			next = g_deadline;
+
+		res = dnstable_query_set_deadline(q, &next);
+		if (res != dnstable_res_success) break;
 	}
 
 	if (!g_json && !g_Json) {
@@ -267,6 +286,7 @@ usage(void)
 	fprintf(stderr, "\t-C case sensitive lookup\n");
 	fprintf(stderr, "\t-s print lookup stats\n");
 	fprintf(stderr, "\t-t TIMEOUT: stop after TIMEOUT seconds.\n");
+	fprintf(stderr, "\t-i INTERVAL: print stats every INTERVAL seconds.\n");
 	fprintf(stderr, "\nUse exactly one of the following environment variables to specify the dnstable\ndata file(s) to query:\n\tDNSTABLE_FNAME - Path to a single dnstable data file, or\n\tDNSTABLE_SETFILE - Path to a \"set file\"\n");
 	exit(EXIT_FAILURE);
 }
@@ -289,13 +309,14 @@ main(int argc, char **argv)
 	struct dnstable_query *d_query;
 	uint64_t time_last_after = 0, time_first_after = 0;
 	uint64_t time_first_before = 0, time_last_before = 0;
+	int64_t timeout = 0, interval = 0;
 	bool time_strict = false;
 	bool case_sensitive = false;
 	dnstable_query_type d_qtype = 0; /* fix lint warning; will always override */
 	dnstable_res res;
 	int ch;
 
-	while ((ch = getopt(argc, argv, "a:A:b:B:cCnjJRst:uO:")) != -1) {
+	while ((ch = getopt(argc, argv, "a:A:b:B:cCi:njJRst:uO:")) != -1) {
 		switch (ch) {
 		case 'a':
 			time_first_after = parse_time(optarg);
@@ -331,6 +352,11 @@ main(int argc, char **argv)
 		case 'C':
 			case_sensitive = true;
 			break;
+		case 'i':
+			interval = atoi(optarg);
+			if (interval <= 0)
+				usage();
+			break;
 		case 'j':
 			g_json = true;
 			break;
@@ -347,8 +373,8 @@ main(int argc, char **argv)
 			g_stats++;
 			break;
 		case 't':
-			g_timeout = atoi(optarg);
-			if (g_timeout <= 0)
+			timeout = atoi(optarg);
+			if (timeout <= 0)
 				usage();
 			break;
 		case 'u':
@@ -560,16 +586,31 @@ main(int argc, char **argv)
 		}
 	}
 
-	if (g_timeout != 0) {
-		struct timespec deadline;
-
-		my_gettime(CLOCK_MONOTONIC, &deadline);
-		deadline.tv_sec += g_timeout;
-		res = dnstable_query_set_deadline(d_query, &deadline);
+	if (timeout != 0) {
+		my_gettime(CLOCK_MONOTONIC, &g_deadline);
+		g_deadline.tv_sec += timeout;
+		res = dnstable_query_set_deadline(d_query, &g_deadline);
 		if (res != dnstable_res_success) {
 			fprintf(stderr, "dnstable_lookup: dnstable_query_set_deadline() failed\n");
 			exit(EXIT_FAILURE);
 		}
+	}
+
+	if (interval != 0) {
+		struct timespec next;
+
+		g_interval.tv_sec = interval;
+		my_gettime(CLOCK_MONOTONIC, &next);
+		my_timespec_add(&g_interval, &next);
+		if (g_deadline.tv_sec == 0 || my_timespec_cmp(&next, &g_deadline) < 0) {
+			res = dnstable_query_set_deadline(d_query, &next);
+			if (res != dnstable_res_success) {
+				fprintf(stderr, "dnstable_lookup: dnstable_query_set_deadline() failed\n");
+				exit(EXIT_FAILURE);
+			}
+		}
+
+		if (g_stats == 0) g_stats ++;
 	}
 
 	res = dnstable_query_set_aggregated(d_query, g_aggregate);
