@@ -1283,7 +1283,7 @@ increment:
 
 seek:
 		/* Seek to the newly generated key. */
-		return mtbl_iter_seek(it->m_iter, ubuf_data(seek_key), ubuf_size(seek_key));
+		return mtbl_iter_seek(seek_iter, ubuf_data(seek_key), ubuf_size(seek_key));
 	} while(0);
 
 	return (mtbl_res_success);
