@@ -2,12 +2,12 @@
 .\"     Title: dnstable_iter
 .\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
 .\" Generator: DocBook XSL Stylesheets v1.79.1 <http://docbook.sf.net/>
-.\"      Date: 05/31/2018
+.\"      Date: 12/20/2023
 .\"    Manual: \ \&
 .\"    Source: \ \&
 .\"  Language: English
 .\"
-.TH "DNSTABLE_ITER" "3" "05/31/2018" "\ \&" "\ \&"
+.TH "DNSTABLE_ITER" "3" "12/20/2023" "\ \&" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -39,13 +39,14 @@ dnstable_iter_next(struct dnstable_iter *\fR\fB\fIit\fR\fR\fB, struct dnstable_e
 .fi
 .sp
 .nf
-\fBvoid
-dnstable_iter_set_stat_func(struct dnstable_iter *\fR\fB\fIit\fR\fR\fB, dnstable_iter_stat_func \fR\fB\fIfp\fR\fR\fB);\fR
+\fBdnstable_res
+dnstable_iter_get_count(struct dnstable_iter *\fR\fB\fIit\fR\fR\fB, dnstable_stat_stage \fR\fB\fIstage\fR\fR\fB,
+                        dnstable_stat_category \fR\fB\fIcategory\fR\fR\fB, bool *\fR\fB\fIexists\fR\fR\fB, uint64_t *\fR\fB\fIcount\fR\fR\fB);\fR
 .fi
 .sp
 .nf
-\fBdnstable_res
-dnstable_iter_get_count(struct dnstable_iter *\fR\fB\fIit\fR\fR\fB, dnstable_stat_stage \fR\fB\fIstage\fR\fR\fB, dnstable_stat_category \fR\fB\fIcat\fR\fR\fB, uint64_t *\fR\fB\fIvalue\fR\fR\fB);\fR
+\fBvoid
+dnstable_iter_set_stat_func(struct dnstable_iter *\fR\fB\fIit\fR\fR\fB, dnstable_iter_stat_func \fR\fB\fIstat_func\fR\fR\fB);\fR
 .fi
 .sp
 .nf
@@ -54,10 +55,11 @@ dnstable_iter_get_count(struct dnstable_iter *\fR\fB\fIit\fR\fR\fB, dnstable_sta
 .SH "DESCRIPTION"
 .sp
 The \fBdnstable_iter\fR interface is used to return a sequence of one or more dnstable entries\&. Once the caller obtains a \fBdnstable_iter\fR object, \fBdnstable_iter_next\fR() should be repeatedly called on it until there are no more entries to retrieve, at which point the iterator object must be freed by calling \fBdnstable_iter_destroy\fR()\&.
+.sp
+Query statistics are available through \fBdnstable_iter_get_count\fR(), which returns \fBdnstable_res_success\fR for a valid count \fIcategory\fR and a valid processing \fIstage\fR, with *\fIexists\fR set to \fBfalse\fR if no such category is supported for the given stage \fIstage\fR\&. \fBdnstable_res_failure\fR is returned upon a query for an unknown stage, an unknown category, or if \fIcount\fR is \fBNULL\fR\&.
 .SH "RETURN VALUE"
 .sp
 \fBdnstable_iter_next\fR() returns \fBdnstable_res_success\fR if an entry was successfully retrieved, in which case \fIent\fR will point to a \fBdnstable_entry\fR object which must be freed by the caller using \fBdnstable_entry_destroy\fR()\&. \fBdnstable_res_failure\fR is returned if there are no more entries in the sequence\&.
 .SH "SEE ALSO"
 .sp
-\fBdnstable_entry\fR(3)
-\fBdnstable_stat\fR(3)
+\fBdnstable_entry\fR(3) \fBdnstable_stat\fR(3)

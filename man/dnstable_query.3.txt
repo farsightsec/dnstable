@@ -57,6 +57,21 @@ dnstable_query_set_bailiwick(struct dnstable_query *'q',
 
 [verse]
 ^dnstable_res
+dnstable_query_set_case_sensitive(struct dnstable_query *'q',
+    bool 'case_sensitive');^
+
+[verse]
+^dnstable_res
+dnstable_query_set_deadline(struct dnstable_query *'q',
+    const struct timespec *'deadline');^
+
+[verse]
+^dnstable_res
+dnstable_query_set_timeout(struct dnstable_query *'q',
+    const struct timespec *'timeout');^
+
+[verse]
+^dnstable_res
 dnstable_query_filter(struct dnstable_query *'q',
     struct dnstable_entry *'ent',
     bool *'filter_res');^
@@ -109,6 +124,12 @@ from the results.  The default is 0, which means to not offset any rows.
 
 ^dnstable_query_set_aggregated^() sets if the results from queries should be
 aggregated. The default is _true_ for aggregated results.
+
+^dnstable_query_set_timeout^() sets the maximum time spent in ^dnstable_iter_next^()
+before returning ^dnstable_res_timeout^.
+
+^dnstable_query_set_deadline^() sets an absolute deadline after which
+^dnstable_iter_next^() will return ^dnstable_res_timeout^.
 
 ^dnstable_query_set_case_sensitive^() specifies that query parameters should be
 treated as case-sensitive.
