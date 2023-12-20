@@ -1008,6 +1008,7 @@ query_iter_get_count(const void *v,
 {
 	bool exists_local = false;
 	const struct query_iter *it = v;
+	bool scratch;
 
 	if (exists == NULL)
 		exists = &exists_local;
@@ -1022,9 +1023,13 @@ query_iter_get_count(const void *v,
 	case DNSTABLE_STAT_STAGE_FILTER_RRTYPE:
 		return filter_mtbl_get_counter(it->filter_rrtype, category, exists, count);
 	case DNSTABLE_STAT_STAGE_FILTER_BAILIWICK:
-		return filter_mtbl_get_counter(it->filter_bailiwick, category, exists, count);
+		*exists = (category == DNSTABLE_STAT_CATEGORY_FILTERED);
+		*exists = *exists && (it->filter_bailiwick != NULL);
+		return filter_mtbl_get_counter(it->filter_bailiwick, category, &scratch, count);
 	case DNSTABLE_STAT_STAGE_FILTER_TIME_PREFILTER:
-		return filter_mtbl_get_counter(it->filter_time_prefilter, category, exists, count);
+		*exists = (category == DNSTABLE_STAT_CATEGORY_FILTERED);
+		*exists = *exists && (it->filter_time_prefilter != NULL);
+		return filter_mtbl_get_counter(it->filter_time_prefilter, category, &scratch, count);
 	case DNSTABLE_STAT_STAGE_REMOVE_STRICT:
 		return remove_mtbl_get_counter(it->remove_strict, category, exists, count);
 	case DNSTABLE_STAT_STAGE_FILL_MERGER:
@@ -1035,9 +1040,13 @@ query_iter_get_count(const void *v,
 	case DNSTABLE_STAT_STAGE_LJOIN:
 		return ljoin_mtbl_get_counter(it->ljoin, category, exists, count);
 	case DNSTABLE_STAT_STAGE_FILTER_TIME:
-		return filter_mtbl_get_counter(it->filter_time, category, exists, count);
+		*exists = (category == DNSTABLE_STAT_CATEGORY_FILTERED);
+		*exists = *exists && (it->filter_time != NULL);
+		return filter_mtbl_get_counter(it->filter_time, category, &scratch, count);
 	case DNSTABLE_STAT_STAGE_FILTER_OFFSET:
-		return filter_mtbl_get_counter(it->filter_offset, category, exists, count);
+		*exists = (category == DNSTABLE_STAT_CATEGORY_FILTERED);
+		*exists = *exists && (it->filter_offset != NULL);
+		return filter_mtbl_get_counter(it->filter_offset, category, &scratch, count);
 	default:
 		break;
 	}
