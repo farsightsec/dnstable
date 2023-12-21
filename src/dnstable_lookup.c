@@ -39,8 +39,8 @@ static bool g_aggregate = true;
 static int64_t g_offset = 0;
 static int32_t g_stats = 0;
 
-static struct timespec g_deadline;
-static struct timespec g_interval;
+static struct timespec g_deadline;	/* absolute timeout */
+static struct timespec g_interval;	/* periodic interval for stats */
 
 static void
 print_entry(struct dnstable_entry *ent)
@@ -153,6 +153,7 @@ do_dump(struct dnstable_iter *it, struct dnstable_query *q)
 
 	for (;;) {
 
+		/* loop until error or timeout */
 		while ((res = dnstable_iter_next(it, &ent)) == dnstable_res_success) {
 			assert(ent != NULL);
 			print_entry(ent);
@@ -174,16 +175,16 @@ do_dump(struct dnstable_iter *it, struct dnstable_query *q)
 				elapsed.tv_sec, elapsed.tv_nsec);
 		}
 
-		if (res == dnstable_res_failure) break;
-		if (g_interval.tv_sec == 0) break;
+		if (res != dnstable_res_timeout) break;
+		if (g_interval.tv_sec == 0) break;	/* Must have hit an absolute deadline */
 
 		my_gettime(CLOCK_MONOTONIC, &next);
 		if (g_deadline.tv_sec != 0 && my_timespec_cmp(&next, &g_deadline) > 0)
-			break;
+			break;	/* Current time is after absolute deadline */
 
 		my_timespec_add(&g_interval, &next);
 		if (g_deadline.tv_sec != 0 && my_timespec_cmp(&next, &g_deadline) > 0)
-			next = g_deadline;
+			next = g_deadline;	/* Next interval can't exceed absolute deadline */
 
 		res = dnstable_query_set_deadline(q, &next);
 		if (res != dnstable_res_success) break;
@@ -602,6 +603,7 @@ main(int argc, char **argv)
 		g_interval.tv_sec = interval;
 		my_gettime(CLOCK_MONOTONIC, &next);
 		my_timespec_add(&g_interval, &next);
+		/* Ignore the interval if the absolute timeout comes earlier. */
 		if (g_deadline.tv_sec == 0 || my_timespec_cmp(&next, &g_deadline) < 0) {
 			res = dnstable_query_set_deadline(d_query, &next);
 			if (res != dnstable_res_success) {

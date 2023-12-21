@@ -1,7 +1,7 @@
 '\" t
 .\"     Title: dnstable_query
-.\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
-.\" Generator: DocBook XSL Stylesheets v1.79.1 <http://docbook.sf.net/>
+.\"    Author: [FIXME: author] [see http://www.docbook.org/tdg5/en/html/author]
+.\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
 .\"      Date: 12/20/2023
 .\"    Manual: \ \&
 .\"    Source: \ \&
@@ -146,7 +146,7 @@ Once the query object has been constructed, \fBdnstable_query_iter\fR() iterates
 .sp
 \fBdnstable_query_set_deadline\fR() sets an absolute deadline after which \fBdnstable_iter_next\fR() will return \fBdnstable_res_timeout\fR\&.
 .sp
-\fBdnstable_query_set_case_sensitive\fR() specifies that query parameters should be treated as case\-sensitive\&.
+\fBdnstable_query_set_case_sensitive\fR() specifies that query parameters should be treated as case\-sensitive\&. The default is \fBfalse\fR\&.
 .sp
 For hostnames added after the call to \fBdnstable_query_set_case_sensitive\fR(), case is preserved\&.
 .sp

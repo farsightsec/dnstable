@@ -132,7 +132,7 @@ before returning ^dnstable_res_timeout^.
 ^dnstable_iter_next^() will return ^dnstable_res_timeout^.
 
 ^dnstable_query_set_case_sensitive^() specifies that query parameters should be
-treated as case-sensitive.
+treated as case-sensitive. The default is ^false^.
 
 For hostnames added after the call to ^dnstable_query_set_case_sensitive^(), case
 is preserved.

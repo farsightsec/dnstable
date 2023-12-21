@@ -109,6 +109,7 @@ struct query_iter {
 	struct filter_mtbl	*filter_rrtype;
 	struct filter_mtbl	*filter_bailiwick;
 	struct filter_mtbl	*filter_time_prefilter;
+	/* remove_strict and possibly ljoin applied in between the time filters. */
 	struct filter_mtbl	*filter_time;
 	struct filter_mtbl	*filter_offset;
 	struct {
@@ -856,32 +857,26 @@ filter_time_common(struct dnstable_query *q, bool prefilter,
 	dnstable_res dres;
 	uint64_t time_first, time_last, count;
 
-	*match = true;
+	*match = false;
 
 	dres = triplet_unpack(val, len_val, &time_first, &time_last, &count);
 	if (dres != dnstable_res_success)
 		return (mtbl_res_success);
 
-	if (q->do_time_first_after && (time_first < q->time_first_after)) {
-		*match = false;
+	if (q->do_time_first_after && (time_first < q->time_first_after))
 		return (mtbl_res_success);
-	}
 
-	if (q->do_time_last_before && (time_last > q->time_last_before)) {
-		*match = false;
+	if (q->do_time_last_before && (time_last > q->time_last_before))
 		return (mtbl_res_success);
-	}
 
-	if (q->do_time_last_after && (time_last < q->time_last_after)) {
-		*match = false;
+	if (q->do_time_last_after && (time_last < q->time_last_after))
 		return (mtbl_res_success);
-	}
 
 	/* This matches the file selection logic in reader_time_filter when prefiltering. */
-	if (q->do_time_first_before && (time_first > q->time_first_before)) {
+	if (q->do_time_first_before && (time_first > q->time_first_before))
 		*match = prefilter && q->do_time_last_after;
-		return (mtbl_res_success);
-	}
+	else
+		*match = true;
 
 	return (mtbl_res_success);
 }
@@ -935,6 +930,10 @@ filter_offset(void *user, struct mtbl_iter *seek_iter,
 	return (mtbl_res_success);
 }
 
+/*
+ * Set a timeout for the earliest between whichever happens to come first,
+ * an optionally set relative timeout, or an optionally set absolute deadline.
+ */
 static void
 query_iter_set_deadline(struct query_iter *it)
 {
@@ -1760,7 +1759,8 @@ dnstable_query_iter_common(struct query_iter *it)
 		it->source = ljoin_mtbl_source(it->ljoin);
 	}
 
-	if (q->do_time_first_before || q->do_time_last_after || (it->filter_time_prefilter != NULL)) {
+	/* Note: some combinations of time filters may not require this stage. */
+	if (it->filter_time_prefilter != NULL) {
 		FILTER_SET(filter_time, source);
 	}
 
