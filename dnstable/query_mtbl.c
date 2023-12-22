@@ -313,7 +313,9 @@ ljoin_mtbl_get_counter(const struct ljoin_mtbl *j,
 void
 ljoin_mtbl_destroy(struct ljoin_mtbl **pj)
 {
-	if (pj == NULL) return;
+	if (pj == NULL || *pj == NULL)
+		return;
+	mtbl_source_destroy(&((*pj)->source));
 	free(*pj);
 	*pj = NULL;
 }
