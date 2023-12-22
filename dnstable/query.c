@@ -863,16 +863,38 @@ filter_time_common(struct dnstable_query *q, bool prefilter,
 	if (dres != dnstable_res_success)
 		return (mtbl_res_success);
 
+	/*
+	 * Checks 1-4 below correspond to steps 1,3,2,4 in reader_time_filter()
+	 * except these accomplish on a per-entry basis roughly what that
+	 * other function does on a per-dnstable source basis.
+	 */
+
+	/* #1. A strict filtering check that always produces failure. */
 	if (q->do_time_first_after && (time_first < q->time_first_after))
 		return (mtbl_res_success);
 
+	/* #2. Another strict filtering check that always produces failure. */
 	if (q->do_time_last_before && (time_last > q->time_last_before))
 		return (mtbl_res_success);
 
+	/*
+	 * #3. If NOT pre-filtering, then this evaluation occurs AFTER the
+	 *     completion of any merging, and the final result obviously
+	 *     fails to satisfy the time fence criteria.
+	 *
+	 *     But when pre-filtering, any sources from filesets containing data
+	 *     that cannot meet these two conditions alone but that MIGHT satisfy
+	 *     them post-merger have already been diverted to the fill merger.
+	 *     In other words, during the pre-filtering stage we return false in
+	 *     the cases where associated data might be found in fill_merger.
+	 */
 	if (q->do_time_last_after && (time_last < q->time_last_after))
 		return (mtbl_res_success);
 
-	/* This matches the file selection logic in reader_time_filter when prefiltering. */
+	/*
+	 * #4. When pre-filtering, this complements the final conditional in the
+	 * file selection logic in reader_time_filter().
+	 */
 	if (q->do_time_first_before && (time_first > q->time_first_before))
 		*match = prefilter && q->do_time_last_after;
 	else
