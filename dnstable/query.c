@@ -1677,7 +1677,6 @@ query_init_time_range(struct query_iter *it)
 {
 	it->key = ubuf_init(1);
 	ubuf_add(it->key, ENTRY_TYPE_TIME_RANGE);
-	it->m_iter = mtbl_source_get_prefix(it->source, ubuf_data(it->key), ubuf_size(it->key));
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
 
@@ -1688,7 +1687,6 @@ query_init_version(struct query_iter *it)
 	ubuf_add(it->key, ENTRY_TYPE_VERSION);
 	if (it->query->has_v_type)
 		ubuf_add(it->key, it->query->v_type);
-	it->m_iter = mtbl_source_get_prefix(it->source, ubuf_data(it->key), ubuf_size(it->key));
 	return dnstable_iter_init(query_iter_next, query_iter_free, it);
 }
 
