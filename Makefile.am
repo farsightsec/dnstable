@@ -65,6 +65,7 @@ dnstable_libdnstable_la_SOURCES = \
 	dnstable/util.c \
 	libmy/ip_arith.h \
 	libmy/hex_decode.h \
+	libmy/list.h \
 	libmy/my_alloc.h \
 	libmy/my_time.h \
 	libmy/print_string.h \
@@ -129,6 +130,7 @@ EXTRA_DIST += \
 	tests/generic-tests/m2.mtbl \
 	tests/generic-tests/m12.mtbl \
 	tests/generic-tests/test.mtbl \
+	tests/generic-tests/test2.mtbl \
 	tests/test-timefilter/dns-2022-11-10.mtbl \
 	tests/test-timefilter/dns-2022-11-11.mtbl \
 	tests/test-timefilter/dns-2022-11-12.mtbl \
