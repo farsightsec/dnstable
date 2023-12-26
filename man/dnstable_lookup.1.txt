@@ -6,13 +6,13 @@ dnstable_lookup - lookup individual records in a dnstable data file or set of da
 
 == SYNOPSIS ==
 
-^dnstable_lookup^ [^-cCjJnRu^] [^-aAbB datetime^] [^-O #^] ^rrset^ <OWNER> [<RRTYPE> [<BAILIWICK>]]
+^dnstable_lookup^ [^-cCjJnRsu^] [^-aAbB datetime^] [^-it secs^] [^-O #^] ^rrset^ <OWNER> [<RRTYPE> [<BAILIWICK>]]
 
-^dnstable_lookup^ [^-cjJnRu^] [^-aAbB datetime^] [^-O #^] ^rdata ip^ <ADDRESS | RANGE | PREFIX>
+^dnstable_lookup^ [^-cjJnRsu^] [^-aAbB datetime^] [^-it secs^] [^-O #^] ^rdata ip^ <ADDRESS | RANGE | PREFIX>
 
-^dnstable_lookup^ [^-cjJnRu^] [^-aAbB datetime^] [^-O #^] ^rdata raw^ <HEX STRING> [<RRTYPE>]
+^dnstable_lookup^ [^-cjJnRsu^] [^-aAbB datetime^] [^-it secs^] [^-O #^] ^rdata raw^ <HEX STRING> [<RRTYPE>]
 
-^dnstable_lookup^ [^-cCjJnRu^] [^-aAbB datetime^] [^-O #^] ^rdata name^ <RDATA NAME> [<RRTYPE>]
+^dnstable_lookup^ [^-cCjJnRsu^] [^-aAbB datetime^] [^-it secs^] [^-O #^] ^rdata name^ <RDATA NAME> [<RRTYPE>]
 
 ^dnstable_lookup^ [^-jJu^] [^-O #^] ^time_range^
 
@@ -76,6 +76,9 @@ can be used to request a specific type's version. ^ETYPE^ may be one of ^rrset^,
 ^-C^::
     Do all matching in a case-sensitive manner.
 
+^-i secs^::
+    Print query statistics to ^stderr^ every ^secs^ seconds. Implies ^-s^. 
+
 ^-j^::
     Use JSON format for output, with timestamps in epoch time (seconds since epoch).
     Default is 'dig' presentation format.
@@ -86,12 +89,18 @@ can be used to request a specific type's version. ^ETYPE^ may be one of ^rrset^,
     Default is 'dig' presentation format.
     One JSON-formatted entry per line will be printed.
 
-^-s^::
+^-n^::
     Output the number of matching entries found, rather than details about each entry.
 
 ^-R^, ^--raw^::
     When using a JSON format for output, add a hex representation of the
     raw rdata and the rrtype.
+
+^-s^::
+    Output query statistics to ^stderr^ at end.
+
+^-t secs^::
+    Limit query time to ^secs^ seconds.
 
 ^-u^::
     Output unaggregated results; default is aggregated results.
