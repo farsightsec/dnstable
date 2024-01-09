@@ -50,6 +50,10 @@ dnstable_reader_iter_time_range(struct dnstable_reader *'r');^
 
 [verse]
 ^struct dnstable_iter *
+dnstable_reader_iter_source_info(struct dnstable_reader *'r');^
+
+[verse]
+^struct dnstable_iter *
 dnstable_reader_iter_version(struct dnstable_reader *'r');^
 
 [verse]

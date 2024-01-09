@@ -195,6 +195,15 @@ dnstable_entry_get_count(
 
 [verse]
 /* valid for entry types:
+ * DNSTABLE_ENTRY_TYPE_SOURCE_INFO
+ */
+^dnstable_res
+dnstable_entry_get_source_info(
+    struct dnstable_entry *'ent',
+    const char **'source_info');^
+
+[verse]
+/* valid for entry types:
  * DNSTABLE_ENTRY_TYPE_VERSION
  */
 ^dnstable_res

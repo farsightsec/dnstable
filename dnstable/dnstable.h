@@ -44,6 +44,7 @@ typedef enum {
 	DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD = 1,
 	DNSTABLE_ENTRY_TYPE_RDATA = 2,
 	DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV = 3,
+	DNSTABLE_ENTRY_TYPE_SOURCE_INFO = 253,
 	DNSTABLE_ENTRY_TYPE_TIME_RANGE = 254,
 	DNSTABLE_ENTRY_TYPE_VERSION = 255,
 } dnstable_entry_type;
@@ -60,6 +61,7 @@ typedef enum {
 	DNSTABLE_QUERY_TYPE_RDATA_NAME = 1,
 	DNSTABLE_QUERY_TYPE_RDATA_IP = 2,
 	DNSTABLE_QUERY_TYPE_RDATA_RAW = 3,
+	DNSTABLE_QUERY_TYPE_SOURCE_INFO = 253,
 	DNSTABLE_QUERY_TYPE_TIME_RANGE = 254,
 	DNSTABLE_QUERY_TYPE_VERSION = 255,
 } dnstable_query_type;
@@ -228,6 +230,9 @@ dnstable_reader_iter_time_range(struct dnstable_reader *);
 
 struct dnstable_iter *
 dnstable_reader_iter_version(struct dnstable_reader *);
+
+struct dnstable_iter *
+dnstable_reader_iter_source_info(struct dnstable_reader *);
 
 struct dnstable_iter *
 dnstable_reader_query(struct dnstable_reader *, struct dnstable_query *);
@@ -399,6 +404,15 @@ dnstable_res
 dnstable_entry_get_count(
 	struct dnstable_entry *,
 	uint64_t *count);
+
+/**
+ * valid for:
+ *	entry_type_source
+ */
+dnstable_res
+dnstable_entry_get_source_info(
+	struct dnstable_entry *,
+	const char **source_info);
 
 /**
  * valid for:

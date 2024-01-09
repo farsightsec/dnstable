@@ -41,6 +41,9 @@ required in order to select which section of the data file to dump.
 ^-t^, ^--time_range^::
     Output time range metadata from ^ENTRY_TYPE_TIME_RANGE^ records.
 
+^-s^, ^--source_info_entries^::
+    Output source metadata from ^ENTRY_TYPE_SOURCE_INFO^ records.
+
 ^-v^, ^--version_entries^::
     Output version metadata from ^ENTRY_TYPE_VERSION^ records.
 

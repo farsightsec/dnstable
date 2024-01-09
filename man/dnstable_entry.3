@@ -247,6 +247,16 @@ dnstable_entry_get_count(
 .sp
 .nf
 /* valid for entry types:
+ * DNSTABLE_ENTRY_TYPE_SOURCE_INFO
+ */
+\fBdnstable_res
+dnstable_entry_get_source_info(
+    struct dnstable_entry *\fR\fB\fIent\fR\fR\fB,
+    const char **\fR\fB\fIsource_info\fR\fR\fB);\fR
+.fi
+.sp
+.nf
+/* valid for entry types:
  * DNSTABLE_ENTRY_TYPE_VERSION
  */
 \fBdnstable_res

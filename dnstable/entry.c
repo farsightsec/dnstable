@@ -40,6 +40,7 @@ struct dnstable_entry {
 	uint32_t		rrtype;
 	rdata_vec		*rdatas;
 	ubuf			*rrtype_map;
+	ubuf 			*source_info;
 	uint64_t		time_first, time_last, count;
 	dnstable_entry_type	v_type;
 	uint32_t		version;
@@ -304,6 +305,10 @@ dnstable_entry_to_text_fmt(const struct dnstable_entry *e, dnstable_date_format_
 		ubuf_append_cstr_lit(u, "\n;; Latest time_last: ");
 		time_formatter(u, e->time_last);
 		ubuf_add(u, '\n');
+	}  else if (e->e_type == DNSTABLE_ENTRY_TYPE_SOURCE_INFO) {
+		ubuf_append_cstr_lit(u, ";; source info: ");
+		ubuf_add_cstr(u, ubuf_cstr(e->source_info));
+		ubuf_add(u, '\n');
 	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_VERSION) {
 		char buf[128];
 		const char *vtype = dnstable_entry_type_to_string(e->v_type);
@@ -492,6 +497,9 @@ dnstable_entry_to_json_fmt(const struct dnstable_entry *e,
 		time_formatter(u, e->time_first);
 		JSON_DECL_VALUE(u, "time_last");
 		time_formatter(u, e->time_last);
+	}  else if (e->e_type == DNSTABLE_ENTRY_TYPE_SOURCE_INFO) {
+		JSON_DECL_VALUE(u, "source info");
+		JSON_STR_APPEND(u, (const char *) ubuf_data(e->source_info));
 	} else if (e->e_type == DNSTABLE_ENTRY_TYPE_VERSION) {
 		const char *vtype = dnstable_entry_type_to_string(e->v_type);
 		char buf[sizeof("unknown-255")];
@@ -774,6 +782,17 @@ decode_time_range(struct dnstable_entry *e, const uint8_t *buf, size_t len_buf)
 }
 
 static dnstable_res
+decode_source_info(struct dnstable_entry *e,
+	       const uint8_t *key, size_t len_key,
+	       const uint8_t *buf, size_t len_buf)
+{
+	e->source_info = ubuf_init(len_key);
+	ubuf_append(e->source_info, key, len_key);
+	ubuf_cterm(e->source_info);
+	return dnstable_res_success;
+}
+
+static dnstable_res
 decode_version(struct dnstable_entry *e,
 	       const uint8_t *key, size_t len_key,
 	       const uint8_t *val, size_t len_val)
@@ -824,6 +843,10 @@ dnstable_entry_decode(const uint8_t *key, size_t len_key,
 		e->e_type = DNSTABLE_ENTRY_TYPE_TIME_RANGE;
 		if (decode_time_range(e, val, len_val) != dnstable_res_success) goto err;
 		break;
+	case ENTRY_TYPE_SOURCE_INFO:
+		e->e_type = DNSTABLE_ENTRY_TYPE_SOURCE_INFO;
+		if (decode_source_info(e, key+1, len_key-1, val, len_val) != dnstable_res_success) goto err;
+		break;
 	case ENTRY_TYPE_VERSION:
 		e->e_type = DNSTABLE_ENTRY_TYPE_VERSION;
 		if (decode_version(e, key+1, len_key-1, val, len_val) != dnstable_res_success) goto err;
@@ -844,6 +867,7 @@ dnstable_entry_destroy(struct dnstable_entry **e)
 			wdns_rdata_t *rdata = rdata_vec_value((*e)->rdatas, i);
 			my_free(rdata);
 		}
+		ubuf_destroy(&(*e)->source_info);
 		rdata_vec_destroy(&(*e)->rdatas);
 		my_free((*e)->name.data);
 		my_free((*e)->bailiwick.data);
@@ -865,6 +889,8 @@ dnstable_entry_type_to_string(dnstable_entry_type t)
 		return "rdata_name";
 	case DNSTABLE_ENTRY_TYPE_TIME_RANGE:
 		return "time_range";
+	case DNSTABLE_ENTRY_TYPE_SOURCE_INFO:
+		return "source_info";
 	case DNSTABLE_ENTRY_TYPE_VERSION:
 		return "version";
 	}
@@ -885,6 +911,7 @@ dnstable_entry_type_from_string(dnstable_entry_type *t, const char *str)
 		{"rdata", DNSTABLE_ENTRY_TYPE_RDATA},
 		{"rdata_name", DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV},
 		{"time_range", DNSTABLE_ENTRY_TYPE_TIME_RANGE},
+		{"source_info", DNSTABLE_ENTRY_TYPE_SOURCE_INFO},
 		{"version", DNSTABLE_ENTRY_TYPE_VERSION},
 		{0},
 	};
@@ -1024,6 +1051,16 @@ dnstable_entry_get_count(struct dnstable_entry *e, uint64_t *v)
 	    e->e_type == DNSTABLE_ENTRY_TYPE_RDATA)
 	{
 		*v = e->count;
+		return (dnstable_res_success);
+	}
+	return (dnstable_res_failure);
+}
+
+dnstable_res
+dnstable_entry_get_source_info(struct dnstable_entry *e, const char **source_info)
+{
+	if (e->e_type == DNSTABLE_ENTRY_TYPE_SOURCE_INFO) {
+		*source_info = (const char*) ubuf_data(e->source_info);
 		return (dnstable_res_success);
 	}
 	return (dnstable_res_failure);
