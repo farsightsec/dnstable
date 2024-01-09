@@ -8,6 +8,7 @@ convert() {
 	grep -v '^#' | jq -Mc . | nmsgtool -j - -w test-dns-$$.nmsg
 	rm test-dns.mtbl
 	dnstable_convert test-dns-$$.nmsg \
+			 -S -s gen-test-dns \
 			 test-dns.mtbl \
 			 scratch-dnssec.mtbl
 	rm test-dns-$$.nmsg

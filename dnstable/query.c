@@ -1681,6 +1681,14 @@ query_init_time_range(struct query_iter *it)
 }
 
 static struct dnstable_iter *
+query_init_source_info(struct query_iter *it)
+{
+	it->key = ubuf_init(1);
+	ubuf_add(it->key, ENTRY_TYPE_SOURCE_INFO);
+	return dnstable_iter_init(query_iter_next, query_iter_free, it);
+}
+
+static struct dnstable_iter *
 query_init_version(struct query_iter *it)
 {
 	it->key = ubuf_init(1);
@@ -1719,6 +1727,8 @@ dnstable_query_iter_common(struct query_iter *it)
 		d_it = query_init_rdata_raw(it);
 	} else if (q->q_type == DNSTABLE_QUERY_TYPE_TIME_RANGE) {
 		d_it = query_init_time_range(it);
+	} else if (q->q_type == DNSTABLE_QUERY_TYPE_SOURCE_INFO) {
+		d_it = query_init_source_info(it);
 	} else if (q->q_type == DNSTABLE_QUERY_TYPE_VERSION) {
 		d_it = query_init_version(it);
 	} else {

@@ -478,6 +478,24 @@ EOF
 # Dump tests
 ##################################################
 
+test_dump contains --source_info_entries $TESTFILE << EOF
+;; source info: gen-test-dns
+EOF
+
+test_dump contains -s $TESTFILE << EOF
+;; source info: gen-test-dns
+EOF
+
+test_dump contains -j --source_info_entries $TESTFILE << EOF
+
+{"source info":"gen-test-dns"}
+EOF
+
+test_dump contains -j -s $TESTFILE << EOF
+
+{"source info":"gen-test-dns"}
+EOF
+
 test_dump contains --rrset_full $TESTFILE << EOF
 ;;  bailiwick: example.com.
 EOF

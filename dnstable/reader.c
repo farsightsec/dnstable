@@ -112,6 +112,12 @@ dnstable_reader_iter_time_range(struct dnstable_reader *r)
 }
 
 struct dnstable_iter *
+dnstable_reader_iter_source_info(struct dnstable_reader *r)
+{
+	return (reader_iter_prefix(r, ENTRY_TYPE_SOURCE_INFO));
+}
+
+struct dnstable_iter *
 dnstable_reader_iter_version(struct dnstable_reader *r)
 {
 	return (reader_iter_prefix(r, ENTRY_TYPE_VERSION));
