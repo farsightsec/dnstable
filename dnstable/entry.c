@@ -867,6 +867,7 @@ dnstable_entry_destroy(struct dnstable_entry **e)
 			wdns_rdata_t *rdata = rdata_vec_value((*e)->rdatas, i);
 			my_free(rdata);
 		}
+		ubuf_destroy(&(*e)->rrtype_map);
 		ubuf_destroy(&(*e)->source_info);
 		rdata_vec_destroy(&(*e)->rdatas);
 		my_free((*e)->name.data);
