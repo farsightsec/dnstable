@@ -1,5 +1,5 @@
 Name:           dnstable
-Version:        0.13.2
+Version:        0.14.0
 Release:        1%{?dist}
 Summary:        passive DNS encoding format utilities
 
