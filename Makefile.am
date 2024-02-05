@@ -176,7 +176,7 @@ tests_test_bitmaps_SOURCES = tests/test-bitmaps.c libmy/my_format.c libmy/my_for
 if BUILD_MAN
 SUFFIXES = .1.txt .3.txt .5.txt .7.txt .1 .3 .5 .7
 
-ASCIIDOC_PROCESS = $(AM_V_GEN) $(ASCIIDOC) -f manpage --no-xmllint --asciidoc-opt="-f man/asciidoc.conf" $<
+ASCIIDOC_PROCESS = $(AM_V_GEN) $(ASCIIDOC) -f manpage --no-xmllint --asciidoc-opt="-f $(top_srcdir)/man/asciidoc.conf" $<
 
 .1.txt.1:
 	$(ASCIIDOC_PROCESS)
