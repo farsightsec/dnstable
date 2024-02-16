@@ -36,7 +36,7 @@ specified IP address, IP prefix, or IP range.
 the specified data value, expressed as a hexadecimal string.
 
 ^dnstable_lookup rdata name^ returns Resource Records whose record data matches
-the specified domain name.
+the specified domain name (wildcards permitted).
 
 ^dnstable_lookup time_range^ returns an entry containing the time range for
 data within the data file or fileset.
@@ -109,6 +109,24 @@ can be used to request a specific type's version. ^ETYPE^ may be one of ^rrset^,
 ^-O #^::
     Offset (e.g. skip) the first # results.
 
+== WILDCARDS ==
+
+Wildcards may be used to match zero or more labels on the
+left-hand side or right-hand side of a rrset owner name
+or a rdata name.
+
+Multiple or zero labels on a side may be matched by using an asterisk (^*^),
+e.g.,
+"*.example.com" or "n.example.*".
+
+Exactly one label on a side may be matched by using a plus sign (^\+^),
+e.g.,
+"\+.example.com" or "n.example.+".
+
+Matching labels only in a middle of a domain name is not supported.
+Partial label matches are not supported.
+The wildcards cannot be used on both sides of a domain name at the
+same time.
 
 == ENVIRONMENT VARIABLES ==
 
@@ -164,6 +182,10 @@ $ export DNSTABLE_FNAME=/path/to/dns.mtbl
 
 $ dnstable_lookup rrset www.example.com
 
+$ dnstable_lookup rrset "www.*"
+
+$ dnstable_lookup rrset +.example.com
+
 $ dnstable_lookup rrset example.com ns com
 
 $ dnstable_lookup rdata ip 192.0.2.1
@@ -183,5 +205,7 @@ $ dnstable_lookup -O 10 rdata ip 2001:db8::/32
 $ dnstable_lookup rdata raw c00505f1
 
 $ dnstable_lookup rdata name BLACKHOLE-1.IANA.ORG
+
+$ dnstable_lookup rdata name ns3.example.+
 
 $ dnstable_lookup -B "2022-11-09 22:59:59" rrset example.com
