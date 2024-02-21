@@ -13,6 +13,15 @@ dnstable_iter - iterate over a sequence of dnstable entries
 dnstable_iter_next(struct dnstable_iter *'it', struct dnstable_entry **'ent');^
 
 [verse]
+^dnstable_res
+dnstable_iter_get_count(struct dnstable_iter *'it', dnstable_stat_stage 'stage',
+			dnstable_stat_category 'category', bool *'exists', uint64_t *'count');^
+
+[verse]
+^void
+dnstable_iter_set_stat_func(struct dnstable_iter *'it', dnstable_iter_stat_func 'stat_func');^
+
+[verse]
 ^dnstable_iter_destroy(struct dnstable_iter **'it');^
 
 == DESCRIPTION ==
@@ -23,6 +32,13 @@ dnstable entries. Once the caller obtains a ^dnstable_iter^ object,
 entries to retrieve, at which point the iterator object must be freed by calling
 ^dnstable_iter_destroy^().
 
+Query statistics are available through ^dnstable_iter_get_count^(),
+which returns ^dnstable_res_success^ for a valid count 'category' and
+a valid processing 'stage', with *'exists' set to ^false^ if no such
+category is supported for the given stage 'stage'.
+^dnstable_res_failure^ is returned upon a query for an unknown
+stage, an unknown category, or if 'count' is ^NULL^.
+
 == RETURN VALUE ==
 
 ^dnstable_iter_next^() returns ^dnstable_res_success^ if an entry was
@@ -32,4 +48,4 @@ object which must be freed by the caller using ^dnstable_entry_destroy^().
 
 == SEE ALSO ==
 
-^dnstable_entry^(3)
+^dnstable_entry^(3) ^dnstable_stat^(3)

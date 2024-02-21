@@ -123,6 +123,24 @@ EOF
 test_lookup matches  -j rrset www.example.com A example.ORG << EOF
 EOF
 
+# repeat bailiwick tests with wildcards
+test_lookup matches  -j rrset \*.example.com A example.com << EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"A","bailiwick":"example.com.","rdata":["198.51.100.3","198.51.100.4"]}
+EOF
+
+test_lookup matches  -j rrset \*.example.com A example.ORG << EOF
+EOF
+
+# repeat bailiwick tests with no rrtype restriction
+test_lookup matches -j rrset www.example.com ANY example.com << EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"A","bailiwick":"example.com.","rdata":["198.51.100.3","198.51.100.4"]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"AAAA","bailiwick":"example.com.","rdata":["2001:db8::1","2001:db8::2"]}
+EOF
+
+test_lookup matches -j rrset www.example.com ANY example.ORG << EOF
+EOF
+
+
 test_lookup matches  -j rrset www.example.com AAAA << EOF
 {"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"AAAA","bailiwick":"example.com.","rdata":["2001:db8::1","2001:db8::2"]}
 EOF
@@ -334,6 +352,44 @@ EOF
 
 #####################
 
+##################################################
+# Single-label wildcard tests
+##################################################
+
+test_lookup matches -j rdata name *.sl.dom << EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"alpha.sl.dom.","rrtype":"NS","rdata":"ns2.sl.dom."}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"alpha.beta.sl.dom.","rrtype":"NS","rdata":"ns3.sub3.sl.dom."}
+EOF
+test_lookup matches -j rdata name +.sl.dom << EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"alpha.sl.dom.","rrtype":"NS","rdata":"ns2.sl.dom."}
+EOF
+
+test_lookup matches -j rdata name ns1.sl.* << EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"alpha.sl.top.dom.","rrtype":"NS","rdata":"ns1.sl."}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"alpha.sl.dom.","rrtype":"NS","rdata":"ns1.sl.com."}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"alpha.sl.top.dom.","rrtype":"NS","rdata":"ns1.sl.top.dom."}
+EOF
+test_lookup matches -j rdata name ns1.sl.+ << EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"alpha.sl.dom.","rrtype":"NS","rdata":"ns1.sl.com."}
+EOF
+
+test_lookup matches -j rrset *.sl.dom << EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"alpha.beta.sl.dom.","rrtype":"NS","bailiwick":"sl.dom.","rdata":["ns3.sub3.sl.dom."]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"alpha.sl.dom.","rrtype":"NS","bailiwick":"sl.dom.","rdata":["ns1.sl.com.","ns2.sl.dom.","ns4.sub4.sl.com."]}
+EOF
+test_lookup matches -j rrset +.sl.dom << EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"alpha.sl.dom.","rrtype":"NS","bailiwick":"sl.dom.","rdata":["ns1.sl.com.","ns2.sl.dom.","ns4.sub4.sl.com."]}
+EOF
+
+test_lookup matches -j rrset alpha.sl.* << EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"alpha.sl.dom.","rrtype":"NS","bailiwick":"sl.dom.","rdata":["ns1.sl.com.","ns2.sl.dom.","ns4.sub4.sl.com."]}
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"alpha.sl.top.dom.","rrtype":"NS","bailiwick":"sl.dom.","rdata":["ns1.sl.","ns1.sl.top.dom."]}
+EOF
+test_lookup matches -j rrset alpha.sl.+ << EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"alpha.sl.dom.","rrtype":"NS","bailiwick":"sl.dom.","rdata":["ns1.sl.com.","ns2.sl.dom.","ns4.sub4.sl.com."]}
+EOF
+##################################################
+
 # tests using set file pointing to mtbl files
 export DNSTABLE_SETFILE=@abs_top_srcdir@/tests/test-dns.setfile
 unset DNSTABLE_FNAME
@@ -421,6 +477,24 @@ EOF
 ##################################################
 # Dump tests
 ##################################################
+
+test_dump contains --source_info_entries $TESTFILE << EOF
+;; source info: gen-test-dns
+EOF
+
+test_dump contains -s $TESTFILE << EOF
+;; source info: gen-test-dns
+EOF
+
+test_dump contains -j --source_info_entries $TESTFILE << EOF
+
+{"source info":"gen-test-dns"}
+EOF
+
+test_dump contains -j -s $TESTFILE << EOF
+
+{"source info":"gen-test-dns"}
+EOF
 
 test_dump contains --rrset_full $TESTFILE << EOF
 ;;  bailiwick: example.com.

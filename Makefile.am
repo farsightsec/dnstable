@@ -10,8 +10,7 @@ AM_CPPFLAGS = \
 AM_CFLAGS = \
 	${my_CFLAGS} \
 	$(libmtbl_CFLAGS) \
-	$(libwdns_CFLAGS) \
-	$(libyajl_CFLAGS)
+	$(libwdns_CFLAGS)
 
 AM_LDFLAGS =
 
@@ -45,24 +44,28 @@ report-coverage:
 fi
 
 
-LIBDNSTABLE_CURRENT=2
-LIBDNSTABLE_REVISION=3
-LIBDNSTABLE_AGE=2
+LIBDNSTABLE_CURRENT=3
+LIBDNSTABLE_REVISION=0
+LIBDNSTABLE_AGE=3
 
 include_HEADERS = dnstable/dnstable.h
 lib_LTLIBRARIES = dnstable/libdnstable.la
 
 dnstable_libdnstable_la_SOURCES = \
 	dnstable/dnstable.h \
+	dnstable/dnstable-json.h \
 	dnstable/dnstable-private.h \
 	dnstable/entry.c \
 	dnstable/iter.c \
 	dnstable/merge.c \
 	dnstable/query.c \
+	dnstable/query_mtbl.c \
 	dnstable/reader.c \
 	dnstable/triplet.c \
+	dnstable/util.c \
 	libmy/ip_arith.h \
 	libmy/hex_decode.h \
+	libmy/list.h \
 	libmy/my_alloc.h \
 	libmy/my_time.h \
 	libmy/print_string.h \
@@ -74,8 +77,7 @@ dnstable_libdnstable_la_SOURCES = \
 
 dnstable_libdnstable_la_LIBADD = \
 	$(libmtbl_LIBS) \
-	$(libwdns_LIBS) \
-	$(libyajl_LIBS)
+	$(libwdns_LIBS)
 dnstable_libdnstable_la_LDFLAGS = $(AM_LDFLAGS) \
 	-version-info $(LIBDNSTABLE_CURRENT):$(LIBDNSTABLE_REVISION):$(LIBDNSTABLE_AGE)
 if HAVE_LD_VERSION_SCRIPT
@@ -128,6 +130,7 @@ EXTRA_DIST += \
 	tests/generic-tests/m2.mtbl \
 	tests/generic-tests/m12.mtbl \
 	tests/generic-tests/test.mtbl \
+	tests/generic-tests/test2.mtbl \
 	tests/test-timefilter/dns-2022-11-10.mtbl \
 	tests/test-timefilter/dns-2022-11-11.mtbl \
 	tests/test-timefilter/dns-2022-11-12.mtbl \
@@ -137,18 +140,7 @@ EXTRA_DIST += \
 	tests/test-timefilter/dns-2022-11-16.mtbl \
 	tests/test-timefilter/dns-2022-11-17.mtbl \
 	tests/test-timefilter/dns-2022-11-18.mtbl \
-	tests/test-timefilter/dns-merged.mtbl \
 	tests/test-timefilter/dns-test.fileset \
-	tests/test-timefilter/dns-ntf-2022-11-10.mtbl \
-	tests/test-timefilter/dns-ntf-2022-11-11.mtbl \
-	tests/test-timefilter/dns-ntf-2022-11-12.mtbl \
-	tests/test-timefilter/dns-ntf-2022-11-13.mtbl \
-	tests/test-timefilter/dns-ntf-2022-11-14.mtbl \
-	tests/test-timefilter/dns-ntf-2022-11-15.mtbl \
-	tests/test-timefilter/dns-ntf-2022-11-16.mtbl \
-	tests/test-timefilter/dns-ntf-2022-11-17.mtbl \
-	tests/test-timefilter/dns-ntf-2022-11-18.mtbl \
-	tests/test-timefilter/dns-test-ntf.fileset \
 	tests/test.subr
 
 tests/test-dnstable_merge:
@@ -167,7 +159,8 @@ check_PROGRAMS += tests/test-dnstable
 tests_test_dnstable_CPPFLAGS = -DSRCDIR="\"$(abs_srcdir)\"" $(AM_CPPFLAGS)
 tests_test_dnstable_LDADD = \
 	dnstable/libdnstable.la \
-	$(libmtbl_LIBS)
+	$(libmtbl_LIBS) \
+	$(libwdns_LIBS)
 tests_test_dnstable_SOURCES = tests/test-dnstable.c tests/errors.h libmy/my_format.c libmy/my_format.h
 
 check_PROGRAMS += tests/test-bitmaps
@@ -176,7 +169,6 @@ tests_test_bitmaps_LDADD = \
 	dnstable/entry.o \
 	dnstable/triplet.o \
 	dnstable/libdnstable.la \
-	$(libyajl_LIBS) \
 	$(libmtbl_LIBS) \
 	$(libwdns_LIBS)
 tests_test_bitmaps_SOURCES = tests/test-bitmaps.c libmy/my_format.c libmy/my_format.h
@@ -184,7 +176,7 @@ tests_test_bitmaps_SOURCES = tests/test-bitmaps.c libmy/my_format.c libmy/my_for
 if BUILD_MAN
 SUFFIXES = .1.txt .3.txt .5.txt .7.txt .1 .3 .5 .7
 
-ASCIIDOC_PROCESS = $(AM_V_GEN) $(ASCIIDOC) -f manpage --no-xmllint --asciidoc-opt="-f man/asciidoc.conf" $<
+ASCIIDOC_PROCESS = $(AM_V_GEN) $(ASCIIDOC) -f manpage --no-xmllint --asciidoc-opt="-f $(top_srcdir)/man/asciidoc.conf" $<
 
 .1.txt.1:
 	$(ASCIIDOC_PROCESS)
@@ -210,6 +202,7 @@ dist_man_MANS = \
 	man/dnstable_query.3 \
 	man/dnstable_reader.3 \
 	man/dnstable_merge_func.3 \
+	man/dnstable_stat.3 \
 	man/dnstable.7
 
 EXTRA_DIST += \
@@ -222,4 +215,5 @@ EXTRA_DIST += \
 	man/dnstable_query.3.txt \
 	man/dnstable_reader.3.txt \
 	man/dnstable_merge_func.3.txt \
+	man/dnstable_stat.3.txt \
 	man/dnstable.7.txt

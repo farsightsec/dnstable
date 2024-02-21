@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2023 DomainTools LLC
  * Copyright (c) 2018-2021 by Farsight Security, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,13 +20,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <wdns.h>
 
 #include "errors.h"
-
+#include "libmy/my_alloc.h"
 #include "dnstable/dnstable.h"
 
 #define NAME	"test-dnstable"
-
 
 static int
 test_basic(void)
@@ -217,13 +218,118 @@ test_filter_parameter(struct dnstable_query *query, struct dnstable_entry *entry
 	res = dnstable_query_set_filter_parameter(query, tparam, &time_val_succeed, sizeof(time_val_succeed));
 	check_return(res == dnstable_res_success);
 	check_return(dnstable_query_filter(query, entry, &passes) == dnstable_res_success);
-	check_return(passes == true);
+	check_return(passes);
 
 	/* Then opposite condition. */
 	res = dnstable_query_set_filter_parameter(query, tparam, &time_val_fail, sizeof(time_val_fail));
 	check_return(res == dnstable_res_success);
 	check_return(dnstable_query_filter(query, entry, &passes) == dnstable_res_success);
-	check_return(passes == false);
+	check_return(!passes);
+
+	l_return_test_status();
+}
+
+static int
+test_query_iter_stats(struct dnstable_iter *it, const int *stages, const int64_t *counters)
+{
+	uint64_t tcount = 0;
+	const int *stage = stages;
+	const int64_t *counter = counters;
+	bool check_counter = false;
+	bool exists;
+	int sti = 0;
+
+	while (*stage >= 0) {
+		int category = 0;
+		if (sti == *stage) {
+			check_counter = true;
+			++stage;
+		}
+		while (1) {
+			dnstable_res res = dnstable_iter_get_count(it, sti, category++, &exists, &tcount);
+			if (check_counter) {
+				/*
+				 * Output
+				 * exists = true, res = success - got counter value
+				 * exists = false, res = success - no counter but continue
+				 * exists = false, res = failure - no counter, the end
+				 * */
+
+				if (!exists && res == dnstable_res_failure)
+					break;
+				if (exists) {
+					check_return((uint64_t) *counter == tcount);
+					++counter;
+				}
+			} else {
+				check_return(tcount == 0);
+				break;
+			}
+		}
+		if (check_counter) {
+			++counter;
+			check_counter = false;
+		}
+		++sti;
+	}
+
+	return 1;
+}
+
+static int
+test_query_stats_conversion(void)
+{
+	dnstable_stat_category dummy_cat;
+	dnstable_stat_stage dummy_stage;
+	int n = 0;
+	const char *value;
+
+	while (1) {
+		dnstable_stat_stage stage;
+		value = dnstable_stat_stage_to_str(n);
+		if (value == NULL)
+			break;
+		check_return(dnstable_stat_str_to_stage(value, &stage) == dnstable_res_success);
+		check_return((int) stage == n);
+		n++;
+	}
+
+	check_return(n == (DNSTABLE_STAT_STAGE_FILTER_OFFSET + 1));
+
+	n = 0;
+	while (1) {
+		dnstable_stat_category category;
+		value = dnstable_stat_category_to_str(n);
+		if (value == NULL)
+			break;
+		check_return(dnstable_stat_str_to_category(value, &category) == dnstable_res_success);
+		check_return((int) category == n);
+		n++;
+	}
+
+	check_return(n == (DNSTABLE_STAT_CATEGORY_FILES + 1));
+
+	check_return(!strcasecmp(dnstable_stat_stage_to_str(DNSTABLE_STAT_STAGE_LJOIN), "left join"));
+	check_return(dnstable_stat_stage_to_str(-1) == NULL);
+	check_return(dnstable_stat_stage_to_str(1000) == NULL);
+
+	check_return(!strcasecmp(dnstable_stat_category_to_str(DNSTABLE_STAT_CATEGORY_SEEK), "seek"));
+	check_return(dnstable_stat_category_to_str(-1) == NULL);
+	check_return(dnstable_stat_category_to_str(1000) == NULL);
+
+	check_return(dnstable_stat_str_to_stage(NULL, NULL) == dnstable_res_failure);
+	check_return(dnstable_stat_str_to_stage("", NULL) == dnstable_res_failure);
+	check_return(dnstable_stat_str_to_stage("abcd", NULL) == dnstable_res_failure);
+	check_return(dnstable_stat_str_to_stage(dnstable_stat_stage_to_str(DNSTABLE_STAT_STAGE_FILTER_RRTYPE), NULL) == dnstable_res_failure);
+	check_return(dnstable_stat_str_to_stage("bailiwick", NULL) == dnstable_res_failure);
+	check_return(dnstable_stat_str_to_stage("bailiwick", &dummy_stage) == dnstable_res_success);
+
+	check_return(dnstable_stat_str_to_category(NULL, NULL) == dnstable_res_failure);
+	check_return(dnstable_stat_str_to_category("", NULL) == dnstable_res_failure);
+	check_return(dnstable_stat_str_to_category("abcd", NULL) == dnstable_res_failure);
+	check_return(dnstable_stat_str_to_category(dnstable_stat_category_to_str(DNSTABLE_STAT_CATEGORY_FILTERED), NULL) == dnstable_res_failure);
+	check_return(dnstable_stat_str_to_category("merged", NULL) == dnstable_res_failure);
+	check_return(dnstable_stat_str_to_category("merged", &dummy_cat) == dnstable_res_success);
 
 	l_return_test_status();
 }
@@ -274,9 +380,25 @@ struct timespec ts = {0, 0};
 	iter = dnstable_reader_query(reader, query);
 	check_return(iter != NULL);
 
+	// Check that proper counters are initialized
+	{
+		int64_t counters[] = { 0,  0, -1,
+				       0,  0, -1,
+				      -1, -1, -1};
+		const int stages[] = {DNSTABLE_STAT_STAGE_FILTER_RRTYPE, DNSTABLE_STAT_STAGE_FILTER_BAILIWICK, -1};
+		check_return(test_query_iter_stats(iter, stages, counters));
+	}
+
 	/* First attempt should timeout. */
 	res = dnstable_iter_next(iter, &entry);
 	check_return(res == dnstable_res_timeout);
+	{
+		int64_t counters[] = { 0,  0, -1,
+				       0,  0, -1,
+				      -1, -1, -1};
+		int stages[] = {DNSTABLE_STAT_STAGE_FILTER_RRTYPE, DNSTABLE_STAT_STAGE_FILTER_BAILIWICK, -1};
+		check_return(test_query_iter_stats(iter, stages, counters));
+	}
 	dnstable_iter_destroy(&iter);
 
 	/* Second attempt should be fine. */
@@ -286,9 +408,22 @@ struct timespec ts = {0, 0};
 	iter = dnstable_query_iter(query, mtbl_reader_source(mreader));
 //	iter = dnstable_reader_query(reader, query);
 	check_return(iter != NULL);
-
+	{
+		int64_t counters[] = { 0,  0, -1,
+				       0,  0, -1,
+				      -1, -1, -1};
+		int stages[] = {DNSTABLE_STAT_STAGE_FILTER_RRTYPE, DNSTABLE_STAT_STAGE_FILTER_BAILIWICK, -1};
+		check_return(test_query_iter_stats(iter, stages, counters));
+	}
 	res = dnstable_iter_next(iter, &entry);
 	check_return(res == dnstable_res_success);
+	{
+		int64_t counters[] = {19,  0, -1,
+				       0,  0, -1,
+				      -1, -1, -1};
+		int stages[] = {DNSTABLE_STAT_STAGE_FILTER_RRTYPE, DNSTABLE_STAT_STAGE_FILTER_BAILIWICK, -1};
+		check_return(test_query_iter_stats(iter, stages, counters));
+	}
 
 	res = dnstable_entry_get_rrtype(entry, &rrtype);
 	check_return(res == dnstable_res_success);
@@ -316,7 +451,7 @@ uint64_t first_time, last_time;
 
 bool passes;
 	check_return(dnstable_query_filter(query, entry, &passes) == dnstable_res_success);
-	check_return(passes == true);
+	check_return(passes);
 
 	/* Check various time fencing filters. */
 	return_if_error(test_filter_parameter(query, entry, DNSTABLE_FILTER_PARAMETER_TIME_FIRST_BEFORE, first_time + 1000, first_time - 1000));
@@ -549,13 +684,160 @@ test_merger(void)
 	l_return_test_status();
 }
 
+static int
+do_test_query_case(struct dnstable_query *query,
+	struct mtbl_reader *mreader,
+	bool case_sensitive,
+	const char *t_rrname,
+	const char *t_rrtype,
+	const char *t_bailiwick,
+	dnstable_res exp_res)
+{
+	wdns_name_t test;
+	size_t lrrname, lbailiwick;
+	dnstable_res res;
+	uint16_t rrtype, e_rrtype;
+	const uint8_t *rrname, *bailiwick;
+	struct timespec ts = {0, 0};
+	struct dnstable_iter *iter;
+	struct dnstable_entry *entry;
+
+	// Set query case sensitivity
+	dnstable_query_set_case_sensitive(query, case_sensitive);
+
+	res = dnstable_query_set_data(query, t_rrname);
+	check_return(res == dnstable_res_success);
+
+	res = dnstable_query_set_rrtype(query, t_rrtype);
+	check_return(res == dnstable_res_success);
+
+	if (t_bailiwick != NULL)
+	{
+		res = dnstable_query_set_bailiwick(query, t_bailiwick);
+		check_return(res == dnstable_res_success);
+	}
+
+	ts.tv_sec = 100;
+	res = dnstable_query_set_timeout(query, &ts);
+
+	iter = dnstable_query_iter(query, mtbl_reader_source(mreader));
+	check_return(iter != NULL);
+
+	// Case-sensitive query should not find anything
+	res = dnstable_iter_next(iter, &entry);
+	check_return(res == exp_res);
+	if (res == dnstable_res_success) {
+		uint16_t star_offset = (*t_rrname == '*' ? 2 : 0);
+		check_return(res == dnstable_res_success);
+
+		e_rrtype = wdns_str_to_rrtype(t_rrtype);
+		check_abort(e_rrtype != 0);
+
+		res = dnstable_entry_get_rrtype(entry, &rrtype);
+		check_return(res == dnstable_res_success);
+		check_return(rrtype == e_rrtype);
+
+		/* Should have yielded a dot com extension */
+		res = dnstable_entry_get_rrname(entry, &rrname, &lrrname);
+		check_return(res == dnstable_res_success);
+		check_return(lrrname >= 5);
+
+		memset(&test, 0, sizeof(test));
+		if (case_sensitive) {
+			check_return(wdns_str_to_name_case(t_rrname + star_offset, &test) == wdns_res_success);
+		} else {
+			check_return(wdns_str_to_name(t_rrname + star_offset, &test) == wdns_res_success);
+		}
+
+		check_return(!strncasecmp((const char *) &rrname[lrrname - test.len], (const char *) test.data, test.len));
+
+		my_free(test.data);
+		test.len = 0;
+
+		if (t_bailiwick != NULL) {
+			check_return(wdns_str_to_name_case(t_bailiwick, &test) == wdns_res_success);
+			res = dnstable_entry_get_bailiwick(entry, &bailiwick, &lbailiwick);
+			check_return(res == dnstable_res_success);
+			check_return(lbailiwick == test.len);
+			check_return(!memcmp(bailiwick, test.data, test.len));
+			my_free(test.data);
+			test.len = 0;
+		}
+
+		dnstable_entry_destroy(&entry);
+	}
+
+	dnstable_iter_destroy(&iter);
+
+	l_return_test_status();
+}
+
+static int
+test_query_case(void)
+{
+	struct mtbl_reader *mreader;
+	struct dnstable_reader *reader;
+	struct dnstable_query *query;
+
+	mreader = mtbl_reader_init(SRCDIR "/tests/generic-tests/test2.mtbl", NULL);
+	check_return(mreader != NULL);
+	reader = dnstable_reader_init(mtbl_reader_source(mreader));
+	check_return(reader != NULL);
+
+	query = dnstable_query_init(DNSTABLE_QUERY_TYPE_RRSET);
+	check_return(query != NULL);
+
+	/* These two test shall both find exactly one entry */
+	check_return(do_test_query_case(query, mreader, true, "_WILDCARD_.ea.com", "NS", NULL, dnstable_res_success) == 0)
+	check_return(do_test_query_case(query, mreader, false, "_WILDCARD_.ea.COM", "NS", NULL, dnstable_res_success) == 0)
+
+	/* This test should not find an entry */
+	check_return(do_test_query_case(query, mreader, true, "*.COM", "A", "bkk1.cloud.z.com", dnstable_res_failure) == 0)
+
+	/* This test should find an entry */
+	check_return(do_test_query_case(query, mreader, false, "*.COM", "A", "bkk1.cloud.z.com", dnstable_res_success) == 0)
+
+	dnstable_reader_destroy(&reader);
+	dnstable_query_destroy(&query);
+	
+	l_return_test_status();
+}
+
+static dnstable_res
+cust_iter_stat_func(const void *clos, dnstable_stat_stage cat, dnstable_stat_category stage, bool *exists, uint64_t *u)
+{
+	int ival = *(const int*) clos;
+	*u = ((uint64_t) ival) * 1234;
+	(void) cat;
+	(void) stage;
+	return dnstable_res_success;
+}
+
+static int
+test_query_count(void)
+{
+	int ival = 1000;
+	uint64_t expect = ((uint64_t) ival) * 1234;
+	uint64_t res = 0;
+	struct dnstable_iter *iter = dnstable_iter_init(cust_iter_next_func, cust_iter_free_func, &ival);
+	check_return(iter != NULL);
+	dnstable_iter_set_stat_func(iter, cust_iter_stat_func);
+	check_return(dnstable_iter_get_count(iter, DNSTABLE_STAT_STAGE_FILTER_SINGLE_LABEL, DNSTABLE_STAT_CATEGORY_FILTERED, NULL, &res) == dnstable_res_success);
+	check_return(res == expect);
+
+	l_return_test_status();
+}
+
 int
 main(void)
 {
 	check_explicit2_display_only(test_basic() == 0, "test-dnstable/ test_basic");
 	check_explicit2_display_only(test_query() == 0, "test-dnstable/ test_query");
+	check_explicit2_display_only(test_query_case() == 0, "test-dnstable/ test_query_case");
 	check_explicit2_display_only(test_cust_iter() == 0, "test-dnstable/ test_cust_iter");
 	check_explicit2_display_only(test_merger() == 0, "test-dnstable/ test_merger");
+	check_explicit2_display_only(test_query_stats_conversion() == 0, "test-dnstable/ test_query_stats_conversion");
+	check_explicit2_display_only(test_query_count() == 0, "test-dnstable/ test_query_count");
 
 	g_check_test_status(0);
 

@@ -6,13 +6,13 @@ dnstable_lookup - lookup individual records in a dnstable data file or set of da
 
 == SYNOPSIS ==
 
-^dnstable_lookup^ [^-cjJRu^] [^-aAbB datetime^] [^-O #^] ^rrset^ <OWNER> [<RRTYPE> [<BAILIWICK>]]
+^dnstable_lookup^ [^-cCjJnRsu^] [^-aAbB datetime^] [^-i secs^] [^-t secs^] [^-O #^] ^rrset^ <OWNER> [<RRTYPE> [<BAILIWICK>]]
 
-^dnstable_lookup^ [^-cjJRu^] [^-aAbB datetime^] [^-O #^] ^rdata ip^ <ADDRESS | RANGE | PREFIX>
+^dnstable_lookup^ [^-cjJnRsu^] [^-aAbB datetime^] [^-i secs^] [^-t secs^] [^-O #^] ^rdata ip^ <ADDRESS | RANGE | PREFIX>
 
-^dnstable_lookup^ [^-cjJRu^] [^-aAbB datetime^] [^-O #^] ^rdata raw^ <HEX STRING> [<RRTYPE>]
+^dnstable_lookup^ [^-cjJnRsu^] [^-aAbB datetime^] [^-i secs^] [^-t secs^] [^-O #^] ^rdata raw^ <HEX STRING> [<RRTYPE>]
 
-^dnstable_lookup^ [^-cjJRu^] [^-aAbB datetime^] [^-O #^] ^rdata name^ <RDATA NAME> [<RRTYPE>]
+^dnstable_lookup^ [^-cCjJnRsu^] [^-aAbB datetime^] [^-i secs^] [^-t secs^] [^-O #^] ^rdata name^ <RDATA NAME> [<RRTYPE>]
 
 ^dnstable_lookup^ [^-jJu^] [^-O #^] ^time_range^
 
@@ -36,7 +36,7 @@ specified IP address, IP prefix, or IP range.
 the specified data value, expressed as a hexadecimal string.
 
 ^dnstable_lookup rdata name^ returns Resource Records whose record data matches
-the specified domain name.
+the specified domain name (wildcards permitted).
 
 ^dnstable_lookup time_range^ returns an entry containing the time range for
 data within the data file or fileset.
@@ -73,6 +73,12 @@ can be used to request a specific type's version. ^ETYPE^ may be one of ^rrset^,
     The ^-c^ means it will not output the entry if it was also
     seen outside the time range.
 
+^-C^::
+    Do all matching in a case-sensitive manner.
+
+^-i secs^::
+    Print query statistics to ^stderr^ every ^secs^ seconds. Implies ^-s^. 
+
 ^-j^::
     Use JSON format for output, with timestamps in epoch time (seconds since epoch).
     Default is 'dig' presentation format.
@@ -83,9 +89,20 @@ can be used to request a specific type's version. ^ETYPE^ may be one of ^rrset^,
     Default is 'dig' presentation format.
     One JSON-formatted entry per line will be printed.
 
+^-n^::
+    Do not output matching record results.
+    Only the number of matching entries found is reported to ^stderr^.
+    (To see stats when using a JSON format, see the ^-s^ option.)
+
 ^-R^, ^--raw^::
     When using a JSON format for output, add a hex representation of the
     raw rdata and the rrtype.
+
+^-s^::
+    Output query statistics to ^stderr^ at end.
+
+^-t secs^::
+    Limit query time to ^secs^ seconds.
 
 ^-u^::
     Output unaggregated results; default is aggregated results.
@@ -94,6 +111,24 @@ can be used to request a specific type's version. ^ETYPE^ may be one of ^rrset^,
 ^-O #^::
     Offset (e.g. skip) the first # results.
 
+== WILDCARDS ==
+
+Wildcards may be used to match zero or more labels on the
+left-hand side or right-hand side of a rrset owner name
+or a rdata name.
+
+Multiple or zero labels on a side may be matched by using an asterisk (^*^),
+e.g.,
+"*.example.com" or "n.example.*".
+
+Exactly one label on a side may be matched by using a plus sign (^\+^),
+e.g.,
+"\+.example.com" or "n.example.+".
+
+Matching labels only in a middle of a domain name is not supported.
+Partial label matches are not supported.
+The wildcards cannot be used on both sides of a domain name at the
+same time.
 
 == ENVIRONMENT VARIABLES ==
 
@@ -149,6 +184,10 @@ $ export DNSTABLE_FNAME=/path/to/dns.mtbl
 
 $ dnstable_lookup rrset www.example.com
 
+$ dnstable_lookup rrset "www.*"
+
+$ dnstable_lookup rrset +.example.com
+
 $ dnstable_lookup rrset example.com ns com
 
 $ dnstable_lookup rdata ip 192.0.2.1
@@ -168,5 +207,7 @@ $ dnstable_lookup -O 10 rdata ip 2001:db8::/32
 $ dnstable_lookup rdata raw c00505f1
 
 $ dnstable_lookup rdata name BLACKHOLE-1.IANA.ORG
+
+$ dnstable_lookup rdata name ns3.example.+
 
 $ dnstable_lookup -B "2022-11-09 22:59:59" rrset example.com

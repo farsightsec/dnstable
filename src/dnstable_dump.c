@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2023-2024 DomainTools LLC
  * Copyright (c) 2012, 2014-2015, 2020, 2021 by Farsight Security, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,6 +39,7 @@ static bool g_rrset_names;
 static bool g_rdata_names;
 static bool g_time_range;
 static bool g_version;
+static bool g_source_info;
 static char *g_fname;
 
 static struct dnstable_formatter *fmt = NULL;
@@ -101,6 +103,14 @@ static argv_t args[] = {
 		NULL,
 		"output version entries" },
 
+	{ ARGV_ONE_OF },
+
+	{ 's', "source_info_entries",
+		ARGV_BOOL,
+		&g_source_info,
+		NULL,
+		"output source info entries" },
+
 	{ ARGV_MAND, NULL,
 		ARGV_CHAR_P,
 		&g_fname,
@@ -119,6 +129,7 @@ print_entry(struct dnstable_entry *ent)
 	case DNSTABLE_ENTRY_TYPE_RDATA:
 	case DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV:
 	case DNSTABLE_ENTRY_TYPE_TIME_RANGE:
+	case DNSTABLE_ENTRY_TYPE_SOURCE_INFO:
 	case DNSTABLE_ENTRY_TYPE_VERSION: {
 		char *s;
 		if (g_json)
@@ -142,13 +153,11 @@ static void
 do_dump(struct dnstable_iter *it)
 {
 	struct dnstable_entry *ent;
-	uint64_t count = 0;
 
 	while (dnstable_iter_next(it, &ent) == dnstable_res_success) {
 		assert(ent != NULL);
 		print_entry(ent);
 		dnstable_entry_destroy(&ent);
-		count++;
 	}
 }
 
@@ -194,6 +203,8 @@ main(int argc, char **argv)
 		d_it = dnstable_reader_iter_time_range(d_reader);
 	} else if (g_version) {
 		d_it = dnstable_reader_iter_version(d_reader);
+	} else if (g_source_info) {
+		d_it = dnstable_reader_iter_source_info(d_reader);
 	}
 
 	fmt = dnstable_formatter_init();

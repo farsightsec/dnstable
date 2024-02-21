@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014-2015, 2019-2021 by Farsight Security, Inc.
+ * Copyright (c) 2012, 2014-2015, 2019-2023 by Farsight Security, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,6 +44,7 @@ typedef enum {
 	DNSTABLE_ENTRY_TYPE_RRSET_NAME_FWD = 1,
 	DNSTABLE_ENTRY_TYPE_RDATA = 2,
 	DNSTABLE_ENTRY_TYPE_RDATA_NAME_REV = 3,
+	DNSTABLE_ENTRY_TYPE_SOURCE_INFO = 253,
 	DNSTABLE_ENTRY_TYPE_TIME_RANGE = 254,
 	DNSTABLE_ENTRY_TYPE_VERSION = 255,
 } dnstable_entry_type;
@@ -60,9 +61,42 @@ typedef enum {
 	DNSTABLE_QUERY_TYPE_RDATA_NAME = 1,
 	DNSTABLE_QUERY_TYPE_RDATA_IP = 2,
 	DNSTABLE_QUERY_TYPE_RDATA_RAW = 3,
+	DNSTABLE_QUERY_TYPE_SOURCE_INFO = 253,
 	DNSTABLE_QUERY_TYPE_TIME_RANGE = 254,
 	DNSTABLE_QUERY_TYPE_VERSION = 255,
 } dnstable_query_type;
+
+typedef enum {
+	DNSTABLE_STAT_STAGE_FILESET = 0,
+	DNSTABLE_STAT_STAGE_FILTER_SINGLE_LABEL = 1,
+	DNSTABLE_STAT_STAGE_FILTER_RRTYPE = 2,
+	DNSTABLE_STAT_STAGE_FILTER_BAILIWICK = 3,
+	DNSTABLE_STAT_STAGE_FILTER_TIME_PREFILTER = 4,
+	DNSTABLE_STAT_STAGE_REMOVE_STRICT = 5,
+	DNSTABLE_STAT_STAGE_FILL_MERGER = 6,
+	DNSTABLE_STAT_STAGE_LJOIN = 7,
+	DNSTABLE_STAT_STAGE_FILTER_TIME = 8,
+	DNSTABLE_STAT_STAGE_FILTER_OFFSET = 9,
+} dnstable_stat_stage;
+
+typedef enum {
+	DNSTABLE_STAT_CATEGORY_FILTERED = 0,
+	DNSTABLE_STAT_CATEGORY_MERGED = 1,
+	DNSTABLE_STAT_CATEGORY_SEEK = 2,
+	DNSTABLE_STAT_CATEGORY_FILES = 3,
+} dnstable_stat_category;
+
+const char *
+dnstable_stat_stage_to_str(dnstable_stat_stage);
+
+dnstable_res
+dnstable_stat_str_to_stage(const char *, dnstable_stat_stage *);
+
+const char *
+dnstable_stat_category_to_str(dnstable_stat_category);
+
+dnstable_res
+dnstable_stat_str_to_category(const char *, dnstable_stat_category *);
 
 /* merge func */
 
@@ -81,6 +115,10 @@ typedef dnstable_res
 typedef void
 (*dnstable_iter_free_func)(void *);
 
+typedef dnstable_res
+(*dnstable_iter_stat_func)(const void *,
+	dnstable_stat_stage, dnstable_stat_category, bool *, uint64_t *);
+
 struct dnstable_iter *
 dnstable_iter_init(
 	dnstable_iter_next_func,
@@ -92,6 +130,16 @@ dnstable_iter_next(
 	struct dnstable_iter *,
 	struct dnstable_entry **)
 __attribute__((warn_unused_result));
+
+void
+dnstable_iter_set_stat_func(struct dnstable_iter *, dnstable_iter_stat_func);
+
+dnstable_res
+dnstable_iter_get_count(struct dnstable_iter *,
+	dnstable_stat_stage,
+	dnstable_stat_category,
+	bool *,
+	uint64_t *);
 
 void
 dnstable_iter_destroy(struct dnstable_iter **);
@@ -106,6 +154,9 @@ dnstable_query_destroy(struct dnstable_query **);
 
 const char *
 dnstable_query_get_error(struct dnstable_query *);
+
+dnstable_res
+dnstable_query_set_case_sensitive(struct dnstable_query *q, bool case_sensitive);
 
 dnstable_res
 dnstable_query_set_data(struct dnstable_query *,
@@ -134,6 +185,10 @@ dnstable_query_set_filter_parameter(struct dnstable_query *,
 dnstable_res
 dnstable_query_set_timeout(struct dnstable_query *,
 			   const struct timespec *);
+
+dnstable_res
+dnstable_query_set_deadline(struct dnstable_query *,
+			    const struct timespec *);
 
 dnstable_res
 dnstable_query_filter(struct dnstable_query *, struct dnstable_entry *, bool *);
@@ -175,6 +230,9 @@ dnstable_reader_iter_time_range(struct dnstable_reader *);
 
 struct dnstable_iter *
 dnstable_reader_iter_version(struct dnstable_reader *);
+
+struct dnstable_iter *
+dnstable_reader_iter_source_info(struct dnstable_reader *);
 
 struct dnstable_iter *
 dnstable_reader_query(struct dnstable_reader *, struct dnstable_query *);
@@ -346,6 +404,15 @@ dnstable_res
 dnstable_entry_get_count(
 	struct dnstable_entry *,
 	uint64_t *count);
+
+/**
+ * valid for:
+ *	entry_type_source
+ */
+dnstable_res
+dnstable_entry_get_source_info(
+	struct dnstable_entry *,
+	const char **source_info);
 
 /**
  * valid for:

@@ -1,6 +1,6 @@
 AC_PREREQ(2.64)
 AC_INIT([dnstable],
-        [0.13.2],
+        [0.14.0],
         [https://github.com/farsightsec/dnstable/issues],
         [dnstable],
         [https://github.com/farsightsec/dnstable])
@@ -44,9 +44,8 @@ AC_CHECK_FUNCS([clock_gettime])
 
 AC_CHECK_HEADERS([sys/endian.h endian.h])
 
-PKG_CHECK_MODULES([libmtbl], [libmtbl >= 1.5.0])
+PKG_CHECK_MODULES([libmtbl], [libmtbl >= 1.6.0])
 PKG_CHECK_MODULES([libwdns], [libwdns >= 0.11.0])
-PKG_CHECK_MODULES([libyajl], [yajl >= 2], [], [MY_CHECK_YAJL_1])
 
 AX_PTHREAD([
     LIBS="$PTHREAD_LIBS $LIBS"

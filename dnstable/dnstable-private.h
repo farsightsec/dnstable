@@ -42,11 +42,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <setjmp.h>
 
 #include <mtbl.h>
 #include <wdns.h>
 
-#include <yajl/yajl_gen.h>
 
 #include "dnstable.h"
 
@@ -61,6 +61,7 @@
 #define ENTRY_TYPE_RDATA			((uint8_t)2)
 #define ENTRY_TYPE_RDATA_NAME_REV		((uint8_t)3)
 
+#define ENTRY_TYPE_SOURCE_INFO			((uint8_t)253)
 #define ENTRY_TYPE_TIME_RANGE			((uint8_t)254)
 #define ENTRY_TYPE_VERSION			((uint8_t)255)
 
@@ -161,5 +162,112 @@ rrtype_union_unpack(const uint8_t *rrtype_map, size_t rrtype_map_size,
 bool
 rrtype_test(dnstable_entry_type e_type, uint16_t rrtype,
 	    const uint8_t *rrtype_map, size_t rrtype_map_size);
+
+
+/*
+ * "Left join" two mtbl sources, where each key on source "left"
+ * has its value merged with any corresponding key on the "right"
+ * source.
+ */
+struct ljoin_mtbl;
+
+struct ljoin_mtbl_stats {
+	uint64_t merged;
+	uint64_t seek;
+};
+
+struct ljoin_mtbl *
+ljoin_mtbl_init(const struct mtbl_source *left,
+		const struct mtbl_source *right,
+		mtbl_merge_func merge_fn,
+		void *merge_clos);
+
+dnstable_res
+ljoin_mtbl_get_counter(const struct ljoin_mtbl *,
+		       dnstable_stat_category, bool *, uint64_t *);
+
+const struct mtbl_source *
+ljoin_mtbl_source(const struct ljoin_mtbl *);
+
+void
+ljoin_mtbl_destroy(struct ljoin_mtbl **);
+
+
+/*
+ * Filter an mtbl source, using a filter_mtbl_func which can pass
+ * matching entries using *match, seek past non-matching entries using
+ * seek_iter, or terminate iteration by returning mtbl_res_failure.
+ */
+struct filter_mtbl;
+
+struct filter_mtbl_stats {
+	uint64_t filtered;
+	uint64_t seek;
+};
+
+typedef mtbl_res (*filter_mtbl_func)(
+		void *user,
+		struct mtbl_iter *seek_iter,
+		const uint8_t *key, size_t len_key,
+		const uint8_t *val, size_t len_val,
+		bool *match);
+
+struct filter_mtbl *
+filter_mtbl_init(const struct mtbl_source *, filter_mtbl_func, void *);
+
+dnstable_res
+filter_mtbl_get_counter(const struct filter_mtbl *,
+			dnstable_stat_category, bool *, uint64_t *);
+
+const struct mtbl_source *
+filter_mtbl_source(const struct filter_mtbl *);
+
+void
+filter_mtbl_destroy(struct filter_mtbl **);
+
+
+/*
+ * Enforce timeout when intermediate results are consumed by filters.
+ * Returns using longjmp to the supplied jmp_buf after the deadline.
+ */
+struct timeout_mtbl;
+
+struct timeout_mtbl *
+timeout_mtbl_init(const struct mtbl_source *, const struct timespec *deadline, jmp_buf *);
+
+const struct mtbl_source *
+timeout_mtbl_source(const struct timeout_mtbl *);
+
+void
+timeout_mtbl_destroy(struct timeout_mtbl **);
+
+
+/* Remove keys present in any source from the upstream source. */
+struct remove_mtbl;
+
+struct remove_mtbl_stats {
+	uint64_t filtered;
+	uint64_t seek;
+};
+
+struct remove_mtbl *
+remove_mtbl_init(void);
+
+void
+remove_mtbl_add_source(struct remove_mtbl *, const struct mtbl_source *);
+
+void
+remove_mtbl_set_upstream(struct remove_mtbl *, const struct mtbl_source *);
+
+dnstable_res
+remove_mtbl_get_counter(const struct remove_mtbl *,
+			dnstable_stat_category, bool *, uint64_t *);
+
+const struct mtbl_source *
+remove_mtbl_source(const struct remove_mtbl *);
+
+void
+remove_mtbl_destroy(struct remove_mtbl **);
+
 
 #endif /* DNSTABLE_PRIVATE_H */

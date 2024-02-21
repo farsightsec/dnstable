@@ -1,5 +1,5 @@
 Name:           dnstable
-Version:        0.13.2
+Version:        0.14.0
 Release:        1%{?dist}
 Summary:        passive DNS encoding format utilities
 
@@ -7,8 +7,8 @@ License:        Apache-2.0
 URL:            https://github.com/farsightsec/%{name}
 Source0:        https://dl.farsightsecurity.com/dist/%{name}/%{name}-%{version}.tar.gz
 
-BuildRequires:  mtbl-devel >= 1.5.0 wdns-devel >= 0.11.0 yajl-devel
-Requires:       mtbl wdns yajl
+BuildRequires:  mtbl-devel >= 1.5.0 wdns-devel >= 0.11.0
+Requires:       mtbl wdns
 
 %description
 dnstable implements an encoding format for passive DNS data.  It stores
