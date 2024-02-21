@@ -4,14 +4,14 @@ dnstable (0.14.0-1) UNRELEASED; urgency=medium
   * Add support for case-sensitive rrset, rdata name queries.
   * Multiple performance improvements for time filtered queries.
   * Improve performance of rrtype filtered queries through early filtering.
-  * Add query statistics API
+  * Add query statistics API.
   * Add support for source info metadata.
   * dnstable_lookup: Add "case sensitive" (-C) query flag.
   * dnstable_lookup: Add "count results" (-n) flag.
   * dnstable_lookup: Add "time limit" (-t) option.
   * dnstable_lookup: Add stats output (-s) and stats interval (-i) options.
 
- -- Farsight Security, Inc. <software@farsightsecurity.com>  Tue, 30 Jan 2024 13:51:50 -0500
+ -- Farsight Security Inc <software@farsightsecurity.com>  Tue, 30 Jan 2024 13:51:50 -0500
 
 dnstable (0.13.2-1) debian-fsi; urgency=medium
 

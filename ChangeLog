@@ -4,7 +4,7 @@ dnstable (0.14.0)
   * Add support for case-sensitive rrset, rdata name queries.
   * Multiple performance improvements for time filtered queries.
   * Improve performance of rrtype filtered queries through early filtering.
-  * Add query statistics API
+  * Add query statistics API.
   * Add support for source info metadata.
   * dnstable_lookup: Add "case sensitive" (-C) query flag.
   * dnstable_lookup: Add "count results" (-n) flag.
