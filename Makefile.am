@@ -79,6 +79,7 @@ dnstable_libdnstable_la_LIBADD = \
 	$(libmtbl_LIBS) \
 	$(libwdns_LIBS)
 dnstable_libdnstable_la_LDFLAGS = $(AM_LDFLAGS) \
+	-no-undefined \
 	-version-info $(LIBDNSTABLE_CURRENT):$(LIBDNSTABLE_REVISION):$(LIBDNSTABLE_AGE)
 if HAVE_LD_VERSION_SCRIPT
 dnstable_libdnstable_la_LDFLAGS += \
