@@ -11,6 +11,7 @@ dnstable (0.14.0-1) debian-fsi; urgency=medium
   * dnstable_lookup: Add "count results" (-n) flag.
   * dnstable_lookup: Add "time limit" (-t) option.
   * dnstable_lookup: Add stats output (-s) and stats interval (-i) options.
+  * Fix building shared libraries on windows/Cygwin.
 
  -- Farsight Security Inc <software@farsightsecurity.com>  Tue, 30 Jan 2024 13:51:50 -0500
 

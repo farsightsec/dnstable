@@ -10,6 +10,7 @@ dnstable (0.14.0)
   * dnstable_lookup: Add "count results" (-n) flag.
   * dnstable_lookup: Add "time limit" (-t) option.
   * dnstable_lookup: Add stats output (-s) and stats interval (-i) options.
+  * Fix building shared libraries on windows/Cygwin.
 
 dnstable (0.13.2)
 
