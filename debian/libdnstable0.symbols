@@ -15,6 +15,7 @@ libdnstable.so.0 libdnstable0 #MINVER#
  dnstable_entry_get_rdata_name@LIBDNSTABLE_0.6.0 0.6.0
  dnstable_entry_get_rrname@LIBDNSTABLE_0.6.0 0.6.0
  dnstable_entry_get_rrtype@LIBDNSTABLE_0.6.0 0.6.0
+ dnstable_entry_get_source_info@LIBDNSTABLE_0.12.0 0.14.0
  dnstable_entry_get_time_first@LIBDNSTABLE_0.6.0 0.6.0
  dnstable_entry_get_time_last@LIBDNSTABLE_0.6.0 0.6.0
  dnstable_entry_get_type@LIBDNSTABLE_0.6.0 0.6.0
@@ -32,8 +33,10 @@ libdnstable.so.0 libdnstable0 #MINVER#
  dnstable_formatter_set_raw_rdata@LIBDNSTABLE_0.12.0 0.12.0
  dnstable_formatter_set_rdata_array@LIBDNSTABLE_0.11.0 0.11.0
  dnstable_iter_destroy@LIBDNSTABLE_0.6.0 0.6.0
+ dnstable_iter_get_count@LIBDNSTABLE_0.6.0 0.14.0
  dnstable_iter_init@LIBDNSTABLE_0.6.0 0.6.0
  dnstable_iter_next@LIBDNSTABLE_0.6.0 0.6.0
+ dnstable_iter_set_stat_func@LIBDNSTABLE_0.6.0 0.14.0
  dnstable_merge_func@LIBDNSTABLE_0.6.0 0.6.0
  dnstable_query_destroy@LIBDNSTABLE_0.6.0 0.6.0
  dnstable_query_filter@LIBDNSTABLE_0.6.0 0.6.0
@@ -42,7 +45,9 @@ libdnstable.so.0 libdnstable0 #MINVER#
  dnstable_query_iter@LIBDNSTABLE_0.6.0 0.6.0
  dnstable_query_set_aggregated@LIBDNSTABLE_0.11.0 0.11.0
  dnstable_query_set_bailiwick@LIBDNSTABLE_0.6.0 0.6.0
+ dnstable_query_set_case_sensitive@LIBDNSTABLE_0.6.0 0.14.0
  dnstable_query_set_data@LIBDNSTABLE_0.6.0 0.6.0
+ dnstable_query_set_deadline@LIBDNSTABLE_0.12.0 0.14.0
  dnstable_query_set_filter_parameter@LIBDNSTABLE_0.9.0 0.9.0
  dnstable_query_set_offset@LIBDNSTABLE_0.11.0 0.11.1
  dnstable_query_set_rrtype@LIBDNSTABLE_0.6.0 0.6.0
@@ -55,7 +60,12 @@ libdnstable.so.0 libdnstable0 #MINVER#
  dnstable_reader_iter_rdata_names@LIBDNSTABLE_0.8.0 0.8.0
  dnstable_reader_iter_rrset@LIBDNSTABLE_0.6.0 0.6.0
  dnstable_reader_iter_rrset_names@LIBDNSTABLE_0.8.0 0.8.0
+ dnstable_reader_iter_source_info@LIBDNSTABLE_0.12.0 0.14.0
  dnstable_reader_iter_time_range@LIBDNSTABLE_0.12.0 0.12.0
  dnstable_reader_iter_version@LIBDNSTABLE_0.12.0 0.12.0
  dnstable_reader_query@LIBDNSTABLE_0.6.0 0.6.0
  dnstable_reader_reload_setfile@LIBDNSTABLE_0.8.0 0.8.0
+ dnstable_stat_category_to_str@LIBDNSTABLE_0.6.0 0.14.0
+ dnstable_stat_stage_to_str@LIBDNSTABLE_0.6.0 0.14.0
+ dnstable_stat_str_to_category@LIBDNSTABLE_0.6.0 0.14.0
+ dnstable_stat_str_to_stage@LIBDNSTABLE_0.6.0 0.14.0
