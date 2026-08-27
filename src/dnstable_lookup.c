@@ -15,8 +15,13 @@
  * limitations under the License.
  */
 
+#include <sys/types.h>
+#include <sys/stat.h>
+
 #include <assert.h>
 #include <errno.h>
+#include <libgen.h>
+#include <limits.h>
 #include <locale.h>
 #include <inttypes.h>
 #include <stdint.h>
@@ -70,6 +75,124 @@ print_entry(struct dnstable_entry *ent)
 		    (dnstable_entry_get_type(ent) == DNSTABLE_ENTRY_TYPE_RRSET))
 			putchar('\n');
 		free(s);
+	}
+}
+
+/*
+ * Check the setfile before libmtbl gets it. dnstable_reader_init_setfile() hands it to
+ * mtbl_fileset_init(), and libmtbl's fileset silently skips any line that does not
+ * resolve -- so a data file named by DNSTABLE_SETFILE is read end to end, a stat(2) per
+ * newline in it, and returns nothing.
+ *
+ * Unusable lines are reported and skipped.
+ * DNSTABLE_SETFILE_STRICT=1 makes them fatal.
+ */
+static void
+check_setfile(const char *setfile)
+{
+	uint8_t sniff[4096];
+	FILE *fp;
+	const char *env_strict;
+	char *dir_copy, *setdir, *line = NULL;
+	size_t len = 0, n_sniff, lineno = 0, n_ok = 0, n_bad = 0;
+	bool binary = false, strict;
+
+	/* Boolean, not a number: unset or "0" is off, anything else is on. */
+	env_strict = getenv("DNSTABLE_SETFILE_STRICT");
+	strict = (env_strict != NULL && *env_strict != '\0' &&
+		  strcmp(env_strict, "0") != 0);
+
+	fp = fopen(setfile, "r");
+	if (fp == NULL) {
+		fprintf(stderr, "dnstable_lookup: unable to open setfile %s: %s\n",
+			setfile, strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+
+	/* Sniff the head for bytes no pathname list would contain */
+	n_sniff = fread(sniff, 1, sizeof(sniff), fp);
+	for (size_t i = 0; i < n_sniff; i++) {
+		uint8_t c = sniff[i];
+
+		/* Bytes >= 0x80 are fine; pathnames need not be ASCII. */
+		if (c == '\t' || c == '\r' || c == '\n')
+			continue;
+		if (c >= 0x20 && c != 0x7f)
+			continue;
+		binary = true;
+		break;
+	}
+
+	if (binary ||
+	    (n_sniff == sizeof(sniff) && memchr(sniff, '\n', n_sniff) == NULL))
+	{
+		fprintf(stderr, "dnstable_lookup: %s does not look like a setfile\n",
+			setfile);
+		fprintf(stderr, "dnstable_lookup: DNSTABLE_SETFILE must name a text file "
+			"listing dnstable data files, one per line; to query a single "
+			"data file, set DNSTABLE_FNAME instead\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if (fseek(fp, 0, SEEK_SET) < 0) {
+		fprintf(stderr, "dnstable_lookup: unable to rewind setfile %s: %s\n",
+			setfile, strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+
+	/* Same setdir as libmtbl's fileset; dirname() may modify its argument. */
+	dir_copy = strdup(setfile);
+	if (dir_copy == NULL || (setdir = strdup(dirname(dir_copy))) == NULL) {
+		fprintf(stderr, "dnstable_lookup: out of memory\n");
+		exit(EXIT_FAILURE);
+	}
+	free(dir_copy);
+
+	while (getline(&line, &len, fp) != -1) {
+		char fname[PATH_MAX];
+		struct stat sb;
+		size_t line_len;
+		int n;
+
+		lineno++;
+
+		/* As libmtbl's reload does: strip one newline, append to setdir. */
+		line_len = strlen(line);
+		if (line_len > 0 && line[line_len - 1] == '\n')
+			line[--line_len] = '\0';
+
+		n = snprintf(fname, sizeof(fname), "%s/%s", setdir, line);
+		if (n < 0 || (size_t) n >= sizeof(fname)) {
+			n_bad++;
+			fprintf(stderr, "dnstable_lookup: setfile %s line %zu: "
+				"path too long\n", setfile, lineno);
+		} else if (stat(fname, &sb) < 0) {
+			n_bad++;
+			fprintf(stderr, "dnstable_lookup: setfile %s line %zu: %s: %s\n",
+				setfile, lineno, fname, strerror(errno));
+		} else {
+			n_ok++;
+		}
+	}
+
+	free(line);
+	free(setdir);
+	fclose(fp);
+
+	/*
+	 * A setfile that names nothing may be legitimate.
+	 */
+	if (lineno > 0 && n_ok == 0) {
+		fprintf(stderr, "dnstable_lookup: setfile %s names no usable dnstable "
+			"data files\n", setfile);
+		exit(EXIT_FAILURE);
+	}
+
+	if (n_bad > 0 && strict) {
+		fprintf(stderr, "dnstable_lookup: setfile %s: %zu of %zu lines unusable, "
+			"refusing to answer from partial data\n",
+			setfile, n_bad, lineno);
+		exit(EXIT_FAILURE);
 	}
 }
 
@@ -289,6 +412,7 @@ usage(void)
 	fprintf(stderr, "\t-t TIMEOUT: stop after TIMEOUT seconds.\n");
 	fprintf(stderr, "\t-i INTERVAL: print stats every INTERVAL seconds.\n");
 	fprintf(stderr, "\nUse exactly one of the following environment variables to specify the dnstable\ndata file(s) to query:\n\tDNSTABLE_FNAME - Path to a single dnstable data file, or\n\tDNSTABLE_SETFILE - Path to a \"set file\"\n");
+	fprintf(stderr, "\nOptionally:\n\tDNSTABLE_SETFILE_STRICT - Set to 1 to treat a data file listed in the\n\t\tset file that cannot be opened as an error rather than a warning\n");
 	exit(EXIT_FAILURE);
 }
 
@@ -478,6 +602,7 @@ main(int argc, char **argv)
 	}
 
 	if (env_setfile) {
+		check_setfile(env_setfile);
 		d_reader = dnstable_reader_init_setfile(env_setfile);
 	} else {
 		if (g_aggregate == false) {

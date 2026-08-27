@@ -141,7 +141,20 @@ specify the dnstable data file(s) to query.
 ^DNSTABLE_SETFILE^::
     Path to a "set file", a text file containing a newline separated list of
     dnstable data files on the filesystem. Results from all of the data files
-    will be merged.
+    will be merged. Each name is resolved relative to the directory containing
+    the set file; a leading "/" does not make a name absolute.
+
+The following environment variable modifies how ^DNSTABLE_SETFILE^ is handled.
+
+^DNSTABLE_SETFILE_STRICT^::
+    If set to anything other than "0", a data file named by ^DNSTABLE_SETFILE^
+    which cannot be opened is an error rather than a warning. Unset, empty, or
+    set to "0", the query proceeds using the data files which were found.
+
+^dnstable_lookup^ exits with an error if ^DNSTABLE_SETFILE^ does not name a
+readable text file, or if it names data files and none of them can be opened. An
+empty set file is not an error; the query succeeds with no results. Any data file
+which cannot be opened is reported to ^stderr^.
 
 == DATE TIME SPECIFICATION ==
 

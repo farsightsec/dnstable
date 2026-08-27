@@ -38,6 +38,12 @@ test_lookup() {
 	test_command "dnstable_lookup ($(basename ${file}))" $test $DNSTQ "$@"
 }
 
+test_lookup_err() {
+	test=$1; shift
+	file=${DNSTABLE_SETFILE:-${DNSTABLE_FNAME:-no-file}}
+	test_command "dnstable_lookup stderr ($(basename ${file}))" $test $DNSTQ "$@"
+}
+
 test_dump() {
 	test=$1; shift
 	test_command dnstable_dump $test $DUMP "$@"
@@ -453,6 +459,42 @@ test_lookup fails rrset www.example.org A
 # test for DNSTABLE_FNAME set to bogus filename
 export DNSTABLE_FNAME=@abs_top_srcdir@/tests/this-does-not-exist
 test_lookup fails rrset www.example.org A
+
+#####################
+
+# DNSTABLE_SETFILE validation. Each case below used to exit 0 with no results.
+unset DNSTABLE_FNAME
+
+# DNSTABLE_SETFILE points at a data file instead of a setfile
+export DNSTABLE_SETFILE=@abs_top_srcdir@/tests/test-dns.mtbl
+test_lookup fails rrset www.example.org A
+test_lookup_err errcontains rrset www.example.org A << EOF
+does not look like a setfile
+set DNSTABLE_FNAME instead
+EOF
+
+# setfile names only data files which do not exist
+export DNSTABLE_SETFILE=@abs_top_srcdir@/tests/missing-files.setfile
+test_lookup fails rrset www.example.org A
+
+# an empty setfile names nothing to fail on -- it may be mid-rotation
+export DNSTABLE_SETFILE=/dev/null
+test_lookup matches rrset www.example.org A << EOF
+EOF
+
+# a missing data file is reported, but the query still answers
+export DNSTABLE_SETFILE=@abs_top_srcdir@/tests/partial.setfile
+test_lookup matches -j rrset www.example.com A << EOF
+{"count":1,"time_first":1522147408,"time_last":1522147408,"rrname":"www.example.com.","rrtype":"A","bailiwick":"example.com.","rdata":["198.51.100.3","198.51.100.4"]}
+EOF
+
+# ... unless DNSTABLE_SETFILE_STRICT is set
+export DNSTABLE_SETFILE=@abs_top_srcdir@/tests/partial.setfile
+export DNSTABLE_SETFILE_STRICT=1
+test_lookup fails rrset www.example.com A
+unset DNSTABLE_SETFILE_STRICT
+
+unset DNSTABLE_SETFILE
 
 #####################
 

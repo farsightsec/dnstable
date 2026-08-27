@@ -13,6 +13,12 @@ dnstable (0.14.0-1) debian-fsi; urgency=medium
   * dnstable_lookup: Add stats output (-s) and stats interval (-i) options.
   * Fix building shared libraries on windows/Cygwin.
   * Replace yajl dependency with lightweight custom jsonl serializer.
+  * dnstable_lookup: Validate DNSTABLE_SETFILE before use. A setfile which is not
+    a text file, or which names data files of which none can be opened, is now an
+    error instead of an empty result set; data files which cannot be opened are
+    reported to stderr. An empty setfile remains a successful empty result.
+  * dnstable_lookup: Add DNSTABLE_SETFILE_STRICT, which makes a data file named by
+    DNSTABLE_SETFILE that cannot be opened an error rather than a warning.
 
  -- Farsight Security Inc <software@farsightsecurity.com>  Tue, 30 Jan 2024 13:51:50 -0500
 

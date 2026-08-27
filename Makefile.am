@@ -124,6 +124,8 @@ TESTS = tests/tests.sh tests/test_timefilter.sh
 EXTRA_DIST += \
 	tests/empty-version.mtbl \
 	tests/empty-version.setfile \
+	tests/missing-files.setfile \
+	tests/partial.setfile \
 	tests/test-dns.mtbl \
 	tests/test-dns.mtbl.old \
 	tests/test-dns.setfile \

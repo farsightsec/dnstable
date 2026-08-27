@@ -11,6 +11,7 @@
 #        contains (contains each line of test-output)
 #        excludes (contains no lines from test-output)
 #	 fails (command exits with nonzero status
+#        errcontains (stderr contains each line of test-output, as a substring)
 #
 # WARNING: the test output may NOT contain trailing spaces or the test will FAIL.
 #
@@ -21,7 +22,11 @@ test_command() {
 	prog=$1; shift
 	args=$(requote "$@")
 	cmd="$name $args"
-	result=$($prog "$@" 2>/dev/null)
+	if [ "$test" = "errcontains" ]; then
+		result=$($prog "$@" 2>&1 >/dev/null)
+	else
+		result=$($prog "$@" 2>/dev/null)
+	fi
 	rcode=$?
 
 	if [ $rcode -ne 0 ]; then
@@ -29,9 +34,12 @@ test_command() {
 			echo "PASS: $cmd (fails)"
 			return 0
 		fi
-		echo "FAIL: $cmd (failed)"
-		CODE=1
-		return $CODE
+		# errcontains checks the diagnostic
+		if [ "$test" != "errcontains" ]; then
+			echo "FAIL: $cmd (failed)"
+			CODE=1
+			return $CODE
+		fi
 	else
 		if [ "$test" = "fails" ]; then
 			echo "FAIL: $cmd (no-fail)"
@@ -63,6 +71,32 @@ test_command() {
 				return $CODE
 			fi
 			echo "PASS: $cmd (contains)"
+			return 0 ;;
+
+		"errcontains")
+			local expected line missing
+
+			# substring, not whole-line: the diagnostics embed
+			# an absolute setfile path
+			expected=$(readall)
+			missing=
+			while read line; do
+				case "$result" in
+				*"$line"*)	;;
+				*)		missing="${missing}${missing:+
+}${line}" ;;
+				esac
+			done <<EOF
+$expected
+EOF
+			if [ -n "$missing" ]; then
+				echo "FAIL: $cmd (no-errcontains)"
+				echo "    missing:"
+				echo "$missing" | sed 's:^:	:'
+				CODE=1
+				return $CODE
+			fi
+			echo "PASS: $cmd (errcontains)"
 			return 0 ;;
 
 		"excludes")

@@ -179,8 +179,17 @@ Path to a single dnstable data file\&.
 .PP
 \fBDNSTABLE_SETFILE\fR
 .RS 4
-Path to a "set file", a text file containing a newline separated list of dnstable data files on the filesystem\&. Results from all of the data files will be merged\&.
+Path to a "set file", a text file containing a newline separated list of dnstable data files on the filesystem\&. Results from all of the data files will be merged\&. Each name is resolved relative to the directory containing the set file; a leading "/" does not make a name absolute\&.
 .RE
+.sp
+The following environment variable modifies how \fBDNSTABLE_SETFILE\fR is handled\&.
+.PP
+\fBDNSTABLE_SETFILE_STRICT\fR
+.RS 4
+If set to anything other than "0", a data file named by \fBDNSTABLE_SETFILE\fR which cannot be opened is an error rather than a warning\&. Unset, empty, or set to "0", the query proceeds using the data files which were found\&.
+.RE
+.sp
+\fBdnstable_lookup\fR exits with an error if \fBDNSTABLE_SETFILE\fR does not name a readable text file, or if it names data files and none of them can be opened\&. An empty set file is not an error; the query succeeds with no results\&. Any data file which cannot be opened is reported to \fBstderr\fR\&.
 .SH "DATE TIME SPECIFICATION"
 .sp
 The \fB\-a\fR, \fB\-A\fR, \fB\-b\fR, and \fB\-B\fR options support various date or time formats\&.
