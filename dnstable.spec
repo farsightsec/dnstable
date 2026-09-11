@@ -7,6 +7,7 @@ License:        Apache-2.0
 URL:            https://github.com/farsightsec/%{name}
 Source0:        https://dl.farsightsecurity.com/dist/%{name}/%{name}-%{version}.tar.gz
 
+BuildRequires:  autoconf automake libtool pkgconfig
 BuildRequires:  mtbl-devel >= 1.5.0 wdns-devel >= 0.11.0
 Requires:       mtbl wdns
 
